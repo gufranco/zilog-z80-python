@@ -1,0 +1,17 @@
+{
+  "comment": "Conformance suites this core is held to. Pinned by commit so a run is reproducible; the weekly job proposes bumps.",
+  "suites": [
+    {
+      "name": "z80",
+      "model": "z80",
+      "repository": "https://github.com/SingleStepTests/z80.git",
+      "commit": "ebe1875d48f374bcfd4b505d8eb8ee751568b5f7",
+      "sparse": [
+        "v1"
+      ],
+      "path": "v1",
+      "tests_per_opcode": 1000,
+      "files": 1604
+    }
+  ]
+}

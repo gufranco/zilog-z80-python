@@ -1,0 +1,873 @@
+"""The Z80 core, decoded the way the part decodes rather than from a table.
+
+An opcode is not an arbitrary number here. Its two top bits choose a group, the
+next three choose a destination or a condition, and the last three choose a
+source, with one of those three bits splitting some groups again. Every family of
+instructions falls out of that decomposition, which is why an eight bit part ended
+up with several hundred instructions without needing several hundred entries
+written down. Writing them down anyway invites a transcription error in a table
+nobody can read.
+
+Four prefixes extend it. One reaches the bit and shift instructions, one reaches a
+second set of arithmetic and the block instructions, and two swap an index
+register in for the working pair. The last two combine with the first, and in that
+combination the displacement byte arrives before the opcode rather than after,
+which is the one place the decoding stops being uniform.
+
+Three things separate a core that runs software from one that is right.
+
+The undocumented flags are not spare bits. Almost every instruction copies bits
+three and five of its result into them, a compare copies them from its operand
+instead, and two instructions copy them from a register with no name.
+
+That register is `WZ`, where the processor builds an address it has not finished
+with. It is invisible until one of those instructions reads it.
+
+And `Q` records whether the instruction just executed wrote the flags at all,
+which is what the two carry instructions consult to decide where to take their
+hidden bits from.
+
+Nothing starts clean, and the refresh counter advances on every fetch including
+the extra fetch a prefix costs.
+"""
+
+from . import blocks, flags
+from .memory import UNSET_SEED
+from .registers import Registers
+
+STEP_LIMIT = 2_000_000
+
+REGISTER_NAMES = ("b", "c", "d", "e", "h", "l", "(hl)", "a")
+
+PAIRS_SP = ("bc", "de", "hl", "sp")
+PAIRS_AF = ("bc", "de", "hl", "af")
+
+INTERRUPT_MODES = (0, 0, 1, 2, 0, 0, 1, 2)
+
+INDEX_PREFIX = {0xDD: "ix", 0xFD: "iy"}
+
+
+class StepLimit(Exception):
+    pass
+
+
+class Cpu:
+    """One Z80, holding whatever it held until something writes to it."""
+
+    def __init__(self, memory, ports=None, step_limit=STEP_LIMIT, seed=UNSET_SEED, reset=True):
+        self.memory = memory
+        self.ports = ports
+        self.step_limit = step_limit
+        self.registers = Registers(seed)
+        self.steps = 0
+        self.halted = False
+        self.model = "z80"
+        self.floating_output = 0x00
+        if reset:
+            self.reset()
+
+    def reset(self):
+        self.registers.reset()
+        self.halted = False
+        self.steps = 0
+        return self
+
+    def read8(self, address):
+        return self.memory.read8(address & 0xFFFF)
+
+    def write8(self, address, value):
+        self.memory.write8(address & 0xFFFF, value)
+
+    def read16(self, address):
+        return self.read8(address) | (self.read8(address + 1) << 8)
+
+    def write16(self, address, value):
+        self.write8(address, value & 0xFF)
+        self.write8(address + 1, value >> 8)
+
+    def fetch8(self):
+        value = self.read8(self.registers.pc)
+        self.registers.pc = self.registers.pc + 1
+        return value
+
+    def fetch16(self):
+        low = self.fetch8()
+        return low | (self.fetch8() << 8)
+
+    def fetch_signed(self):
+        value = self.fetch8()
+        return value - 0x100 if value & 0x80 else value
+
+    def push16(self, value):
+        self.registers.sp = self.registers.sp - 2
+        self.write16(self.registers.sp, value)
+
+    def pop16(self):
+        value = self.read16(self.registers.sp)
+        self.registers.sp = self.registers.sp + 2
+        return value
+
+    def opcode_fetch(self):
+        """One opcode, with the refresh counter advanced as the fetch advances it."""
+        opcode = self.fetch8()
+        self.registers.tick_refresh()
+        return opcode
+
+    def condition(self, index):
+        f = self.registers.f
+        if index == 0:
+            return not f & flags.Z
+        if index == 1:
+            return bool(f & flags.Z)
+        if index == 2:
+            return not f & flags.C
+        if index == 3:
+            return bool(f & flags.C)
+        if index == 4:
+            return not f & flags.PV
+        if index == 5:
+            return bool(f & flags.PV)
+        if index == 6:
+            return not f & flags.S
+        return bool(f & flags.S)
+
+    def set_flags(self, value):
+        self.registers.f = value
+        self.registers.q = value
+
+    def keep_flags(self):
+        self.registers.q = 0
+
+    def index_pair(self, prefix):
+        return "hl" if prefix is None else prefix
+
+    def register_name(self, index, prefix):
+        name = REGISTER_NAMES[index]
+        if prefix is None:
+            return name
+        if name == "h":
+            return f"{prefix}h"
+        if name == "l":
+            return f"{prefix}l"
+        return name
+
+    def register_read(self, index, prefix=None, displacement=0):
+        if index == 6:
+            return self.read8(self.address_for(prefix, displacement))
+        return getattr(self.registers, self.register_name(index, prefix))
+
+    def register_write(self, index, value, prefix=None, displacement=0):
+        if index == 6:
+            self.write8(self.address_for(prefix, displacement), value)
+            return
+        setattr(self.registers, self.register_name(index, prefix), value)
+
+    def address_for(self, prefix, displacement):
+        if prefix is None:
+            return self.registers.hl
+        address = (getattr(self.registers, prefix) + displacement) & 0xFFFF
+        self.registers.wz = address
+        return address
+
+    def add8(self, value, carry=0):
+        a = self.registers.a
+        total = a + value + carry
+        result = total & 0xFF
+        f = flags.sign_zero(result)
+        f |= flags.C if total > 0xFF else 0
+        f |= flags.H if ((a & 0x0F) + (value & 0x0F) + carry) > 0x0F else 0
+        f |= flags.PV if (~(a ^ value) & (a ^ result)) & 0x80 else 0
+        self.registers.a = result
+        self.set_flags(f)
+
+    def sub8(self, value, carry=0, store=True):
+        a = self.registers.a
+        total = a - value - carry
+        result = total & 0xFF
+        f = flags.N
+        f |= flags.S if result & 0x80 else 0
+        f |= flags.Z if result == 0 else 0
+        f |= flags.C if total < 0 else 0
+        f |= flags.H if ((a & 0x0F) - (value & 0x0F) - carry) < 0 else 0
+        f |= flags.PV if ((a ^ value) & (a ^ result)) & 0x80 else 0
+        f |= flags.undocumented(result if store else value)
+        if store:
+            self.registers.a = result
+        self.set_flags(f)
+
+    def and8(self, value):
+        result = self.registers.a & value
+        self.registers.a = result
+        self.set_flags(flags.sign_zero(result) | flags.H | flags.parity(result))
+
+    def or8(self, value):
+        result = self.registers.a | value
+        self.registers.a = result
+        self.set_flags(flags.sign_zero(result) | flags.parity(result))
+
+    def xor8(self, value):
+        result = self.registers.a ^ value
+        self.registers.a = result
+        self.set_flags(flags.sign_zero(result) | flags.parity(result))
+
+    def inc8(self, value):
+        result = (value + 1) & 0xFF
+        f = self.registers.f & flags.C
+        f |= flags.sign_zero(result)
+        f |= flags.H if (value & 0x0F) == 0x0F else 0
+        f |= flags.PV if value == 0x7F else 0
+        self.set_flags(f)
+        return result
+
+    def dec8(self, value):
+        result = (value - 1) & 0xFF
+        f = self.registers.f & flags.C
+        f |= flags.N
+        f |= flags.sign_zero(result)
+        f |= flags.H if (value & 0x0F) == 0x00 else 0
+        f |= flags.PV if value == 0x80 else 0
+        self.set_flags(f)
+        return result
+
+    def add16(self, left, right):
+        total = left + right
+        result = total & 0xFFFF
+        f = self.registers.f & (flags.S | flags.Z | flags.PV)
+        f |= flags.C if total > 0xFFFF else 0
+        f |= flags.H if ((left & 0x0FFF) + (right & 0x0FFF)) > 0x0FFF else 0
+        f |= flags.undocumented(result >> 8)
+        self.registers.wz = left + 1
+        self.set_flags(f)
+        return result
+
+    def step(self):
+        self.steps += 1
+        if self.steps > self.step_limit:
+            raise StepLimit(f"stopped after {self.steps} steps at ${self.registers.pc:04X}")
+        self.registers.ei = 0
+        self.registers.p = 0
+        if self.halted:
+            self.registers.tick_refresh()
+            self.keep_flags()
+            return None
+        return self.execute(self.opcode_fetch(), None)
+
+    def run_until(self, predicate):
+        while not predicate(self):
+            self.step()
+        return self
+
+    def execute(self, opcode, prefix):
+        if opcode in INDEX_PREFIX:
+            self.registers.tick_refresh()
+            self.keep_flags()
+            return self.execute(self.fetch8(), INDEX_PREFIX[opcode])
+        if opcode == 0xCB:
+            return self.execute_bit(prefix)
+        if opcode == 0xED:
+            return self.execute_extended()
+
+        x = opcode >> 6
+        y = (opcode >> 3) & 0x07
+        z = opcode & 0x07
+        p = y >> 1
+        q = y & 1
+
+        if x == 0:
+            return self.execute_group0(y, z, p, q, prefix)
+        if x == 1:
+            return self.execute_load(y, z, prefix)
+        if x == 2:
+            return self.execute_arithmetic(y, self.operand(z, prefix))
+        return self.execute_group3(y, z, p, q, prefix)
+
+    def operand(self, z, prefix):
+        displacement = self.fetch_signed() if z == 6 and prefix is not None else 0
+        return self.register_read(z, prefix, displacement)
+
+    def execute_load(self, y, z, prefix):
+        if y == 6 and z == 6:
+            self.halted = True
+            self.keep_flags()
+            return None
+        displacement = self.fetch_signed() if (y == 6 or z == 6) and prefix is not None else 0
+        value = self.register_read(z, None if y == 6 else prefix, displacement)
+        self.register_write(y, value, None if z == 6 else prefix, displacement)
+        self.keep_flags()
+        return None
+
+    def execute_arithmetic(self, y, value):
+        if y == 0:
+            return self.add8(value)
+        if y == 1:
+            return self.add8(value, 1 if self.registers.f & flags.C else 0)
+        if y == 2:
+            return self.sub8(value)
+        if y == 3:
+            return self.sub8(value, 1 if self.registers.f & flags.C else 0)
+        if y == 4:
+            return self.and8(value)
+        if y == 5:
+            return self.xor8(value)
+        if y == 6:
+            return self.or8(value)
+        return self.sub8(value, store=False)
+
+    def execute_group0(self, y, z, p, q, prefix):
+        if z == 0:
+            return self.group0_control(y)
+        if z == 1:
+            return self.group0_wide(p, q, prefix)
+        if z == 2:
+            return self.group0_indirect(p, q, prefix)
+        if z == 3:
+            return self.group0_count(p, q, prefix)
+        if z == 4:
+            return self.group0_step(y, prefix, self.inc8)
+        if z == 5:
+            return self.group0_step(y, prefix, self.dec8)
+        if z == 6:
+            return self.group0_immediate(y, prefix)
+        return self.group0_accumulator(y)
+
+    def group0_control(self, y):
+        if y == 0:
+            self.keep_flags()
+            return None
+        if y == 1:
+            self.registers.exchange_accumulator()
+            self.keep_flags()
+            return None
+        if y == 2:
+            offset = self.fetch_signed()
+            self.registers.b = (self.registers.b - 1) & 0xFF
+            return self.take_branch(offset, bool(self.registers.b))
+        if y == 3:
+            return self.take_branch(self.fetch_signed(), True)
+        offset = self.fetch_signed()
+        return self.take_branch(offset, self.condition(y - 4))
+
+    def take_branch(self, offset, taken):
+        if taken:
+            self.registers.pc = self.registers.pc + offset
+            self.registers.wz = self.registers.pc
+        self.keep_flags()
+
+    def wide_name(self, p, prefix):
+        name = PAIRS_SP[p]
+        return self.index_pair(prefix) if name == "hl" else name
+
+    def group0_wide(self, p, q, prefix):
+        name = self.wide_name(p, prefix)
+        if q == 0:
+            setattr(self.registers, name, self.fetch16())
+            self.keep_flags()
+            return None
+        target = self.index_pair(prefix)
+        setattr(
+            self.registers,
+            target,
+            self.add16(getattr(self.registers, target), getattr(self.registers, name)),
+        )
+        return None
+
+    def group0_indirect(self, p, q, prefix):
+        if p == 0:
+            return self.indirect_accumulator(self.registers.bc, q)
+        if p == 1:
+            return self.indirect_accumulator(self.registers.de, q)
+        address = self.fetch16()
+        if p == 3:
+            return self.indirect_accumulator(address, q)
+        name = self.index_pair(prefix)
+        if q == 0:
+            self.write16(address, getattr(self.registers, name))
+        else:
+            setattr(self.registers, name, self.read16(address))
+        self.registers.wz = address + 1
+        self.keep_flags()
+        return None
+
+    def indirect_accumulator(self, address, q):
+        """A load or store through an address, and the half-updated `WZ` it leaves.
+
+        A store leaves the high half holding the accumulator and the low half
+        holding the address one on, which looks like a mistake and is what the part
+        does: the two halves are written by different steps and nothing puts them
+        back together.
+        """
+        if q == 0:
+            self.write8(address, self.registers.a)
+            self.registers.wz = ((self.registers.a << 8) | ((address + 1) & 0xFF)) & 0xFFFF
+        else:
+            self.registers.a = self.read8(address)
+            self.registers.wz = address + 1
+        self.keep_flags()
+
+    def group0_count(self, p, q, prefix):
+        name = self.wide_name(p, prefix)
+        setattr(self.registers, name, getattr(self.registers, name) + (1 if q == 0 else -1))
+        self.keep_flags()
+
+    def group0_step(self, y, prefix, operation):
+        displacement = self.fetch_signed() if y == 6 and prefix is not None else 0
+        value = self.register_read(y, prefix, displacement)
+        self.register_write(y, operation(value), prefix, displacement)
+
+    def group0_immediate(self, y, prefix):
+        displacement = self.fetch_signed() if y == 6 and prefix is not None else 0
+        self.register_write(y, self.fetch8(), prefix, displacement)
+        self.keep_flags()
+
+    def group0_accumulator(self, y):
+        if y == 0:
+            return self.rotate_accumulator(circular=True, left=True)
+        if y == 1:
+            return self.rotate_accumulator(circular=True, left=False)
+        if y == 2:
+            return self.rotate_accumulator(circular=False, left=True)
+        if y == 3:
+            return self.rotate_accumulator(circular=False, left=False)
+        if y == 4:
+            return self.decimal_adjust()
+        if y == 5:
+            return self.complement()
+        if y == 6:
+            return self.set_carry()
+        return self.complement_carry()
+
+    def rotate_accumulator(self, circular, left):
+        a = self.registers.a
+        if left:
+            carry = a & 0x80
+            incoming = a >> 7 if circular else (1 if self.registers.f & flags.C else 0)
+            result = ((a << 1) | incoming) & 0xFF
+        else:
+            carry = a & 0x01
+            incoming = (a << 7) if circular else (0x80 if self.registers.f & flags.C else 0)
+            result = ((a >> 1) | incoming) & 0xFF
+        self.registers.a = result
+        self.set_flags(
+            (self.registers.f & (flags.S | flags.Z | flags.PV))
+            | (flags.C if carry else 0)
+            | flags.undocumented(result)
+        )
+
+    def decimal_adjust(self):
+        a = self.registers.a
+        f = self.registers.f
+        correction = 0
+        carry = bool(f & flags.C)
+        if f & flags.H or (a & 0x0F) > 9:
+            correction |= 0x06
+        if carry or a > 0x99:
+            correction |= 0x60
+            carry = True
+        subtracting = bool(f & flags.N)
+        result = (a - correction if subtracting else a + correction) & 0xFF
+        half = bool(f & flags.H) and (a & 0x0F) < 6 if subtracting else (a & 0x0F) > 9
+        self.registers.a = result
+        self.set_flags(
+            flags.sign_zero(result)
+            | flags.parity(result)
+            | (flags.N if subtracting else 0)
+            | (flags.H if half else 0)
+            | (flags.C if carry else 0)
+        )
+
+    def complement(self):
+        result = self.registers.a ^ 0xFF
+        self.registers.a = result
+        self.set_flags(
+            (self.registers.f & (flags.S | flags.Z | flags.PV | flags.C))
+            | flags.H
+            | flags.N
+            | flags.undocumented(result)
+        )
+
+    def set_carry(self):
+        self.set_flags(
+            (self.registers.f & (flags.S | flags.Z | flags.PV))
+            | flags.C
+            | self.carry_undocumented()
+        )
+
+    def complement_carry(self):
+        carry = self.registers.f & flags.C
+        self.set_flags(
+            (self.registers.f & (flags.S | flags.Z | flags.PV))
+            | (flags.H if carry else 0)
+            | (0 if carry else flags.C)
+            | self.carry_undocumented()
+        )
+
+    def carry_undocumented(self):
+        """Where the two hidden bits come from for the two carry instructions.
+
+        This is the pair that reads `Q`. When the instruction before this one wrote
+        the flags, the bits come from the accumulator alone. When it did not, they
+        come from the accumulator combined with what the flag register already
+        held, so the answer depends on history rather than on this instruction.
+        """
+        if self.registers.q:
+            return flags.undocumented(self.registers.a)
+        return flags.undocumented(self.registers.a | self.registers.f)
+
+    def execute_group3(self, y, z, p, q, prefix):
+        if z == 0:
+            if self.condition(y):
+                self.registers.pc = self.pop16()
+                self.registers.wz = self.registers.pc
+            self.keep_flags()
+            return None
+        if z == 1:
+            return self.group3_pop(p, q, prefix)
+        if z == 2:
+            address = self.fetch16()
+            self.registers.wz = address
+            if self.condition(y):
+                self.registers.pc = address
+            self.keep_flags()
+            return None
+        if z == 3:
+            return self.group3_misc(y, prefix)
+        if z == 4:
+            address = self.fetch16()
+            self.registers.wz = address
+            if self.condition(y):
+                self.push16(self.registers.pc)
+                self.registers.pc = address
+            self.keep_flags()
+            return None
+        if z == 5:
+            return self.group3_push(p, q, prefix)
+        if z == 6:
+            return self.execute_arithmetic(y, self.fetch8())
+        self.push16(self.registers.pc)
+        self.registers.pc = y * 8
+        self.registers.wz = self.registers.pc
+        self.keep_flags()
+        return None
+
+    def stack_name(self, p, prefix):
+        name = PAIRS_AF[p]
+        return self.index_pair(prefix) if name == "hl" else name
+
+    def group3_pop(self, p, q, prefix):
+        if q == 0:
+            setattr(self.registers, self.stack_name(p, prefix), self.pop16())
+            self.registers.q = 0
+            return None
+        if p == 0:
+            self.registers.pc = self.pop16()
+            self.registers.wz = self.registers.pc
+        elif p == 1:
+            self.registers.exchange_set()
+        elif p == 2:
+            self.registers.pc = getattr(self.registers, self.index_pair(prefix))
+        else:
+            self.registers.sp = getattr(self.registers, self.index_pair(prefix))
+        self.keep_flags()
+        return None
+
+    def group3_push(self, p, q, prefix):
+        if q == 0:
+            self.push16(getattr(self.registers, self.stack_name(p, prefix)))
+            self.keep_flags()
+            return None
+        address = self.fetch16()
+        self.registers.wz = address
+        self.push16(self.registers.pc)
+        self.registers.pc = address
+        self.keep_flags()
+        return None
+
+    def group3_misc(self, y, prefix):
+        if y == 0:
+            address = self.fetch16()
+            self.registers.wz = address
+            self.registers.pc = address
+            self.keep_flags()
+            return None
+        if y == 2:
+            return self.port_write()
+        if y == 3:
+            return self.port_read()
+        if y == 4:
+            return self.exchange_stack(prefix)
+        if y == 5:
+            self.registers.de, self.registers.hl = self.registers.hl, self.registers.de
+            self.keep_flags()
+            return None
+        if y == 6:
+            self.registers.iff1 = False
+            self.registers.iff2 = False
+            self.keep_flags()
+            return None
+        self.registers.iff1 = True
+        self.registers.iff2 = True
+        self.registers.ei = 1
+        self.keep_flags()
+        return None
+
+    def port_write(self):
+        low = self.fetch8()
+        address = (self.registers.a << 8) | low
+        if self.ports is not None:
+            self.ports.write(address, self.registers.a)
+        self.registers.wz = ((self.registers.a << 8) | ((low + 1) & 0xFF)) & 0xFFFF
+        self.keep_flags()
+
+    def port_read(self):
+        low = self.fetch8()
+        address = (self.registers.a << 8) | low
+        if self.ports is not None:
+            self.registers.a = self.ports.read(address)
+        self.registers.wz = address + 1
+        self.keep_flags()
+
+    def exchange_stack(self, prefix):
+        name = self.index_pair(prefix)
+        held = self.read16(self.registers.sp)
+        self.write16(self.registers.sp, getattr(self.registers, name))
+        setattr(self.registers, name, held)
+        self.registers.wz = held
+        self.keep_flags()
+
+    def execute_bit(self, prefix):
+        displacement = self.fetch_signed() if prefix is not None else 0
+        opcode = self.fetch8()
+        if prefix is None:
+            self.registers.tick_refresh()
+
+        x = opcode >> 6
+        y = (opcode >> 3) & 0x07
+        z = opcode & 0x07
+
+        if prefix is None:
+            value = self.register_read(z)
+        else:
+            address = (getattr(self.registers, prefix) + displacement) & 0xFFFF
+            self.registers.wz = address
+            value = self.read8(address)
+
+        if x == 1:
+            return self.test_bit(y, value, prefix is not None or z == 6)
+        if x == 0:
+            result = self.shift(y, value)
+        else:
+            result = value & ~(1 << y) & 0xFF if x == 2 else value | (1 << y)
+            self.keep_flags()
+        self.store_bit_result(z, result, prefix, displacement)
+        return None
+
+    def store_bit_result(self, z, result, prefix, displacement):
+        """Where a prefixed bit instruction puts its answer, which is two places.
+
+        Without an index register it writes the register the opcode names. With one
+        it writes the memory the displacement reaches, and then writes the named
+        register as well, which is why these opcodes appear to have a register
+        operand that the assembler has no syntax for.
+        """
+        if prefix is None:
+            self.register_write(z, result)
+            return
+        self.write8((getattr(self.registers, prefix) + displacement) & 0xFFFF, result)
+        if z != 6:
+            self.register_write(z, result)
+
+    def shift(self, y, value):
+        if y == 0:
+            carry = value & 0x80
+            result = ((value << 1) | (value >> 7)) & 0xFF
+        elif y == 1:
+            carry = value & 0x01
+            result = ((value >> 1) | (value << 7)) & 0xFF
+        elif y == 2:
+            carry = value & 0x80
+            result = ((value << 1) | (1 if self.registers.f & flags.C else 0)) & 0xFF
+        elif y == 3:
+            carry = value & 0x01
+            result = (value >> 1) | (0x80 if self.registers.f & flags.C else 0)
+        elif y == 4:
+            carry = value & 0x80
+            result = (value << 1) & 0xFF
+        elif y == 5:
+            carry = value & 0x01
+            result = (value >> 1) | (value & 0x80)
+        elif y == 6:
+            carry = value & 0x80
+            result = ((value << 1) | 0x01) & 0xFF
+        else:
+            carry = value & 0x01
+            result = value >> 1
+        self.set_flags(flags.sign_zero(result) | flags.parity(result) | (flags.C if carry else 0))
+        return result
+
+    def test_bit(self, bit, value, from_memory):
+        """The one test whose hidden bits come from somewhere other than its operand.
+
+        Against a register they come from the byte being tested. Against memory
+        they come from the high half of `WZ` instead, whichever pointer reached it.
+        Through an index register that is the address just computed. Through the
+        working pair nothing updates `WZ` at all, so the bits come from an address
+        some earlier instruction left there, and the answer depends on what ran
+        before.
+        """
+        result = value & (1 << bit)
+        f = self.registers.f & flags.C
+        f |= flags.H
+        f |= flags.Z | flags.PV if result == 0 else 0
+        f |= flags.S if bit == 7 and result else 0
+        f |= flags.undocumented(self.registers.wz >> 8 if from_memory else value)
+        self.set_flags(f)
+
+    def execute_extended(self):
+        opcode = self.fetch8()
+        self.registers.tick_refresh()
+        x = opcode >> 6
+        y = (opcode >> 3) & 0x07
+        z = opcode & 0x07
+        p = y >> 1
+        q = y & 1
+
+        if x == 2:
+            return blocks.execute(self, y, z)
+        if x != 1:
+            self.keep_flags()
+            return None
+        if z == 0:
+            return self.extended_in(y)
+        if z == 1:
+            return self.extended_out(y)
+        if z == 2:
+            return self.extended_wide(p, q)
+        if z == 3:
+            return self.extended_move(p, q)
+        if z == 4:
+            return self.negate()
+        if z == 5:
+            return self.extended_return(y)
+        if z == 6:
+            self.registers.im = INTERRUPT_MODES[y]
+            self.keep_flags()
+            return None
+        return self.extended_accumulator(y)
+
+    def extended_in(self, y):
+        address = self.registers.bc
+        value = self.ports.read(address) if self.ports is not None else 0
+        self.registers.wz = address + 1
+        if y != 6:
+            self.register_write(y, value)
+        self.set_flags((self.registers.f & flags.C) | flags.sign_zero(value) | flags.parity(value))
+
+    def extended_out(self, y):
+        address = self.registers.bc
+        value = self.floating_output if y == 6 else self.register_read(y)
+        if self.ports is not None:
+            self.ports.write(address, value)
+        self.registers.wz = address + 1
+        self.keep_flags()
+
+    def extended_wide(self, p, q):
+        value = getattr(self.registers, PAIRS_SP[p])
+        left = self.registers.hl
+        carry = 1 if self.registers.f & flags.C else 0
+        if q == 0:
+            total = left - value - carry
+            result = total & 0xFFFF
+            f = flags.N
+            f |= flags.C if total < 0 else 0
+            f |= flags.H if ((left & 0x0FFF) - (value & 0x0FFF) - carry) < 0 else 0
+            f |= flags.PV if ((left ^ value) & (left ^ result)) & 0x8000 else 0
+        else:
+            total = left + value + carry
+            result = total & 0xFFFF
+            f = 0
+            f |= flags.C if total > 0xFFFF else 0
+            f |= flags.H if ((left & 0x0FFF) + (value & 0x0FFF) + carry) > 0x0FFF else 0
+            f |= flags.PV if (~(left ^ value) & (left ^ result)) & 0x8000 else 0
+        f |= flags.sign_zero16(result)
+        self.registers.wz = left + 1
+        self.registers.hl = result
+        self.set_flags(f)
+
+    def extended_move(self, p, q):
+        address = self.fetch16()
+        name = PAIRS_SP[p]
+        if q == 0:
+            self.write16(address, getattr(self.registers, name))
+        else:
+            setattr(self.registers, name, self.read16(address))
+        self.registers.wz = address + 1
+        self.keep_flags()
+
+    def negate(self):
+        value = self.registers.a
+        self.registers.a = 0
+        self.sub8(value)
+
+    def extended_return(self, y):
+        """Either return from an interrupt, both of which restore the enable state.
+
+        The two are documented as distinct instructions and only one is described
+        as restoring the interrupt flag. The part restores it for both, and the
+        difference between them is a signal on a pin that never reaches the
+        registers.
+        """
+        self.registers.pc = self.pop16()
+        self.registers.wz = self.registers.pc
+        self.registers.iff1 = self.registers.iff2
+        self.keep_flags()
+
+    def extended_accumulator(self, y):
+        if y == 0:
+            self.registers.i = self.registers.a
+            self.keep_flags()
+            return None
+        if y == 1:
+            self.registers.r = self.registers.a
+            self.keep_flags()
+            return None
+        if y == 2:
+            return self.load_from_interrupt(self.registers.i)
+        if y == 3:
+            return self.load_from_interrupt(self.registers.r)
+        if y == 4:
+            return self.rotate_digit(left=False)
+        if y == 5:
+            return self.rotate_digit(left=True)
+        self.keep_flags()
+        return None
+
+    def load_from_interrupt(self, value):
+        """Reading either interrupt register, which reports the interrupt state.
+
+        The parity flag does not report parity here. It reports whether interrupts
+        were enabled, which is the only way software can ask.
+        """
+        self.registers.a = value
+        self.registers.p = 1
+        self.set_flags(
+            (self.registers.f & flags.C)
+            | flags.sign_zero(value)
+            | (flags.PV if self.registers.iff2 else 0)
+        )
+
+    def rotate_digit(self, left):
+        address = self.registers.hl
+        held = self.read8(address)
+        a = self.registers.a
+        if left:
+            self.write8(address, ((held << 4) | (a & 0x0F)) & 0xFF)
+            self.registers.a = (a & 0xF0) | (held >> 4)
+        else:
+            self.write8(address, ((a << 4) | (held >> 4)) & 0xFF)
+            self.registers.a = (a & 0xF0) | (held & 0x0F)
+        self.registers.wz = address + 1
+        self.set_flags(
+            (self.registers.f & flags.C)
+            | flags.sign_zero(self.registers.a)
+            | flags.parity(self.registers.a)
+        )
