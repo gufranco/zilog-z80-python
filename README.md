@@ -237,7 +237,7 @@ is asked.
 from z80 import SparseMemory
 
 space = SparseMemory(seed=1)
-space.read8(0x8000)   # some byte, not zero, stable across reads
+space.read8(0x8000)  # some byte, not zero, stable across reads
 ```
 
 Two spaces built with different seeds hold different rubbish, so a test can prove
