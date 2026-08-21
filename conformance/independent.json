@@ -1,0 +1,80 @@
+{
+  "note": "Behaviour no manufacturer printed, taken from the independent research pinned in the References section of README.md. Everything here is rung three: it settles nothing on its own, and it is never a citation for a figure a manufacturer gave. It is kept because agreement between two lineages that never consulted each other is worth more than either alone, and because a disagreement between them is a finding.",
+  "authority": "Rung 3. Where one of these disagrees with a manufacturer document, the disagreement goes in divergences.json rather than being resolved here.",
+  "readOn": "2026-08-21",
+  "internalAddressRegister": {
+    "note": "The register the community calls MEMPTR and this package calls WZ. Zilog never names it, and two instructions report two of its bits through the flags, which is the only way a program can see it at all.",
+    "source": "https://github.com/redcode/Z80/wiki/MEMPTR, itself built on Boo-boo and Kladov, MEMPTR, esoteric register of the ZiLOG Z80 CPU",
+    "why": "The corpus already fixes this register on every one of its cases, so this is not new evidence. It is a second lineage: the table was worked out by running programs on real machines and the corpus by translating a core, and neither consulted the other.",
+    "notation": {
+      "before": "the value the register held when the instruction started",
+      "after": "the value it holds when the instruction finishes"
+    },
+    "rules": [
+      { "instruction": "ld a,(bc)", "memptr": "bc before, plus one" },
+      { "instruction": "ld a,(de)", "memptr": "de before, plus one" },
+      { "instruction": "ld a,(nn)", "memptr": "nn plus one" },
+      {
+        "instruction": "ld (bc),a",
+        "memptr": "the accumulator above the low half of bc before plus one"
+      },
+      {
+        "instruction": "ld (de),a",
+        "memptr": "the accumulator above the low half of de before plus one"
+      },
+      { "instruction": "ld (nn),a", "memptr": "the accumulator above the low half of nn plus one" },
+      { "instruction": "ld hl,(nn)", "memptr": "nn plus one" },
+      { "instruction": "ld (nn),hl", "memptr": "nn plus one" },
+      { "instruction": "add hl,ss", "memptr": "hl before, plus one" },
+      { "instruction": "rld", "memptr": "hl plus one" },
+      { "instruction": "jp nn", "memptr": "nn" },
+      { "instruction": "jr e", "memptr": "the counter before, plus two, plus the displacement" },
+      { "instruction": "in a,(n)", "memptr": "the accumulator above n, plus one" },
+      { "instruction": "in r,(c)", "memptr": "bc plus one" },
+      { "instruction": "out (c),r", "memptr": "bc plus one" },
+      { "instruction": "ini", "memptr": "bc before, plus one" },
+      { "instruction": "ind", "memptr": "bc before, minus one" },
+      { "instruction": "outi", "memptr": "bc after, plus one" },
+      { "instruction": "outd", "memptr": "bc after, minus one" },
+      { "instruction": "rst n", "memptr": "the address restarted to" }
+    ]
+  },
+  "interruptAcceptance": {
+    "note": "Where a maskable interrupt is and is not taken, in more detail than the manual gives.",
+    "source": "https://github.com/redcode/Z80/wiki/Interrupts",
+    "rules": [
+      {
+        "rule": "not accepted at the boundary after an enable",
+        "alsoInTheManual": true,
+        "quote": "When an EI instruction is executed, any pending interrupt request is not accepted until after the instruction following EI is executed."
+      },
+      {
+        "rule": "not accepted at the boundary after a return from interrupt whose two flip-flops disagreed on the way in",
+        "alsoInTheManual": false,
+        "why": "They can only disagree because a nonmaskable interrupt was taken and not yet returned from, so this is what stops a maskable one arriving in the gap between restoring the copy and resuming."
+      }
+    ]
+  },
+  "modeZeroResponse": {
+    "note": "What the counter does while a mode zero response runs.",
+    "source": "https://github.com/redcode/Z80/wiki/Interrupts",
+    "quote": "The PC register, however, remains at its pre-interrupt state, not being incremented as a result of the instruction fetch.",
+    "consequence": "An operand byte of a mode zero response is read from the address the counter already held, and the counter is unchanged by the reading."
+  },
+  "modeTwoVector": {
+    "note": "How much of the device's byte reaches the pointer.",
+    "source": "Young, The Undocumented Z80 Documented v0.91, section 5.2",
+    "quote": "Zilog's user manual states (very convincingly) that the least significant bit of the address is always 0, so they calculate the address that is read from as: (I register) x 256 + (value on bus & 0xFE). I have tested this and it not correct.",
+    "consequence": "All eight bits reach the pointer. The manual's sentence is advice to whoever builds the table rather than a description of the part."
+  },
+  "responseCost": {
+    "note": "What each response costs, from a source that is not the manual's arithmetic.",
+    "source": "Young, The Undocumented Z80 Documented v0.91, section 5.2, and https://github.com/redcode/Z80/wiki/Interrupts",
+    "nonmaskable": 11,
+    "modeZeroRestart": 13,
+    "modeOne": 13,
+    "modeTwo": 19,
+    "acknowledgeCycle": 7,
+    "why": "The wiki breaks mode one into an acknowledge cycle of seven T states and two memory writes of three, which is the same seven this package derives from the manual's own printed totals and which the manual never prints."
+  }
+}
