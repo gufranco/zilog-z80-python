@@ -28,7 +28,7 @@
   <a href="https://github.com/gufranco/zilog-z80-python/issues">Issues</a>
 </p>
 
-**2** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **532** tests · **100%** statement and branch coverage
+**3** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **585** tests · **100%** statement and branch coverage
 
 ```python
 from z80 import Ports, SparseMemory, describe
@@ -229,6 +229,35 @@ documented instructions, steps them, and checks the T states spent against the
 figure printed for that instruction, naming the manual page rather than repeating
 the number. That check needs no suite on the machine.
 
+### What a flag claim here does and does not mean
+
+Every instruction page in the manual ends with a Condition Bits Affected block.
+Most of those blocks say something conditional, "Z is set if the result is zero",
+which only a model of the instruction can check. A hundred and twenty six of them
+say something absolute instead: this flag is set, this one is reset, this one is
+untouched, whatever the inputs were. Those hundred and twenty six are pinned in
+[`conformance/instruction-flags.json`](conformance/instruction-flags.json) with
+the line each came from, and
+[`conformance/instruction_flags.test.py`](conformance/instruction_flags.test.py)
+runs every one of them against forty states.
+
+A hundred and twenty four hold. The two that do not are recorded rather than
+quietly followed:
+
+- The eight block input and output instructions. The manual says the negate flag
+  is set and the carry is not affected. Both are wrong on every part anyone has
+  measured, and the corpus fixes different values on every case. The rule this
+  package implements comes from independent research and is in
+  [`conformance/divergences.json`](conformance/divergences.json) with what would
+  settle it.
+- Two of the four pages of `BIT`. They print the half carry twice, once set and
+  once reset, and never print the negate flag at all. The other two pages print
+  the negate flag in the position where these print the second half carry. It is
+  a wrong letter rather than a different instruction, and it is recorded as a
+  contradiction inside the document rather than as a disagreement with anything
+  outside it.
+
+
 ### Two shapes, because one column cannot hold half a clock
 
 Every control pin edge in the manual falls on a clock edge, which is half a T
@@ -302,7 +331,7 @@ difference is written down rather than glossed.**
 |:-----|:-------|:--------|
 | 1 | [Zilog, *Z80 CPU User Manual* UM008011-0816](conformance/hardware.json) | Anything Zilog printed: pin function, machine cycle shape, T states per instruction, what reset does, which bit of the flag register is which |
 | 2 | The pinned suite | What the manual does not: the two undocumented flag bits, the internal `WZ` register, the `Q` latch, every opcode the manual does not list, and where the idle states sit inside a long machine cycle |
-| 3 | Nothing else | Nothing |
+| 3 | [The independent research](conformance/independent.json), listed under References below | Nothing on its own. It is never a citation for a figure a manufacturer gave. It is kept because where two lineages that never consulted each other agree, the agreement is worth checking against |
 
 ### The manual contradicts itself in four places
 
@@ -409,14 +438,31 @@ different flags.
 
 ## Models
 
-The instruction set did not change across the family. One instruction's behaviour
-did, and it is enough to matter: a program that clears a device register with it
-works on one part and sets every bit of the same register on the other.
+The instruction set did not change across the family. Three other things did, and
+all three are undocumented or defective, which is why none was ever specified and
+why software that depended on any of them had to know which board it was on.
 
-| Model | The output instruction that names no source sends | Also answers to |
-|:------|:--------------------------------------------------|:----------------|
-| `z80` | nothing | `z8400`, `upd780c`, `u880`, `kr1858vm1`, `mostekmk3880` |
-| `z84c00` | every bit | `z80c`, `z8400c`, `z180`, `ez80` |
+An output instruction whose opcode names no source sends nothing on the NMOS
+parts and every bit on the CMOS ones, so a program that clears a device register
+with it sets every bit of the same register on the other part. The two
+undocumented flag bits after a carry instruction come from the accumulator and a
+latch on Zilog's parts and from the accumulator alone on NEC's. And on the NMOS
+part an interrupt taken while one of the two instructions that read the interrupt
+latch is executing clears the parity flag, reporting that interrupts were
+disabled at the one moment they cannot have been. That last one is Zilog's own:
+*"On CMOS Z80 CPU, we've fixed this problem."*
+
+| Model | Bare `OUT (C)` sends | Carry flag bits | Interrupt clears parity | Suite |
+|:--|:--|:--|:--|:--|
+| `z80` | nothing | accumulator and latch | yes, and Zilog documents it | yes |
+| `z84c00` | every bit | accumulator and latch | no, Zilog fixed it | yes |
+| `upd780c` | nothing | accumulator alone | not stated | no |
+
+Each answers to the part numbers its manufacturer sold it under. `z80` covers the
+Zilog NMOS parts and the second sources built from the same design: Mostek,
+Sharp, MME, Thesys, Goldstar and the Soviet KR1858VM1. `z84c00` covers the CMOS
+parts, Zilog's and Toshiba's and the KR1858VM3. `upd780c` covers NEC's, which is
+NMOS and is not one of the others.
 
 ```python
 from z80 import describe
@@ -428,9 +474,17 @@ cmos = describe("Z84-C00").build(space, ports=ports)
 Names are matched however they are written: case and separators do not matter,
 and each part answers to the names its second sources shipped under.
 
+A part number nothing here implements is refused rather than answered. The Z180
+and the eZ80 used to resolve to the CMOS model and no longer do: the Z180 has
+instructions the Z80 does not and the eZ80 addresses twenty four bits, so a core
+that answered for either would decode their programs as something else.
+
 The remaining differences across the family are in timing and in what happens
 when an interrupt lands mid-instruction, neither of which a per-instruction model
-can observe. They are absent here rather than guessed at.
+can observe. They are absent here rather than guessed at. So is ST's reported
+carry rule, because the survey that would confirm it says the reverse; the
+disagreement is in [`conformance/divergences.json`](conformance/divergences.json)
+rather than resolved by preference.
 
 ## What "nothing starts clean" means
 
@@ -467,13 +521,13 @@ the top half, and this will let it fail the way hardware would.
 | [`z80/bus.py`](z80/bus.py) | The shape of every machine cycle, and the only place that knows it |
 | [`conformance/hardware.json`](conformance/hardware.json) | What Zilog printed, fact by fact, with the sentence each came from |
 | [`conformance/divergences.json`](conformance/divergences.json) | Every place the manual and the suite disagree, and what would settle each |
+| [`conformance/instruction-flags.json`](conformance/instruction-flags.json) | Every absolute the manual states about a flag, and the two it gets wrong |
+| [`conformance/independent.json`](conformance/independent.json) | What the research outside Zilog establishes, in a form a test can check |
 | [`conformance/hardware.test.py`](conformance/hardware.test.py) | The gate that holds the model's timing to the manual, with no suite needed |
 | [`conformance/singlestep.py`](conformance/singlestep.py) | The runner that holds the final state to the suite |
 | [`conformance/cycles.py`](conformance/cycles.py) | The runner that holds every T state to it |
 | [`conformance/fetch.py`](conformance/fetch.py) | Brings the suite down, pinned by commit |
 | [`conformance/regenerate.py`](conformance/regenerate.py) | Rebuilds the suite from the generator that made it, pinned the same way |
-| [`specs/current/`](specs/current/) | What the part does, as requirements somebody could test against |
-| [`AGENTS.md`](AGENTS.md) | The working instructions, including the things that will bite you |
 
 ## For contributors and reviewers
 
@@ -524,6 +578,57 @@ read, for a quicker answer while iterating.
   instruction at a time and cannot measure it, so anything written would be
   unverified.
 - Cycle timing is absent for the same reason.
+
+## References
+
+This repository carries no documents. Every claim it makes is traced to something
+published elsewhere, and that is listed here so a reader can fetch the same file
+and check the same page. Each row gives the page count and the first sixteen
+characters of the file's SHA-256, because vendor links move and a link that has
+rotted into a different revision is easy to follow without noticing.
+
+### Rung 1: what the manufacturers printed
+
+| Document | Date | Pages | SHA-256 | Redistributable |
+|:---------|:-----|------:|:--------|:----------------|
+| [Zilog, *Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf) | 2016-08 | 332 | `e3c83da5a5d8e372…` | No |
+| Zilog, *Z80 Family Data Book*, 00-2490-01 | 1989-01 | 448 | `844681b63ffc45bd…` | No |
+| Zilog, *Z84C00 Product Specification*, PS017801-0602 | undated | 36 | `06198d3c22a79a3f…` | No |
+| NEC, *µPD780C* data sheet | undated | 24 | `2036fa845533feee…` | No |
+
+Zilog's notice reads "Copyright ©2016 Zilog, Inc. All rights reserved." Individual
+sentences are quoted in [`conformance/hardware.json`](conformance/hardware.json)
+with the page each came from, which is what makes those records checkable without
+reproducing the work.
+
+### Rung 3: the research nobody at Zilog wrote
+
+These settle nothing on their own. They are here because the model is held to
+them in [`conformance/independent.json`](conformance/independent.json), and
+because where two lineages that never consulted each other agree, the agreement
+is evidence worth having.
+
+| Document | Author | Pages | SHA-256 | Licence |
+|:---------|:-------|------:|:--------|:--------|
+| [*The Undocumented Z80 Documented*, v0.91](https://archive.org/details/the-undocumented-z80-documented) | Sean Young, 2005-09-18 | 52 | `6413048f39c2e735…` | GFDL 1.1 or later |
+| [*Z80 CCF SCF Outcome Stability*](https://github.com/redcode/Z80/wiki/Z80-CCF-SCF-Outcome-Stability) | Sainz de Baranda y Goñi, Brewer, Helcmanovsky | 4 | `be87311012f9edaf…` | GFDL 1.3 |
+| *Undocumented Z80 Flags*, rev 1.0 | David Banks, 2018-08-21 | 3 | `33766df5494e2fdf…` | None stated |
+| *MEMPTR, esoteric register of the ZiLOG Z80 CPU* | Boo-boo, trans. Vladimir Kladov | text | `f9e8e87cdd205e15…` | None stated |
+| [redcode/Z80 wiki: Interrupts](https://github.com/redcode/Z80/wiki/Interrupts) and [MEMPTR](https://github.com/redcode/Z80/wiki/MEMPTR) | Sainz de Baranda y Goñi and contributors | web | n/a | GFDL 1.3 |
+
+The first two carry an explicit grant and could be redistributed. They are linked
+rather than vendored because a link and a digest serve a reader identically and
+keep binaries out of the history. The last two state no licence, which is the
+absence of permission rather than the presence of it, so only the sentences they
+are cited for appear here.
+
+### The corpora and the tools
+
+| Source | Used for |
+|:-------|:---------|
+| [SingleStepTests/z80](https://github.com/SingleStepTests/z80.git) | The pinned corpus, 1,604,000 cases. Commit in [`conformance/suites.json`](conformance/suites.json) |
+| [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git) | The generator that produced that corpus, so it can be rebuilt rather than only downloaded |
+| [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer) | The netlist whose behaviour is recorded in [`conformance/divergences.json`](conformance/divergences.json) |
 
 ## Licence
 

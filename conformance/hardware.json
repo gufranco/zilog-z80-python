@@ -1633,7 +1633,17 @@
       },
       "maskableIffQuote": "When the CPU accepts a maskable interrupt, both IFF1 and IFF2 are automatically reset, inhibiting further interrupts until the programmer issues a new El instruction.",
       "enableDelayQuote": "When an EI instruction is executed, any pending interrupt request is not accepted until after the instruction following EI is executed.",
-      "sampledQuote": "The CPU samples the interrupt signal (INT) with the rising edge of the final clock at the end of any instruction. The signal is not accepted if the internal CPU software controlled interrupt enable flip-flop is not set or if the BUSREQ signal is active."
+      "sampledQuote": "The CPU samples the interrupt signal (INT) with the rising edge of the final clock at the end of any instruction. The signal is not accepted if the internal CPU software controlled interrupt enable flip-flop is not set or if the BUSREQ signal is active.",
+      "nmosParityDefect": {
+        "note": "A defect Zilog documents, along with its own fix. It is reachable only once interrupts are modelled, because it needs an interrupt accepted at one specific instruction boundary.",
+        "quote": "On CMOS Z80 CPU, we've fixed this problem. On NMOS Z80 CPU, in certain narrowly defined circumstances, the Z80 CPU interrupt enable latch, IFF2, does not necessarily reflect the true interrupt status. The two instructions LD A,R and LD A,I copy the state of interrupt enable latch (IFF2) into the parity flag and modifies the accumulator contents. Thus, it is possible to determine whether interrupts are enabled or disabled at the time that the instruction is executed. This facility is necessary to save the complete state of the machine. However, if an interrupt is accepted by the CPU during the execution of the instruction -- implying that the interrupts must be enabled -- the P/V flag is cleared. This incorrectly asserts that interrupts were disabled at the time the instruction was executed.",
+        "cause": "This paradox can be traced to the internal timing of the CPU. The problem is that the interrupt flip-flop (IFF2) is cleared before it is actually transferred to the P/V flag. The state of the interrupt enable latch is not copied into the parity flag until after the interrupt time, occurring during the execution of the instruction, has been accepted. Since the acceptance of the interrupt automatically clears the interrupt enable latch, the parity flag is also cleared, despite the fact that interrupts were enabled when the instruction started executing.",
+        "affects": ["z80"],
+        "fixedIn": ["z84c00"],
+        "document": "Zilog Z80 Family Data Book, 1989-01, document 00-2490-01, printed page 412",
+        "readOn": "2026-08-21",
+        "readVia": "the rendered page image, because the scan's text layer breaks the passage across columns"
+      }
     },
     "halt": {
       "note": "What a halted part does, which is not nothing.",
@@ -1689,6 +1699,16 @@
         "manualPage": 23,
         "why": "Prose elsewhere in the same document says outright that a memory access outside a fetch has half a clock cycle more than a fetch does, which is exactly what the two figures show and the opposite of what the summary on page 9 implies."
       }
+    },
+    {
+      "id": "bit-instruction-negate-flag-printed-as-half-carry",
+      "kind": "proseVersusFigure",
+      "manualPage": 245,
+      "instruction": "BIT b, (HL) and BIT b, (IY+d)",
+      "printed": "S is unknown. Z is set if specified bit is 0; otherwise, it is reset. H is set. P/V is unknown. H is reset. C is not affected.",
+      "problem": "The half carry appears twice on one page, once set and once reset, and the negate flag never appears at all. The other two pages of the same instruction, BIT b, r and BIT b, (IX+d), print N is reset in the position where these two print H is reset.",
+      "reading": "The letter is wrong on those two pages. Every form sets the half carry and resets the negate, which is what the two correct pages say and what the recorded corpus carries for all four.",
+      "verifiedOn": "the extracted text of all four pages of the instruction, 2026-08-21, compared line for line"
     }
   ],
   "notStated": {

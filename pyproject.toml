@@ -100,4 +100,13 @@ exclude_also = [
   # there is nothing behind it left to exercise. Importing the module to cover
   # the guard would run the tool rather than test it.
   'if __name__ == "__main__":',
+  # A type checking block never runs, by definition. Python 3.14 drops it before
+  # coverage can see it and earlier versions do not, so leaving it in would make
+  # the gate mean one thing on the newest runtime and another on the oldest
+  # supported one, which is worse than either.
+  'if TYPE_CHECKING:',
+  # A protocol method has no body to run, whether the ellipsis sits on its own
+  # line or after the signature. The same version split applies.
+  '^\s*\.\.\.$',
+  ': \.\.\.$',
 ]

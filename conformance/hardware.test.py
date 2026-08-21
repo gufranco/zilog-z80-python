@@ -21,7 +21,7 @@ from typing import Any, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import bus, core, flags, memory
+from z80 import bus, core, flags, memory, models
 
 HELD = json.loads((Path(__file__).resolve().parent / "hardware.json").read_text())
 
@@ -166,17 +166,23 @@ class TimingTableTest(unittest.TestCase):
 
         self.assertEqual(kinds, {"timingTableMisprint", "proseVersusFigure"})
 
-    def test_the_prose_the_figures_contradict_is_quoted_rather_than_summarised(self) -> None:
+    def test_the_prose_a_figure_or_a_sibling_page_contradicts_is_quoted(self) -> None:
         found = [
-            entry
+            entry["printed"]
             for entry in HELD["documentContradictions"]
             if entry["kind"] == "proseVersusFigure"
         ]
 
-        self.assertEqual(
-            [entry["printed"] for entry in found],
-            ["The MREQ signal and the RD signal are used the same way as in a fetch cycle."],
-        )
+        self.assertEqual(len(found), 2)
+
+    def test_and_one_of_the_two_is_a_page_that_contradicts_itself(self) -> None:
+        found = [
+            entry
+            for entry in HELD["documentContradictions"]
+            if entry["id"] == "bit-instruction-negate-flag-printed-as-half-carry"
+        ]
+
+        self.assertEqual(found[0]["printed"].count("H is"), 2)
 
     def test_no_other_row_disagrees_with_its_own_breakdown(self) -> None:
         wrong = [
@@ -656,17 +662,16 @@ class InterruptResponseTest(unittest.TestCase):
 
         self.assertEqual(set(added.values()), {2})
 
-    def test_a_response_of_more_than_one_byte_reads_the_rest_from_memory(self) -> None:
+    def test_a_response_of_more_than_one_byte_reads_the_rest_without_advancing(self) -> None:
         space = memory.SparseMemory()
         space.write8(START, 0x34)
-        space.write8(START + 1, 0x12)
         cpu = core.Cpu(space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
 
         cpu.interrupt(0xC3)
 
-        self.assertEqual(cpu.registers.pc, 0x1234)
+        self.assertEqual(cpu.registers.pc, 0x3434)
 
     def test_which_is_written_up_because_a_device_supplies_them_on_the_part(self) -> None:
         named = {entry["id"] for entry in DIVERGENCES["divergences"]}
@@ -697,16 +702,20 @@ class InterruptResponseTest(unittest.TestCase):
 
         self.assertEqual(cpu.registers.pc, RESPONSE["nonmaskable"]["restartsAt"])
 
-    def test_mode_two_ignores_the_bit_the_device_is_not_asked_for(self) -> None:
+    def test_mode_two_uses_every_bit_the_device_supplies(self) -> None:
         space = memory.SparseMemory()
         space.write8(0x00FE, 0x34)
         space.write8(0x00FF, 0x12)
+        space.write8(0x0100, 0x56)
         cpu = core.Cpu(space, reset=True)
         cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 2
 
         cpu.interrupt(0xFF)
 
-        self.assertEqual(cpu.registers.pc, 0x1234)
+        self.assertEqual(cpu.registers.pc, 0x5612)
+
+    def test_which_is_the_one_place_a_measurement_beat_the_manual(self) -> None:
+        self.assertEqual(core.VECTOR_MASK, 0xFF)
 
     def test_a_maskable_interrupt_clears_both_flip_flops(self) -> None:
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
@@ -790,6 +799,64 @@ class InterruptResponseTest(unittest.TestCase):
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
 
         self.assertEqual((cpu.registers.im, RESPONSE["mode0"]["afterReset"]), (0, True))
+
+
+class ParityDefectTest(unittest.TestCase):
+    """The NMOS defect Zilog documents, and the CMOS part that does not have it."""
+
+    def taken(self, name: str, opcode: int = 0x57) -> tuple[int, int]:
+        space = memory.SparseMemory()
+        space.write8(START, 0xED)
+        space.write8(START + 1, opcode)
+        cpu = models.describe(name).build(space, reset=True)
+        cpu.registers.pc, cpu.registers.sp = START, 0x8000
+        cpu.registers.iff1 = cpu.registers.iff2 = True
+        cpu.registers.im = 1
+        cpu.step()
+        before = cpu.registers.f & flags.PV
+        cpu.interrupt(0xFF)
+        return before, cpu.registers.f & flags.PV
+
+    def test_the_instruction_reports_the_latch_before_the_interrupt(self) -> None:
+        before, _ = self.taken("z80")
+
+        self.assertEqual(before, flags.PV)
+
+    def test_and_the_nmos_part_clears_it_when_the_interrupt_is_taken(self) -> None:
+        _, after = self.taken("z80")
+
+        self.assertEqual(after, 0)
+
+    def test_the_other_instruction_that_reads_the_latch_too(self) -> None:
+        _, after = self.taken("z80", opcode=0x5F)
+
+        self.assertEqual(after, 0)
+
+    def test_the_cmos_part_does_not_because_zilog_says_it_was_fixed(self) -> None:
+        _, after = self.taken("z84c00")
+
+        self.assertEqual(after, flags.PV)
+
+    def test_the_record_names_the_parts_it_affects_and_the_one_it_does_not(self) -> None:
+        defect = RESPONSE["nmosParityDefect"]
+
+        self.assertEqual((defect["affects"], defect["fixedIn"]), (["z80"], ["z84c00"]))
+
+    def test_and_quotes_zilog_saying_the_later_part_fixed_it(self) -> None:
+        self.assertIn("we've fixed this problem", RESPONSE["nmosParityDefect"]["quote"])
+
+    def test_an_interrupt_after_any_other_instruction_leaves_the_flag_alone(self) -> None:
+        space = memory.SparseMemory()
+        space.write8(START, 0x00)
+        cpu = models.describe("z80").build(space, reset=True)
+        cpu.registers.pc, cpu.registers.sp = START, 0x8000
+        cpu.registers.iff1, cpu.registers.im = True, 1
+        cpu.registers.f = flags.PV
+        cpu.step()
+
+        cpu.interrupt(0xFF)
+
+        self.assertEqual(cpu.registers.f & flags.PV, flags.PV)
 
 
 class HaltTest(unittest.TestCase):
@@ -1082,6 +1149,7 @@ class DivergenceTest(unittest.TestCase):
             found,
             {
                 "documentContradiction",
+                "contradiction",
                 "convention",
                 "unstated",
                 "unmodelled",

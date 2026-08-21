@@ -330,6 +330,172 @@
       "wouldSettleIt": [
         "An interface that lets a caller answer each read of a response rather than only the acknowledge, at which point the cycles above are already right."
       ]
+    },
+    {
+      "id": "carry-flag-bits-differ-by-manufacturer",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Where the two undocumented flag bits come from after a carry instruction, which is not the same answer on every part.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. Zilog prints the two bits as unused and says nothing about what either carry instruction does to them, so nothing Zilog printed distinguishes one manufacturer's part from another's here.",
+        "source": "Zilog UM008011-0816, flag register"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Three rules have been reported. Patrik Rak worked out in 2012 that on Zilog parts, NMOS and CMOS alike, the two bits are bits 5 and 3 of (Q ^ F) | A. David Banks reported in 2018 that NEC's NMOS part takes them from A alone, and that ST's CMOS part takes one from each rule.",
+        "source": "Banks, Undocumented Z80 Flags rev 1.0 and Sainz de Baranda y Goni, Brewer and Helcmanovsky, Z80 CCF SCF Outcome Stability"
+      },
+      "packageFollows": "reference, and only for the two of the three rules that are not disputed",
+      "consequence": "The z80 and z84c00 models take Rak's formula and the upd780c model takes the accumulator alone. No ST model exists, because the evidence for a third rule is contested.",
+      "why": "The NEC part was previously another name for the Zilog model, which made this package answer for a part whose measured behaviour it does not reproduce. A part number that resolves to the wrong behaviour is worse than an absent one, because it answers.",
+      "wouldSettleIt": [
+        "A recording taken off each part, which is what the pinned corpus is for the Zilog one and does not exist for the others."
+      ]
+    },
+    {
+      "id": "st-cmos-carry-rule-is-disputed",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Whether ST's CMOS part has a carry flag rule of its own.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing, for the same reason as the entry above.",
+        "source": "Zilog UM008011-0816, flag register"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Banks reported a third rule for ST CMOS parts in 2018. A later survey states the reverse.",
+        "quote": "However, doubts have arisen regarding the existence of the ST CMOS behavior described by David Banks. Subsequent tests conducted by others indicate that these models behave the same as Zilog's in terms of ccf and scf. Therefore, Banks' results could have been influenced by the unstable behavior of the undocumented flags during these instructions or, in any case, might only apply to specific ST CMOS models.",
+        "source": "Sainz de Baranda y Goni, Brewer and Helcmanovsky, Z80 CCF SCF Outcome Stability, and the Z80 XCF Flavor readme it belongs to"
+      },
+      "packageFollows": "neither",
+      "consequence": "There is no ST model here. A part number for one resolves to nothing rather than to a guess.",
+      "why": "Two rung three sources disagree, one of them says the other may have been reading instability rather than a rule, and no recording exists for either. Modelling a rule under those conditions would be picking a side of an open question and calling the result a part.",
+      "wouldSettleIt": [
+        "A recording taken off an ST CMOS part, on a board known to produce stable values for these two bits."
+      ]
+    },
+    {
+      "id": "carry-flag-bits-are-not-stable-on-silicon",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "Whether the two undocumented flag bits after a carry instruction are deterministic at all.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. Zilog prints the bits as unused.",
+        "source": "Zilog UM008011-0816, flag register"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "The corpus records one answer per case, and the parts do not always give one.",
+        "quote": "What we do know is that this behavior is not consistent across any Z80 model, regardless of the manufacturer. Many tested CPUs exhibit instability in the values of YF and XF during these instructions. Interestingly, the same CPU may demonstrate stability in some machines and instability in others, suggesting that external factors such as temperature, voltage, or clock signal may be at play.",
+        "source": "Sainz de Baranda y Goni, Brewer and Helcmanovsky, Z80 CCF SCF Outcome Stability, crediting azesmbog for the discovery"
+      },
+      "packageFollows": "reference",
+      "consequence": "This core produces one answer for these two bits and reproduces the corpus exactly. On real parts the answer is reported to vary with the board, and on some boards with the moment. Reproducing a recording of an unstable signal is reproducing the recording.",
+      "why": "A deterministic model has no way to be right about a signal that is not deterministic, and a model that produced random values would fail every case of the corpus while being no closer to any particular part. The rule this package follows is the one every stable part is reported to produce.",
+      "wouldSettleIt": [
+        "Nothing settles it, which is the point of the entry. What would narrow it is a survey of how many parts on how many boards are stable, which the test program named in that document exists to collect."
+      ]
+    },
+    {
+      "id": "mode-two-vector-low-bit",
+      "severity": "documentContradiction",
+      "status": "open",
+      "topic": "Whether the lowest bit of the byte a device supplies reaches the pointer.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "It does not, because the byte carries only seven bits of information.",
+        "quote": "The lower eight bits of the pointer must be supplied by the interrupting device. Only seven bits are required from the interrupting device, because the least-significant bit must be a 0. This process is required, because the pointer must receive two adjacent bytes to form a complete 16-bit service routine starting address; addresses must always start in even locations.",
+        "source": "Zilog UM008011-0816, manual page 20"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "It does. The part reads from wherever the whole byte points.",
+        "quote": "Zilog's user manual states (very convincingly) that the least significant bit of the address is always 0, so they calculate the address that is read from as: (I register) x 256 + (value on bus & 0xFE). I have tested this and it not correct.",
+        "source": "Young, The Undocumented Z80 Documented v0.91, section 5.2"
+      },
+      "packageFollows": "reference",
+      "consequence": "All eight bits reach the pointer here. A system that supplies an odd vector reads two bytes straddling two table entries, which is what the manual is warning against.",
+      "why": "The manual's sentence is sound advice to whoever builds the table and is not a description of what the silicon does with the byte. The only party to have tested it reports the opposite, and nothing in the corpus covers it because the corpus contains no interrupt cases.",
+      "wouldSettleIt": [
+        "A program on a real part: point the table at an odd address, raise the line, supply an odd vector, and see where it lands."
+      ]
+    },
+    {
+      "id": "mode-zero-prefix-fetches-an-ordinary-cycle",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "What a mode zero response does when the byte the device supplies is a prefix.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing beyond that the device supplies the instruction.",
+        "quote": "With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it.",
+        "source": "Zilog UM008011-0816, manual page 19"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Another acknowledge cycle is produced for each further prefix, and only the operand bytes after the final opcode are ordinary memory reads.",
+        "quote": "Its first byte is read during the INTA M-cycle and, if it is an opcode prefix, additional M-cycles of this kind are produced until the final opcode of the instruction is fetched.",
+        "source": "https://github.com/redcode/Z80/wiki/Interrupts"
+      },
+      "packageFollows": "document, which is to say neither",
+      "consequence": "A prefix supplied here is followed by an ordinary opcode fetch rather than by a second acknowledge cycle, so the cycle after a prefixed mode zero response asserts the memory request where the part asserts the port request.",
+      "why": "The interface takes one byte. Producing a second acknowledge cycle would mean asking the caller for a second byte, which is the same interface change the multi byte case needs, and doing half of it would leave the counts right and the pins wrong in a different place.",
+      "wouldSettleIt": [
+        "An interface that lets a caller answer each cycle of a response rather than only the first."
+      ]
+    },
+    {
+      "id": "die-netlist-not-yet-runnable-here",
+      "severity": "unchecked",
+      "status": "open",
+      "topic": "The one source that could settle most of the entries above, and why it is not being used.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. This is about a source, not about the part.",
+        "source": "not applicable"
+      },
+      "referenceDoes": {
+        "rung": 2,
+        "claim": "A transistor level netlist of the die exists and is public: 6813 transistors, 3593 nets, 2059 of them pulled up, and every control pad named. Simulating it would answer the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.",
+        "source": "https://github.com/gdevic/Z80Explorer, resource/transdefs.js, segdefs.js and nodenames.js",
+        "licence": "CC BY-NC-SA 4.0, so it can be pinned and fetched but never carried here"
+      },
+      "packageFollows": "neither",
+      "consequence": "Every entry above that says a logic capture would settle it still says so. This would have been the nearest thing to one that does not need a bench.",
+      "why": "A port of the netlist's own resolver was written and does not work yet. What is established: the three files parse to the counts the reference expects, the transistors switch, and the chip holds the reset address for the first several half clocks. What is not: the netlist does not come to rest on a falling clock edge, a ring of about eight nets flips forever, and the state degrades over tens of half clocks until the pins read as a chip no silicon could be. The reference has a loop limiter for the same non convergence, so tolerating it is not the difference. Shipping a simulator that does not run the part would be worse than not having one.",
+      "wouldSettleIt": [
+        "Finding what the port does differently on a falling edge. The resolver, the group walk, the queueing, the pull-up parse and the transistor orientation were each checked against the reference and match, so the difference is somewhere finer than those.",
+        "Driving the reference application itself, which is a Qt program rather than a library, and reading its waveform export."
+      ],
+      "measuredOn": "2026-08-21"
+    },
+    {
+      "id": "block-transfer-flags-the-manual-gets-wrong",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "What the eight block input and output instructions do to the negate and carry flags.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "The negate flag is set, the carry is untouched, and the half carry is unknown. Each of the eight pages says it.",
+        "quote": "S is unknown. Z is set if B - 1 = 0; otherwise it is reset. H is unknown. P/V is unknown. N is set. C is not affected.",
+        "source": "Zilog UM008011-0816, the INI page and the seven like it"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "The negate flag copies bit seven of the byte moved, and the carry and half carry are both set together by a sum the manual never mentions. The parity comes from the same sum.",
+        "quote": "NF flag A copy of bit 7 of the value read from or written to an I/O port. HF and CF Both set if ((HL) + ((C + 1) & 255) > 255). PF The parity of (((HL) + ((C + 1) & 255)) & 7) xor B).",
+        "source": "Young, The Undocumented Z80 Documented v0.91, section 4.3, crediting Ramsoft"
+      },
+      "packageFollows": "reference",
+      "consequence": "These eight instructions leave flags the manual says they do not touch. A program written from the manual alone that branched on the carry after one of them would branch on something the manual promised was still its own.",
+      "why": "The corpus fixes these flags on every one of its cases and this core reproduces it, and the rule the research states independently gives the same answer on all eighty combinations of the counter, the port and the byte that were tried. Two lineages that never consulted each other agree, and the manual disagrees with both.",
+      "howItWasFound": "By reading the Condition Bits Affected block of all 131 instruction pages and checking every absolute they state against the model. Of a hundred and twenty six such statements, a hundred and twenty four hold; these eight instructions carry sixteen of the two that do not.",
+      "wouldSettleIt": [
+        "A program on a real part: clear the carry, run one block input whose sum overflows, and read the flag back."
+      ]
     }
   ]
 }

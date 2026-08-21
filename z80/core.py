@@ -36,7 +36,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from . import blocks, bus, flags
+from . import blocks, bus, flags, models
 from .memory import UNSET_SEED
 from .registers import Registers
 
@@ -60,8 +60,15 @@ NONMASKABLE_RESTART = 0x0066
 MODE_ONE_RESTART = 0x0038
 """Where mode one sends it, which the manual prints the same way."""
 
-VECTOR_MASK = 0xFE
-"""The device supplies seven bits, "because the least-significant bit must be a 0"."""
+VECTOR_MASK = 0xFF
+"""How much of the device's byte reaches the pointer, which is all of it.
+
+Zilog says otherwise: "Only seven bits are required from the interrupting device,
+because the least-significant bit must be a 0." Sean Young tested the part and
+reports the opposite, and ``conformance/divergences.json`` carries both. Zilog's
+sentence is sound advice to whoever builds the table, because an odd pointer makes
+the two bytes straddle two entries. It is not what the silicon does with the byte.
+"""
 
 
 class StepLimit(Exception):
@@ -72,6 +79,14 @@ class Cpu:
     """One Z80, holding whatever it held until something writes to it."""
 
     model: str
+
+    carry_rule: str
+
+    interrupt_clears_parity: bool
+
+    holding_counter: bool
+
+    deferring_interrupt: bool
 
     def __init__(
         self,
@@ -92,6 +107,10 @@ class Cpu:
         self.halted = False
         self.model = "z80"
         self.floating_output = 0x00
+        self.carry_rule = models.ZILOG_CARRY
+        self.interrupt_clears_parity = True
+        self.holding_counter = False
+        self.deferring_interrupt = False
         if reset:
             self.reset()
 
@@ -146,7 +165,8 @@ class Cpu:
 
     def fetch8(self) -> int:
         value = self.read8(self.registers.pc)
-        self.registers.pc = self.registers.pc + 1
+        if not self.holding_counter:
+            self.registers.pc = self.registers.pc + 1
         return value
 
     def fetch16(self) -> int:
@@ -337,6 +357,7 @@ class Cpu:
             raise StepLimit(f"stopped after {self.steps} steps at ${self.registers.pc:04X}")
         self.registers.ei = 0
         self.registers.p = 0
+        self.deferring_interrupt = False
 
     def step(self) -> None:
         self.begin()
@@ -396,16 +417,41 @@ class Cpu:
         interrupt between an enable and the return that follows it, which is the
         case the delay exists for.
 
+        Refused for one instruction after a return from interrupt too, when the
+        two flip-flops disagreed on the way in. That refusal has a latch of its
+        own rather than sharing the one an enable sets, because the recorded
+        corpus carries the enable latch as observable state and does not set it
+        for a return. Reusing it would have made this core disagree with the
+        recording on all eight return opcodes, which is how the separation was
+        found.
+
         The three modes cost thirteen, thirteen and nineteen T states. None of
         those totals is assembled here: the acknowledge cycle and the restart
         below spend them, and ``conformance/hardware.test.py`` checks the result
         against the figures the manual prints.
+
+        In mode zero the counter is held while the supplied instruction runs, so
+        that the operand bytes it reads come from the address the counter already
+        held rather than from successive ones. The part does not advance it for a
+        fetch it never made: the device supplies those bytes, and the counter goes
+        back to the interrupted program.
+
+        An interrupt taken while one of the two instructions that copy the
+        interrupt latch into the parity flag was executing clears that flag on the
+        NMOS part, which reports that interrupts were disabled at the one moment
+        they cannot have been. Zilog documents the defect and says the CMOS part
+        fixed it, and the reason is a race rather than a decision: "the interrupt
+        flip-flop (IFF2) is cleared before it is actually transferred to the P/V
+        flag."
         """
-        if not self.registers.iff1 or self.registers.ei:
+        if not self.registers.iff1 or self.registers.ei or self.deferring_interrupt:
             return False
+        reading_the_latch = self.registers.p
         self.begin_response()
         self.registers.iff1 = False
         self.registers.iff2 = False
+        if reading_the_latch and self.interrupt_clears_parity:
+            self.registers.f &= ~flags.PV
         answer = self.acknowledge(vector)
         if self.registers.im == 1:
             self.restart(MODE_ONE_RESTART)
@@ -418,7 +464,11 @@ class Cpu:
             self.registers.wz = self.registers.pc
             self.keep_flags()
             return True
-        self.execute(answer, None)
+        self.holding_counter = True
+        try:
+            self.execute(answer, None)
+        finally:
+            self.holding_counter = False
         return True
 
     def nonmaskable(self) -> None:
@@ -747,14 +797,23 @@ class Cpu:
     def carry_undocumented(self) -> int:
         """Where the two hidden bits come from for the two carry instructions.
 
-        This is the pair that reads `Q`. When the instruction before this one wrote
-        the flags, the bits come from the accumulator alone. When it did not, they
-        come from the accumulator combined with what the flag register already
-        held, so the answer depends on history rather than on this instruction.
+        This is the pair that reads `Q`, and it is the one place a part number
+        changes an answer other than on the output instruction that names no
+        source. On a Zilog part the bits are bits 5 and 3 of ``(Q ^ F) | A``, which
+        is Patrik Rak's formula and which makes the answer depend on what the
+        previous instruction did to the flags rather than on this one. On NEC's
+        NMOS part they are bits 5 and 3 of the accumulator, and the latch does not
+        reach them at all.
+
+        The formula is written out rather than branched on whether the latch is
+        set. The two agree only because the latch is either zero or equal to the
+        flag register, which is an invariant of this core rather than anything the
+        formula requires, and they disagree on nearly half of the triples that
+        invariant excludes.
         """
-        if self.registers.q:
+        if self.carry_rule == models.NEC_CARRY:
             return flags.undocumented(self.registers.a)
-        return flags.undocumented(self.registers.a | self.registers.f)
+        return flags.undocumented((self.registers.q ^ self.registers.f) | self.registers.a)
 
     def execute_group3(self, y: int, z: int, p: int, q: int, prefix: str | None) -> None:
         if z == 0:
@@ -1090,10 +1149,18 @@ class Cpu:
         as restoring the interrupt flag. The part restores it for both, and the
         difference between them is a signal on a pin that never reaches the
         registers.
+
+        When the two flip-flops disagreed on the way in, the next instruction
+        boundary does not accept a maskable interrupt. They can only disagree
+        because a nonmaskable interrupt was taken and not yet returned from, so
+        this is what stops a maskable one from arriving in the gap between
+        restoring the copy and resuming the interrupted program.
         """
+        held = self.registers.iff1 != self.registers.iff2
         self.registers.pc = self.pop16()
         self.registers.wz = self.registers.pc
         self.registers.iff1 = self.registers.iff2
+        self.deferring_interrupt = held
         self.keep_flags()
 
     def extended_accumulator(self, y: int) -> None:
@@ -1129,6 +1196,11 @@ class Cpu:
 
         The parity flag does not report parity here. It reports whether interrupts
         were enabled, which is the only way software can ask.
+
+        The mark left behind is read by nothing else. It exists so that an
+        interrupt accepted immediately afterwards can tell that this was the
+        instruction it interrupted, which is the one case where the NMOS part
+        answers the question wrongly.
         """
         self.registers.a = value
         self.registers.p = 1
