@@ -14,7 +14,7 @@ does, and a model that starts at zero hides the class of bug that only appears o
 real silicon.
 """
 
-from . import blocks, core, flags, memory, models, opcodes, registers
+from . import blocks, bus, core, flags, memory, models, opcodes, registers
 from .core import Cpu, StepLimit
 from .memory import Ports, SparseMemory
 from .models import MODELS, Model, UnknownModelError, describe
@@ -35,6 +35,7 @@ __all__ = [
     "UnknownModelError",
     "__version__",
     "blocks",
+    "bus",
     "core",
     "decode",
     "describe",
