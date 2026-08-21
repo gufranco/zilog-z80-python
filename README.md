@@ -28,7 +28,7 @@
   <a href="https://github.com/gufranco/zilog-z80-python/issues">Issues</a>
 </p>
 
-**2** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **532** tests · **100%** statement and branch coverage
+**3** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **585** tests · **100%** statement and branch coverage
 
 ```python
 from z80 import Ports, SparseMemory, describe
@@ -409,14 +409,31 @@ different flags.
 
 ## Models
 
-The instruction set did not change across the family. One instruction's behaviour
-did, and it is enough to matter: a program that clears a device register with it
-works on one part and sets every bit of the same register on the other.
+The instruction set did not change across the family. Three other things did, and
+all three are undocumented or defective, which is why none was ever specified and
+why software that depended on any of them had to know which board it was on.
 
-| Model | The output instruction that names no source sends | Also answers to |
-|:------|:--------------------------------------------------|:----------------|
-| `z80` | nothing | `z8400`, `upd780c`, `u880`, `kr1858vm1`, `mostekmk3880` |
-| `z84c00` | every bit | `z80c`, `z8400c`, `z180`, `ez80` |
+An output instruction whose opcode names no source sends nothing on the NMOS
+parts and every bit on the CMOS ones, so a program that clears a device register
+with it sets every bit of the same register on the other part. The two
+undocumented flag bits after a carry instruction come from the accumulator and a
+latch on Zilog's parts and from the accumulator alone on NEC's. And on the NMOS
+part an interrupt taken while one of the two instructions that read the interrupt
+latch is executing clears the parity flag, reporting that interrupts were
+disabled at the one moment they cannot have been. That last one is Zilog's own:
+*"On CMOS Z80 CPU, we've fixed this problem."*
+
+| Model | Bare `OUT (C)` sends | Carry flag bits | Interrupt clears parity | Suite |
+|:--|:--|:--|:--|:--|
+| `z80` | nothing | accumulator and latch | yes, and Zilog documents it | yes |
+| `z84c00` | every bit | accumulator and latch | no, Zilog fixed it | yes |
+| `upd780c` | nothing | accumulator alone | not stated | no |
+
+Each answers to the part numbers its manufacturer sold it under. `z80` covers the
+Zilog NMOS parts and the second sources built from the same design: Mostek,
+Sharp, MME, Thesys, Goldstar and the Soviet KR1858VM1. `z84c00` covers the CMOS
+parts, Zilog's and Toshiba's and the KR1858VM3. `upd780c` covers NEC's, which is
+NMOS and is not one of the others.
 
 ```python
 from z80 import describe
@@ -428,9 +445,17 @@ cmos = describe("Z84-C00").build(space, ports=ports)
 Names are matched however they are written: case and separators do not matter,
 and each part answers to the names its second sources shipped under.
 
+A part number nothing here implements is refused rather than answered. The Z180
+and the eZ80 used to resolve to the CMOS model and no longer do: the Z180 has
+instructions the Z80 does not and the eZ80 addresses twenty four bits, so a core
+that answered for either would decode their programs as something else.
+
 The remaining differences across the family are in timing and in what happens
 when an interrupt lands mid-instruction, neither of which a per-instruction model
-can observe. They are absent here rather than guessed at.
+can observe. They are absent here rather than guessed at. So is ST's reported
+carry rule, because the survey that would confirm it says the reverse; the
+disagreement is in [`conformance/divergences.json`](conformance/divergences.json)
+rather than resolved by preference.
 
 ## What "nothing starts clean" means
 

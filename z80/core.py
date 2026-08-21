@@ -36,7 +36,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from . import blocks, bus, flags
+from . import blocks, bus, flags, models
 from .memory import UNSET_SEED
 from .registers import Registers
 
@@ -73,6 +73,10 @@ class Cpu:
 
     model: str
 
+    carry_rule: str
+
+    interrupt_clears_parity: bool
+
     def __init__(
         self,
         memory: SparseMemory,
@@ -92,6 +96,8 @@ class Cpu:
         self.halted = False
         self.model = "z80"
         self.floating_output = 0x00
+        self.carry_rule = models.ZILOG_CARRY
+        self.interrupt_clears_parity = True
         if reset:
             self.reset()
 
@@ -400,12 +406,23 @@ class Cpu:
         those totals is assembled here: the acknowledge cycle and the restart
         below spend them, and ``conformance/hardware.test.py`` checks the result
         against the figures the manual prints.
+
+        An interrupt taken while one of the two instructions that copy the
+        interrupt latch into the parity flag was executing clears that flag on the
+        NMOS part, which reports that interrupts were disabled at the one moment
+        they cannot have been. Zilog documents the defect and says the CMOS part
+        fixed it, and the reason is a race rather than a decision: "the interrupt
+        flip-flop (IFF2) is cleared before it is actually transferred to the P/V
+        flag."
         """
         if not self.registers.iff1 or self.registers.ei:
             return False
+        reading_the_latch = self.registers.p
         self.begin_response()
         self.registers.iff1 = False
         self.registers.iff2 = False
+        if reading_the_latch and self.interrupt_clears_parity:
+            self.registers.f &= ~flags.PV
         answer = self.acknowledge(vector)
         if self.registers.im == 1:
             self.restart(MODE_ONE_RESTART)
@@ -747,14 +764,23 @@ class Cpu:
     def carry_undocumented(self) -> int:
         """Where the two hidden bits come from for the two carry instructions.
 
-        This is the pair that reads `Q`. When the instruction before this one wrote
-        the flags, the bits come from the accumulator alone. When it did not, they
-        come from the accumulator combined with what the flag register already
-        held, so the answer depends on history rather than on this instruction.
+        This is the pair that reads `Q`, and it is the one place a part number
+        changes an answer other than on the output instruction that names no
+        source. On a Zilog part the bits are bits 5 and 3 of ``(Q ^ F) | A``, which
+        is Patrik Rak's formula and which makes the answer depend on what the
+        previous instruction did to the flags rather than on this one. On NEC's
+        NMOS part they are bits 5 and 3 of the accumulator, and the latch does not
+        reach them at all.
+
+        The formula is written out rather than branched on whether the latch is
+        set. The two agree only because the latch is either zero or equal to the
+        flag register, which is an invariant of this core rather than anything the
+        formula requires, and they disagree on nearly half of the triples that
+        invariant excludes.
         """
-        if self.registers.q:
+        if self.carry_rule == models.NEC_CARRY:
             return flags.undocumented(self.registers.a)
-        return flags.undocumented(self.registers.a | self.registers.f)
+        return flags.undocumented((self.registers.q ^ self.registers.f) | self.registers.a)
 
     def execute_group3(self, y: int, z: int, p: int, q: int, prefix: str | None) -> None:
         if z == 0:
@@ -1129,6 +1155,11 @@ class Cpu:
 
         The parity flag does not report parity here. It reports whether interrupts
         were enabled, which is the only way software can ask.
+
+        The mark left behind is read by nothing else. It exists so that an
+        interrupt accepted immediately afterwards can tell that this was the
+        instruction it interrupted, which is the one case where the NMOS part
+        answers the question wrongly.
         """
         self.registers.a = value
         self.registers.p = 1

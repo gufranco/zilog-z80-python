@@ -21,7 +21,7 @@ from typing import Any, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import bus, core, flags, memory
+from z80 import bus, core, flags, memory, models
 
 HELD = json.loads((Path(__file__).resolve().parent / "hardware.json").read_text())
 
@@ -792,6 +792,64 @@ class InterruptResponseTest(unittest.TestCase):
         self.assertEqual((cpu.registers.im, RESPONSE["mode0"]["afterReset"]), (0, True))
 
 
+class ParityDefectTest(unittest.TestCase):
+    """The NMOS defect Zilog documents, and the CMOS part that does not have it."""
+
+    def taken(self, name: str, opcode: int = 0x57) -> tuple[int, int]:
+        space = memory.SparseMemory()
+        space.write8(START, 0xED)
+        space.write8(START + 1, opcode)
+        cpu = models.describe(name).build(space, reset=True)
+        cpu.registers.pc, cpu.registers.sp = START, 0x8000
+        cpu.registers.iff1 = cpu.registers.iff2 = True
+        cpu.registers.im = 1
+        cpu.step()
+        before = cpu.registers.f & flags.PV
+        cpu.interrupt(0xFF)
+        return before, cpu.registers.f & flags.PV
+
+    def test_the_instruction_reports_the_latch_before_the_interrupt(self) -> None:
+        before, _ = self.taken("z80")
+
+        self.assertEqual(before, flags.PV)
+
+    def test_and_the_nmos_part_clears_it_when_the_interrupt_is_taken(self) -> None:
+        _, after = self.taken("z80")
+
+        self.assertEqual(after, 0)
+
+    def test_the_other_instruction_that_reads_the_latch_too(self) -> None:
+        _, after = self.taken("z80", opcode=0x5F)
+
+        self.assertEqual(after, 0)
+
+    def test_the_cmos_part_does_not_because_zilog_says_it_was_fixed(self) -> None:
+        _, after = self.taken("z84c00")
+
+        self.assertEqual(after, flags.PV)
+
+    def test_the_record_names_the_parts_it_affects_and_the_one_it_does_not(self) -> None:
+        defect = RESPONSE["nmosParityDefect"]
+
+        self.assertEqual((defect["affects"], defect["fixedIn"]), (["z80"], ["z84c00"]))
+
+    def test_and_quotes_zilog_saying_the_later_part_fixed_it(self) -> None:
+        self.assertIn("we've fixed this problem", RESPONSE["nmosParityDefect"]["quote"])
+
+    def test_an_interrupt_after_any_other_instruction_leaves_the_flag_alone(self) -> None:
+        space = memory.SparseMemory()
+        space.write8(START, 0x00)
+        cpu = models.describe("z80").build(space, reset=True)
+        cpu.registers.pc, cpu.registers.sp = START, 0x8000
+        cpu.registers.iff1, cpu.registers.im = True, 1
+        cpu.registers.f = flags.PV
+        cpu.step()
+
+        cpu.interrupt(0xFF)
+
+        self.assertEqual(cpu.registers.f & flags.PV, flags.PV)
+
+
 class HaltTest(unittest.TestCase):
     """A halted part keeps fetching, which is the whole reason it is not idle."""
 
@@ -1082,6 +1140,7 @@ class DivergenceTest(unittest.TestCase):
             found,
             {
                 "documentContradiction",
+                "contradiction",
                 "convention",
                 "unstated",
                 "unmodelled",

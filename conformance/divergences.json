@@ -330,6 +330,74 @@
       "wouldSettleIt": [
         "An interface that lets a caller answer each read of a response rather than only the acknowledge, at which point the cycles above are already right."
       ]
+    },
+    {
+      "id": "carry-flag-bits-differ-by-manufacturer",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Where the two undocumented flag bits come from after a carry instruction, which is not the same answer on every part.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. Zilog prints the two bits as unused and says nothing about what either carry instruction does to them, so nothing Zilog printed distinguishes one manufacturer's part from another's here.",
+        "source": "Zilog UM008011-0816, flag register"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Three rules have been reported. Patrik Rak worked out in 2012 that on Zilog parts, NMOS and CMOS alike, the two bits are bits 5 and 3 of (Q ^ F) | A. David Banks reported in 2018 that NEC's NMOS part takes them from A alone, and that ST's CMOS part takes one from each rule.",
+        "source": "docs/independent/banks-undocumented-z80-flags-rev1.0.pdf and docs/independent/redcode-z80-ccf-scf-outcome-stability.pdf"
+      },
+      "packageFollows": "reference, and only for the two of the three rules that are not disputed",
+      "consequence": "The z80 and z84c00 models take Rak's formula and the upd780c model takes the accumulator alone. No ST model exists, because the evidence for a third rule is contested.",
+      "why": "The NEC part was previously another name for the Zilog model, which made this package answer for a part whose measured behaviour it does not reproduce. A part number that resolves to the wrong behaviour is worse than an absent one, because it answers.",
+      "wouldSettleIt": [
+        "A recording taken off each part, which is what the pinned corpus is for the Zilog one and does not exist for the others."
+      ]
+    },
+    {
+      "id": "st-cmos-carry-rule-is-disputed",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Whether ST's CMOS part has a carry flag rule of its own.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing, for the same reason as the entry above.",
+        "source": "Zilog UM008011-0816, flag register"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Banks reported a third rule for ST CMOS parts in 2018. A later survey states the reverse.",
+        "quote": "However, doubts have arisen regarding the existence of the ST CMOS behavior described by David Banks. Subsequent tests conducted by others indicate that these models behave the same as Zilog's in terms of ccf and scf. Therefore, Banks' results could have been influenced by the unstable behavior of the undocumented flags during these instructions or, in any case, might only apply to specific ST CMOS models.",
+        "source": "docs/independent/redcode-z80-ccf-scf-outcome-stability.pdf, and the Z80 XCF Flavor readme it belongs to"
+      },
+      "packageFollows": "neither",
+      "consequence": "There is no ST model here. A part number for one resolves to nothing rather than to a guess.",
+      "why": "Two rung three sources disagree, one of them says the other may have been reading instability rather than a rule, and no recording exists for either. Modelling a rule under those conditions would be picking a side of an open question and calling the result a part.",
+      "wouldSettleIt": [
+        "A recording taken off an ST CMOS part, on a board known to produce stable values for these two bits."
+      ]
+    },
+    {
+      "id": "carry-flag-bits-are-not-stable-on-silicon",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "Whether the two undocumented flag bits after a carry instruction are deterministic at all.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. Zilog prints the bits as unused.",
+        "source": "Zilog UM008011-0816, flag register"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "The corpus records one answer per case, and the parts do not always give one.",
+        "quote": "What we do know is that this behavior is not consistent across any Z80 model, regardless of the manufacturer. Many tested CPUs exhibit instability in the values of YF and XF during these instructions. Interestingly, the same CPU may demonstrate stability in some machines and instability in others, suggesting that external factors such as temperature, voltage, or clock signal may be at play.",
+        "source": "docs/independent/redcode-z80-ccf-scf-outcome-stability.pdf, crediting azesmbog for the discovery"
+      },
+      "packageFollows": "reference",
+      "consequence": "This core produces one answer for these two bits and reproduces the corpus exactly. On real parts the answer is reported to vary with the board, and on some boards with the moment. Reproducing a recording of an unstable signal is reproducing the recording.",
+      "why": "A deterministic model has no way to be right about a signal that is not deterministic, and a model that produced random values would fail every case of the corpus while being no closer to any particular part. The rule this package follows is the one every stable part is reported to produce.",
+      "wouldSettleIt": [
+        "Nothing settles it, which is the point of the entry. What would narrow it is a survey of how many parts on how many boards are stable, which the test program named in that document exists to collect."
+      ]
     }
   ]
 }

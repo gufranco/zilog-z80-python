@@ -140,6 +140,24 @@ of the register pair first where the part writes the high half. Both orders touc
 the same two addresses and leave identical final state, so the state comparison
 had passed it for as long as it existed.
 
+**Three parts, and the part number decides three answers.** The bare output
+instruction sends nothing on the NMOS parts and every bit on the CMOS ones. The
+two undocumented flag bits after a carry instruction come from the accumulator
+and a latch on Zilog's parts and from the accumulator alone on NEC's, which is
+why the NEC part number is no longer another name for the Zilog model. And an
+interrupt taken while one of the two instructions that read the interrupt latch
+is executing clears the parity flag on the NMOS part, which is the one defect
+Zilog documents in its own silicon, along with its fix: "On CMOS Z80 CPU, we've
+fixed this problem." The Z180 and the eZ80 used to resolve to the CMOS model and
+are now refused, because a core that answered for them would decode their
+programs as something else.
+
+**Twenty one documents, pinned by digest.** Two from Zilog for the parts it made,
+one from NEC for the part it made, and eighteen pieces of independent research
+into everything none of them printed. Each carries a SHA-256 and a fetcher that
+refuses anything else, and each says which rung of the ladder it sits on, so a
+piece of research can never be cited for a figure a manufacturer gave.
+
 **A figure the manual never prints, and gives twice.** An interrupt acknowledge
 is seven T states rather than the six a four state fetch plus two added waits
 would give. Six makes the printed mode 2 total eighteen against a printed

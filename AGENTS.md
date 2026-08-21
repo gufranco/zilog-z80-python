@@ -5,7 +5,7 @@ This file is for a coding agent. A person reading it will not be harmed, but
 
 ## What this project is, in one paragraph
 
-A model of the Zilog Z80, held to two different things at once. Its final state
+A model of the Zilog Z80 family, three parts, held to two different things at once. Its final state
 after every instruction is held to a published per-opcode suite. What it does
 with its pins while producing that state is held to the same suite, T state by T
 state. The shape of each machine cycle, and how many T states a documented

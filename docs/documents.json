@@ -41,6 +41,37 @@
       "pages": 36
     },
     {
+      "file": "manufacturer/z80-family-data-book-1989.pdf",
+      "rung": 1,
+      "publisher": "Zilog, Inc.",
+      "title": "Z80 Family Data Book",
+      "documentNumber": "00-2490-01",
+      "date": "1989-01",
+      "retrievedFrom": "https://archive.org/download/bitsavers_zilogz8019aBook_30802417/1989_Zilog_Z80_Family_Data_Book.pdf",
+      "sha256": "844681b63ffc45bdad283067cacd6e8be0a40d8ed75580e56d8115ffe021de28",
+      "bytes": 30802417,
+      "pages": 448,
+      "covers": ["z80", "z84c00"],
+      "settles": "The one defect Zilog documents in its own part, on printed page 412: an interrupt accepted while LD A,I or LD A,R is executing clears the parity flag on the NMOS part, and the CMOS part fixed it. It also carries the peripheral parts of the family, which this package does not model.",
+      "note": "A 448 page scan whose text layer breaks passages across columns. The defect passage was read off the rendered page image.",
+      "redistributable": false
+    },
+    {
+      "file": "manufacturer/upd780c.pdf",
+      "rung": 1,
+      "publisher": "NEC Electronics Inc.",
+      "title": "uPD780 High-Performance CP/M-Compatible NMOS 8-Bit Microprocessor",
+      "date": "undated in the document; the scan carries a 2000 creation date",
+      "retrievedFrom": "https://archive.org/download/d-780-c-1-datasheet-nec/D780C-1%20Datasheet%20NEC.pdf",
+      "sha256": "2036fa845533feeeea427006f0e85e598d87a51e40f985ab7cfa47cbd8970ed1",
+      "bytes": 1326769,
+      "pages": 24,
+      "covers": ["upd780c"],
+      "settles": "What NEC says its part is: the pinout, the three speed grades, the electrical and AC characteristics, and the claim that it is 'fully pin-compatible and software-compatible with the Z80 microprocessor'. That claim is the reason this part sat under the Zilog model until somebody measured the flags Zilog never documented, which is behaviour no compatibility claim covers.",
+      "note": "A scan with a text layer of variable quality. Anything numeric was read off the rendered page image.",
+      "redistributable": false
+    },
+    {
       "file": "independent/young-undocumented-z80-documented-v0.91.pdf",
       "rung": 3,
       "publisher": "Sean Young",

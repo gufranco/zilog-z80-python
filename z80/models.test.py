@@ -15,6 +15,39 @@ class CatalogueTest(unittest.TestCase):
     def test_and_the_later_one_that_answers_differently(self) -> None:
         self.assertIn("z84c00", models.MODELS)
 
+    def test_and_the_second_source_that_is_not_a_copy(self) -> None:
+        self.assertIn("upd780c", models.MODELS)
+
+    def test_every_model_names_a_carry_rule_somebody_measured(self) -> None:
+        rules = {model.carry_rule for model in models.MODELS.values()}
+
+        self.assertLessEqual(rules, set(models.CARRY_RULES))
+
+    def test_a_carry_rule_nobody_measured_is_refused(self) -> None:
+        with self.assertRaises(models.UnknownCarryRule):
+            models.Model("invented", "a part nobody made", 0x00, carry_rule="guessed")
+
+    def test_every_model_says_whether_a_suite_stands_behind_it(self) -> None:
+        held = {model.name: model.verified for model in models.MODELS.values()}
+
+        self.assertEqual(held, {"z80": True, "z84c00": True, "upd780c": False})
+
+    def test_the_two_zilog_parts_differ_only_in_what_the_bare_output_sends(self) -> None:
+        zilog, cmos = models.describe("z80"), models.describe("z84c00")
+
+        self.assertEqual(
+            (zilog.carry_rule == cmos.carry_rule, zilog.floating_output == cmos.floating_output),
+            (True, False),
+        )
+
+    def test_and_the_nec_part_differs_only_in_where_the_carry_bits_come_from(self) -> None:
+        zilog, nec = models.describe("z80"), models.describe("upd780c")
+
+        self.assertEqual(
+            (zilog.carry_rule == nec.carry_rule, zilog.floating_output == nec.floating_output),
+            (False, True),
+        )
+
     def test_every_model_says_what_it_is(self) -> None:
         for model in models.MODELS.values():
             self.assertTrue(model.summary.strip())
@@ -34,7 +67,15 @@ class NameTest(unittest.TestCase):
         self.assertEqual(models.describe("Z84-C00").name, "z84c00")
 
     def test_an_alias_reaches_the_part_it_names(self) -> None:
-        self.assertEqual(models.describe("upd780c").name, "z80")
+        self.assertEqual(models.describe("mostekmk3880").name, "z80")
+
+    def test_a_part_with_its_own_behaviour_is_its_own_model(self) -> None:
+        self.assertEqual(models.describe("upd780c").name, "upd780c")
+
+    def test_a_part_this_core_does_not_implement_is_refused(self) -> None:
+        for name in ("z180", "ez80"):
+            with self.assertRaises(models.UnknownModelError):
+                models.describe(name)
 
     def test_a_name_no_part_answers_to_is_refused(self) -> None:
         with self.assertRaises(models.UnknownModelError):
@@ -62,6 +103,26 @@ class BuildTest(unittest.TestCase):
         cpu = models.describe("z80").build(SparseMemory(), shape=bus.RECORDING)
 
         self.assertFalse(cpu.bus.follows_the_manual)
+
+    def test_a_machine_carries_the_carry_rule_its_model_names(self) -> None:
+        held = {
+            name: models.describe(name).build(SparseMemory()).carry_rule for name in models.MODELS
+        }
+
+        self.assertEqual(held, {"z80": "zilog", "z84c00": "zilog", "upd780c": "nec"})
+
+    def test_the_two_rules_disagree_where_the_latch_is_what_decides(self) -> None:
+        answers = set()
+        for name in ("z80", "upd780c"):
+            space = SparseMemory()
+            space.write8(0x0100, 0x37)
+            cpu = models.describe(name).build(space, reset=True)
+            cpu.registers.pc, cpu.registers.a, cpu.registers.f = 0x0100, 0x00, 0x28
+            cpu.registers.q = 0
+            cpu.step()
+            answers.add(cpu.registers.f & 0x28)
+
+        self.assertEqual(len(answers), 2)
 
     def test_the_original_part_sends_zero_for_the_output_with_no_source(self) -> None:
         cpu, ports = self.machine("z80")
