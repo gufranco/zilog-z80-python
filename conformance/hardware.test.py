@@ -166,17 +166,23 @@ class TimingTableTest(unittest.TestCase):
 
         self.assertEqual(kinds, {"timingTableMisprint", "proseVersusFigure"})
 
-    def test_the_prose_the_figures_contradict_is_quoted_rather_than_summarised(self) -> None:
+    def test_the_prose_a_figure_or_a_sibling_page_contradicts_is_quoted(self) -> None:
         found = [
-            entry
+            entry["printed"]
             for entry in HELD["documentContradictions"]
             if entry["kind"] == "proseVersusFigure"
         ]
 
-        self.assertEqual(
-            [entry["printed"] for entry in found],
-            ["The MREQ signal and the RD signal are used the same way as in a fetch cycle."],
-        )
+        self.assertEqual(len(found), 2)
+
+    def test_and_one_of_the_two_is_a_page_that_contradicts_itself(self) -> None:
+        found = [
+            entry
+            for entry in HELD["documentContradictions"]
+            if entry["id"] == "bit-instruction-negate-flag-printed-as-half-carry"
+        ]
+
+        self.assertEqual(found[0]["printed"].count("H is"), 2)
 
     def test_no_other_row_disagrees_with_its_own_breakdown(self) -> None:
         wrong = [

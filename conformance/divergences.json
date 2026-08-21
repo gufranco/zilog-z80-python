@@ -471,6 +471,31 @@
         "Driving the reference application itself, which is a Qt program rather than a library, and reading its waveform export."
       ],
       "measuredOn": "2026-08-21"
+    },
+    {
+      "id": "block-transfer-flags-the-manual-gets-wrong",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "What the eight block input and output instructions do to the negate and carry flags.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "The negate flag is set, the carry is untouched, and the half carry is unknown. Each of the eight pages says it.",
+        "quote": "S is unknown. Z is set if B - 1 = 0; otherwise it is reset. H is unknown. P/V is unknown. N is set. C is not affected.",
+        "source": "Zilog UM008011-0816, the INI page and the seven like it"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "The negate flag copies bit seven of the byte moved, and the carry and half carry are both set together by a sum the manual never mentions. The parity comes from the same sum.",
+        "quote": "NF flag A copy of bit 7 of the value read from or written to an I/O port. HF and CF Both set if ((HL) + ((C + 1) & 255) > 255). PF The parity of (((HL) + ((C + 1) & 255)) & 7) xor B).",
+        "source": "docs/independent/young-undocumented-z80-documented-v0.91.pdf, section 4.3, crediting Ramsoft"
+      },
+      "packageFollows": "reference",
+      "consequence": "These eight instructions leave flags the manual says they do not touch. A program written from the manual alone that branched on the carry after one of them would branch on something the manual promised was still its own.",
+      "why": "The corpus fixes these flags on every one of its cases and this core reproduces it, and the rule the research states independently gives the same answer on all eighty combinations of the counter, the port and the byte that were tried. Two lineages that never consulted each other agree, and the manual disagrees with both.",
+      "howItWasFound": "By reading the Condition Bits Affected block of all 131 instruction pages and checking every absolute they state against the model. Of a hundred and twenty six such statements, a hundred and twenty four hold; these eight instructions carry sixteen of the two that do not.",
+      "wouldSettleIt": [
+        "A program on a real part: clear the carry, run one block input whose sum overflows, and read the flag back."
+      ]
     }
   ]
 }

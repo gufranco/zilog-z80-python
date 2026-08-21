@@ -1699,6 +1699,16 @@
         "manualPage": 23,
         "why": "Prose elsewhere in the same document says outright that a memory access outside a fetch has half a clock cycle more than a fetch does, which is exactly what the two figures show and the opposite of what the summary on page 9 implies."
       }
+    },
+    {
+      "id": "bit-instruction-negate-flag-printed-as-half-carry",
+      "kind": "proseVersusFigure",
+      "manualPage": 245,
+      "instruction": "BIT b, (HL) and BIT b, (IY+d)",
+      "printed": "S is unknown. Z is set if specified bit is 0; otherwise, it is reset. H is set. P/V is unknown. H is reset. C is not affected.",
+      "problem": "The half carry appears twice on one page, once set and once reset, and the negate flag never appears at all. The other two pages of the same instruction, BIT b, r and BIT b, (IX+d), print N is reset in the position where these two print H is reset.",
+      "reading": "The letter is wrong on those two pages. Every form sets the half carry and resets the negate, which is what the two correct pages say and what the recorded corpus carries for all four.",
+      "verifiedOn": "the extracted text of all four pages of the instruction, 2026-08-21, compared line for line"
     }
   ],
   "notStated": {

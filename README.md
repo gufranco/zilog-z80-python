@@ -229,6 +229,35 @@ documented instructions, steps them, and checks the T states spent against the
 figure printed for that instruction, naming the manual page rather than repeating
 the number. That check needs no suite on the machine.
 
+### What a flag claim here does and does not mean
+
+Every instruction page in the manual ends with a Condition Bits Affected block.
+Most of those blocks say something conditional, "Z is set if the result is zero",
+which only a model of the instruction can check. A hundred and twenty six of them
+say something absolute instead: this flag is set, this one is reset, this one is
+untouched, whatever the inputs were. Those hundred and twenty six are pinned in
+[`conformance/instruction-flags.json`](conformance/instruction-flags.json) with
+the line each came from, and
+[`conformance/instruction_flags.test.py`](conformance/instruction_flags.test.py)
+runs every one of them against forty states.
+
+A hundred and twenty four hold. The two that do not are recorded rather than
+quietly followed:
+
+- The eight block input and output instructions. The manual says the negate flag
+  is set and the carry is not affected. Both are wrong on every part anyone has
+  measured, and the corpus fixes different values on every case. The rule this
+  package implements comes from independent research and is in
+  [`conformance/divergences.json`](conformance/divergences.json) with what would
+  settle it.
+- Two of the four pages of `BIT`. They print the half carry twice, once set and
+  once reset, and never print the negate flag at all. The other two pages print
+  the negate flag in the position where these print the second half carry. It is
+  a wrong letter rather than a different instruction, and it is recorded as a
+  contradiction inside the document rather than as a disagreement with anything
+  outside it.
+
+
 ### Two shapes, because one column cannot hold half a clock
 
 Every control pin edge in the manual falls on a clock edge, which is half a T
@@ -492,6 +521,8 @@ the top half, and this will let it fail the way hardware would.
 | [`z80/bus.py`](z80/bus.py) | The shape of every machine cycle, and the only place that knows it |
 | [`conformance/hardware.json`](conformance/hardware.json) | What Zilog printed, fact by fact, with the sentence each came from |
 | [`conformance/divergences.json`](conformance/divergences.json) | Every place the manual and the suite disagree, and what would settle each |
+| [`conformance/instruction-flags.json`](conformance/instruction-flags.json) | Every absolute the manual states about a flag, and the two it gets wrong |
+| [`conformance/independent.json`](conformance/independent.json) | What the research outside Zilog establishes, in a form a test can check |
 | [`conformance/hardware.test.py`](conformance/hardware.test.py) | The gate that holds the model's timing to the manual, with no suite needed |
 | [`conformance/singlestep.py`](conformance/singlestep.py) | The runner that holds the final state to the suite |
 | [`conformance/cycles.py`](conformance/cycles.py) | The runner that holds every T state to it |
