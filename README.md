@@ -497,8 +497,6 @@ the top half, and this will let it fail the way hardware would.
 | [`conformance/cycles.py`](conformance/cycles.py) | The runner that holds every T state to it |
 | [`conformance/fetch.py`](conformance/fetch.py) | Brings the suite down, pinned by commit |
 | [`conformance/regenerate.py`](conformance/regenerate.py) | Rebuilds the suite from the generator that made it, pinned the same way |
-| [`specs/current/`](specs/current/) | What the part does, as requirements somebody could test against |
-| [`AGENTS.md`](AGENTS.md) | The working instructions, including the things that will bite you |
 
 ## For contributors and reviewers
 

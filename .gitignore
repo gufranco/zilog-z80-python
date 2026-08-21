@@ -8,5 +8,4 @@ build/
 *.egg-info/
 .DS_Store
 .mypy_cache/
-docs/**/*.pdf
-docs/**/*.txt
+docs/
