@@ -1,0 +1,91 @@
+# Nothing here is new work. It is the same gate the pipeline runs, run again on a
+# schedule against whatever the ecosystem looks like that week.
+#
+# A model of a fixed piece of silicon does not change, so a green build today is
+# usually a green build next year. What moves underneath it is everything else: a
+# new Python release changes integer or annotation behaviour, a linter release
+# adds a rule, a checker release finds something the old one did not, a runner
+# image swaps a default. Each of those turns a passing project into a failing one
+# without a commit, and the difference between hearing about it on a Monday and
+# hearing about it from the next person to open a pull request is this file.
+#
+# It runs on the newest Python available rather than the pinned one, because the
+# point is to find out what the next version breaks before it is the only version
+# anybody has.
+#
+# The suite this core is held to is watched separately, by suite-watch.yml. That
+# file asks whether the oracle moved. This one asks whether the ground under the
+# project did.
+name: Weekly
+
+on:
+  schedule:
+    # Early Monday, UTC. Late enough that a release landing over the weekend is
+    # already published, early enough to be read before the week starts.
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ahead:
+    name: On Python ${{ matrix.python }}, newest tools
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest version supported and the newest that exists. A break in the
+        # first is a regression; a break in the second is a warning about the
+        # release everyone is about to be on.
+        python: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+
+      # Unpinned on purpose, which is the whole point of this file and the one
+      # place in the project where that is true. Every other workflow pins.
+      - name: Install the newest tools
+        run: |
+          python -m pip install --disable-pip-version-check \
+            --upgrade ruff mypy coverage
+
+      - name: Formatting, as the newest formatter sees it
+        run: ruff format --check .
+
+      - name: Lint, with whatever rules were added since
+        run: ruff check --output-format=github .
+
+      - name: Types, as the newest checker sees them
+        run: mypy
+
+      - name: Every test file, under coverage
+        run: |
+          python -m coverage erase
+          status=0
+          while IFS= read -r file; do
+            echo "::group::${file}"
+            python -m coverage run -a "${file}" || status=1
+            echo "::endgroup::"
+          done < <(find z80 conformance -name '*.test.py' | sort)
+          exit "${status}"
+        shell: bash
+
+      - name: Coverage must still be total
+        run: python -m coverage report
+
+      # The gate that needs no suite on the machine: the T states this core
+      # spends on a documented instruction, against the figure Zilog printed for
+      # it. A suite fetch is minutes of network; this is the part of the cycle
+      # claim that rests on the manual rather than on a recording, and it runs
+      # anywhere.
+      - name: Timing against the manufacturer's own figures
+        run: python conformance/hardware.test.py

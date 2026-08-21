@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: What "cycle accurate" claims here, and what it does not
+    url: https://github.com/gufranco/zilog-z80-python#readme
+    about: Three behaviours are deliberately not modelled, and the README says which and why.
+  - name: Where the core and the suite disagree on purpose
+    url: https://github.com/gufranco/zilog-z80-python/blob/main/conformance/divergences.json
+    about: Including the two places the suite's own generator documents as deliberate choices.

@@ -1,0 +1,339 @@
+{
+  "note": "Every flag effect the manual states as an absolute, extracted from the Condition Bits Affected block of each instruction page and turned into something a run can check. A statement like 'H is reset' holds for every input or it does not hold, which is what makes it checkable; the conditional statements on the same pages are not here, because the corpus already fixes them on every one of its cases.",
+  "howItWasRead": "The text layer of the pinned manual, one Condition Bits Affected block per instruction, with the instruction taken from the heading above it. 131 instruction pages carry such a block and 45 of them state at least one absolute.",
+  "readOn": "2026-08-21",
+  "exceptions": {
+    "note": "Two of the rules below do not hold, and neither is a defect in this core.",
+    "BIT b, (IY+d)": "The page prints H twice, once set and once reset, and never mentions N. The BIT b, r and BIT b, (IX+d) pages print N is reset in that position, so the letter was set wrong. Recorded in documentContradictions.",
+    "block input and output": "The eight block instructions are the one place the manual is wrong rather than misprinted. It says N is set and C is not affected; the part sets N from bit seven of the byte transferred and sets C and H together from a carry the manual never mentions. Recorded in divergences.json with the measured rule."
+  },
+  "rules": {
+    "ADD A, (HL)": {
+      "N": "is reset"
+    },
+    "ADD A, (IX + d)": {
+      "N": "is reset"
+    },
+    "ADD A, (IY + d)": {
+      "N": "is reset"
+    },
+    "ADD A, n": {
+      "N": "is reset"
+    },
+    "ADD HL, ss": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "P/V": "is not affected",
+      "N": "is reset"
+    },
+    "ADD IX, pp": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "P/V": "is not affected"
+    },
+    "ADD IY, rr": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "P/V": "is not affected"
+    },
+    "BIT b, (IX+d)": {
+      "H": "is set",
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "BIT b, (IY+d)": {
+      "H": "is reset",
+      "C": "is not affected"
+    },
+    "CCF": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "P/V": "is not affected",
+      "N": "is reset"
+    },
+    "CPD": {
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "CPI": {
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "CPIR": {
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "CPL": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is set",
+      "P/V": "is not affected",
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "DAA": {
+      "N": "is not affected"
+    },
+    "IN r (C)": {
+      "H": "is reset",
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "INC (HL)": {
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "INC (IX+d)": {
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "INC (IY+d)": {
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "IND": {
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "INDR": {
+      "Z": "is set",
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "INI": {
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "INIR": {
+      "Z": "is set",
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "LD A, I": {
+      "H": "is reset",
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "LD A, R": {
+      "H": "is reset",
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "LDD": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset",
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "LDDR": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset",
+      "P/V": "is reset",
+      "N": "is reset"
+    },
+    "LDI": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset",
+      "N": "is reset",
+      "C": "is not affected"
+    },
+    "LDIR": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset"
+    },
+    "NEG": {
+      "N": "is set"
+    },
+    "OTDR": {
+      "Z": "is set",
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "OTIR": {
+      "Z": "is set",
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "OUTD": {
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "OUTI": {
+      "N": "is set",
+      "C": "is not affected"
+    },
+    "RLA": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset",
+      "P/V": "is not affected",
+      "N": "is reset"
+    },
+    "RLC (HL)": {
+      "H": "is reset",
+      "N": "is reset"
+    },
+    "RLC (IX+d)": {
+      "H": "is reset",
+      "N": "is reset"
+    },
+    "RLC (IY+d)": {
+      "H": "is reset",
+      "N": "is reset"
+    },
+    "RLC r": {
+      "H": "is reset",
+      "N": "is reset"
+    },
+    "RLCA": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset",
+      "P/V": "is not affected",
+      "N": "is reset"
+    },
+    "RLD": {
+      "H": "is reset"
+    },
+    "RRA": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset",
+      "P/V": "is not affected",
+      "N": "is reset"
+    },
+    "RRCA": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset",
+      "P/V": "is not affected",
+      "N": "is reset"
+    },
+    "RRD": {
+      "H": "is reset"
+    },
+    "SCF": {
+      "S": "is not affected",
+      "Z": "is not affected",
+      "H": "is reset",
+      "P/V": "is not affected",
+      "N": "is reset",
+      "C": "is set"
+    }
+  },
+  "manualLine": {
+    "ADD A, (HL)": 7683,
+    "ADD A, (IX + d)": 7737,
+    "ADD A, (IY + d)": 7789,
+    "ADD A, n": 7634,
+    "ADD HL, ss": 9522,
+    "ADD IX, pp": 9740,
+    "ADD IY, rr": 9811,
+    "BIT b, (IX+d)": 11962,
+    "BIT b, (IY+d)": 12042,
+    "CCF": 9089,
+    "CPD": 7392,
+    "CPI": 7257,
+    "CPIR": 7333,
+    "CPL": 8966,
+    "DAA": 8905,
+    "IN r (C)": 13934,
+    "INC (HL)": 8598,
+    "INC (IX+d)": 8651,
+    "INC (IY+d)": 8703,
+    "IND": 14155,
+    "INDR": 14248,
+    "INI": 13991,
+    "INIR": 14088,
+    "LD A, I": 5345,
+    "LD A, R": 5391,
+    "LDD": 7098,
+    "LDDR": 7194,
+    "LDI": 6937,
+    "LDIR": 7020,
+    "NEG": 9021,
+    "OTDR": 14706,
+    "OTIR": 14538,
+    "OUTD": 14607,
+    "OUTI": 14439,
+    "RLA": 10263,
+    "RLC (HL)": 10579,
+    "RLC (IX+d)": 10661,
+    "RLC (IY+d)": 10744,
+    "RLC r": 10515,
+    "RLCA": 10190,
+    "RLD": 11568,
+    "RRA": 10413,
+    "RRCA": 10337,
+    "RRD": 11667,
+    "SCF": 9132
+  },
+  "encodings": {
+    "note": "One encoding per manual entry, chosen by hand from the op code table printed on the same page the rule came from. A rule with no encoding cannot be checked, so the gate refuses to let one appear.",
+    "LD A, I": [237, 87],
+    "LD A, R": [237, 95],
+    "LDI": [237, 160],
+    "LDIR": [237, 176],
+    "LDD": [237, 168],
+    "LDDR": [237, 184],
+    "CPI": [237, 161],
+    "CPIR": [237, 177],
+    "CPD": [237, 169],
+    "ADD A, n": [198, 90],
+    "ADD A, (HL)": [134],
+    "ADD A, (IX + d)": [221, 134, 2],
+    "ADD A, (IY + d)": [253, 134, 2],
+    "INC (HL)": [52],
+    "INC (IX+d)": [221, 52, 2],
+    "INC (IY+d)": [253, 52, 2],
+    "DAA": [39],
+    "CPL": [47],
+    "NEG": [237, 68],
+    "CCF": [63],
+    "SCF": [55],
+    "ADD HL, ss": [25],
+    "ADD IX, pp": [221, 25],
+    "ADD IY, rr": [253, 25],
+    "RLCA": [7],
+    "RLA": [23],
+    "RRCA": [15],
+    "RRA": [31],
+    "RLC r": [203, 0],
+    "RLC (HL)": [203, 6],
+    "RLC (IX+d)": [221, 203, 2, 6],
+    "RLC (IY+d)": [253, 203, 2, 6],
+    "RLD": [237, 111],
+    "RRD": [237, 103],
+    "BIT b, (IX+d)": [221, 203, 2, 70],
+    "BIT b, (IY+d)": [253, 203, 2, 70],
+    "IN r (C)": [237, 64],
+    "INI": [237, 162],
+    "INIR": [237, 178],
+    "IND": [237, 170],
+    "INDR": [237, 186],
+    "OUTI": [237, 163],
+    "OTIR": [237, 179],
+    "OUTD": [237, 171],
+    "OTDR": [237, 187]
+  },
+  "repeating": {
+    "note": "The manual describes these at completion rather than at one iteration, so a check has to reach it.",
+    "byPair": ["LDIR", "LDDR", "CPIR", "CPDR"],
+    "byCounter": ["INIR", "INDR", "OTIR", "OTDR"]
+  },
+  "doNotHold": {
+    "BIT b, (IY+d)": ["H"],
+    "INI": ["N", "C"],
+    "INIR": ["N", "C"],
+    "IND": ["N", "C"],
+    "INDR": ["N", "C"],
+    "OUTI": ["N", "C"],
+    "OTIR": ["N", "C"],
+    "OUTD": ["N", "C"],
+    "OTDR": ["N", "C"]
+  }
+}

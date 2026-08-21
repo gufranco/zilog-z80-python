@@ -1,0 +1,83 @@
+name: Something is wrong
+description: An instruction does the wrong thing, spends the wrong number of T states, or nothing works at all
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A report about this core is almost always settled by one of two runs:
+        the suite, which says whether the case is already covered, or a single
+        stepped instruction with its bus log, which says exactly where the two
+        part company. The fields below ask for whichever applies.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of disagreement
+      options:
+        - The final state is wrong
+        - The final state is right and the cycles are wrong
+        - It raises, or hangs
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: opcode
+    attributes:
+      label: The instruction, and the state it ran in
+      description: |
+        The opcode bytes and the registers before it. Enough for somebody to set
+        the same state up and step it once.
+      render: text
+      placeholder: |
+        ED 4B 34 12   LD BC,(1234H)
+        before: AF=0000 BC=0000 ... memory at 1234 = 78 56
+    validations:
+      required: true
+
+  - type: textarea
+    id: happened
+    attributes:
+      label: What this core does, and what you expected
+      description: |
+        For a cycle disagreement, paste both bus logs. Each line is an address, a
+        value and the four control pins, in T state order.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: What says otherwise
+      description: |
+        A manual page, a suite case, or a measurement off a real part. Naming the
+        page beats quoting a number, because the manual contradicts itself in
+        three places and all three are already recorded.
+      placeholder: |
+        UM008011-0816 page 194, and the suite case ed4b.json case 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: The shortest thing that shows it
+      description: Python we can run as it stands, with no editing.
+      render: python
+      placeholder: |
+        from z80 import Z80
+
+        cpu = Z80()
+        cpu.step()
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: The output above is complete rather than trimmed
+          required: true
+        - label: I have attached no firmware and no part of one
+          required: true

@@ -67,6 +67,27 @@ ignore = [
 # a timestamp in front of a report meant to be read by a person.
 "conformance/*.py" = ["T201"]
 
+[tool.mypy]
+# Every flag mypy has, plus the ones strict does not turn on. The errors that
+# matter in a model of hardware are the ones where a width, a mask or a None
+# crosses a boundary, and those are exactly what the optional classes catch.
+strict = true
+python_version = "3.12"
+warn_unreachable = true
+warn_no_return = true
+strict_equality = true
+extra_checks = true
+enable_error_code = [
+  "explicit-override",
+  "ignore-without-code",
+  "possibly-undefined",
+  "redundant-expr",
+  "truthy-bool",
+  "truthy-iterable",
+  "unused-awaitable",
+]
+files = ["z80", "conformance"]
+
 [tool.coverage.run]
 source = ["z80", "conformance"]
 branch = true
@@ -79,4 +100,13 @@ exclude_also = [
   # there is nothing behind it left to exercise. Importing the module to cover
   # the guard would run the tool rather than test it.
   'if __name__ == "__main__":',
+  # A type checking block never runs, by definition. Python 3.14 drops it before
+  # coverage can see it and earlier versions do not, so leaving it in would make
+  # the gate mean one thing on the newest runtime and another on the oldest
+  # supported one, which is worse than either.
+  'if TYPE_CHECKING:',
+  # A protocol method has no body to run, whether the ellipsis sits on its own
+  # line or after the signature. The same version split applies.
+  '^\s*\.\.\.$',
+  ': \.\.\.$',
 ]

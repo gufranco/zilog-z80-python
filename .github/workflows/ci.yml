@@ -36,6 +36,40 @@ jobs:
       - name: Lint
         run: ruff check --output-format=github .
 
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install the formatter
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Check that every JSON file is formatted
+        run: pnpm run format:check
+
+  types:
+    name: Types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install the type checker
+        run: pipx install mypy==1.14.1
+
+      # Strict, with every optional error class the version offers turned on. A
+      # model of a processor is arithmetic on masked integers end to end, and a
+      # checker that sees the whole register file is the cheapest place to catch
+      # a width or a None crossing a boundary it should not. The settings live in
+      # pyproject.toml so a local run and this one agree.
+      - name: Every annotation has to hold
+        run: mypy
+
   test:
     name: Tests on Python ${{ matrix.python }}
     runs-on: ubuntu-latest
@@ -109,5 +143,46 @@ jobs:
             python conformance/singlestep.py ~/.cache/conformance-suites/z80/v1
           else
             python conformance/singlestep.py ~/.cache/conformance-suites/z80/v1 --limit "${limit}"
+          fi
+        shell: bash
+
+  cycles:
+    name: Cycle by cycle against the published suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Read the pinned suite commit
+        id: pin
+        run: |
+          commit=$(python -c "import json,pathlib;print(json.loads(pathlib.Path('conformance/suites.json').read_text())['suites'][0]['commit'])")
+          echo "commit=${commit}" >> "${GITHUB_OUTPUT}"
+
+      - name: Cache the suite
+        id: cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/conformance-suites
+          key: suites-${{ steps.pin.outputs.commit }}
+
+      - name: Fetch the suite
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: python conformance/fetch.py ~/.cache/conformance-suites
+
+      # The state comparison beside this one asks what an instruction left
+      # behind. This asks what the part did while producing it: the address, the
+      # value and which control pins were asserted, for every T state. A core can
+      # spend the right number of cycles doing the wrong thing, and only this
+      # notices.
+      - name: Compare every T state
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            python conformance/cycles.py ~/.cache/conformance-suites/z80/v1 --limit 100
+          else
+            python conformance/cycles.py ~/.cache/conformance-suites/z80/v1
           fi
         shell: bash

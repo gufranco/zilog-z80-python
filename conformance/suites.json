@@ -6,12 +6,56 @@
       "model": "z80",
       "repository": "https://github.com/SingleStepTests/z80.git",
       "commit": "ebe1875d48f374bcfd4b505d8eb8ee751568b5f7",
-      "sparse": [
-        "v1"
-      ],
+      "sparse": ["v1"],
       "path": "v1",
       "tests_per_opcode": 1000,
-      "files": 1604
+      "files": 1604,
+      "generator": {
+        "note": "Where the corpus comes from, so it can be rebuilt rather than only downloaded. conformance/regenerate.py clones this commit and drives it headless. The published files were checked against such a run: 1593 of the 1604 come out byte for byte identical, and the eleven that do not are recorded in divergences.json.",
+        "repository": "https://github.com/raddad772/jsmoo.git",
+        "commit": "b6cc506e7c2f7b2b14cce6e98d0463467eb8c4d6",
+        "commitDate": "2025-08-01",
+        "entryPoint": "misc/code_generation/z80_test_generator.js, generate_Z80_tests",
+        "requires": [
+          "helpers.js",
+          "misc/code_generation/common_test_generation.js",
+          "component/cpu/z80/z80_opcodes.js"
+        ],
+        "flags": {
+          "Z80_DO_FULL_MEMCYCLES": false,
+          "Z80_DO_MEM_REFRESHES": true
+        },
+        "flagsNote": "These are the settings that reproduce the published corpus. Turning the first on widens the read and write strobes to two T states, which is closer to the manual for data cycles and does not touch the opcode fetch, because the fetch is written with its first state hardcoded idle.",
+        "excludedFromPublication": [
+          "opcode 0x100, the interrupt request pseudo entry",
+          "opcode 0x101, the reset pseudo entry"
+        ],
+        "excludedNote": "The generator emits six files the published corpus does not carry, for those two pseudo entries and their two index prefixed forms. Every case in the interrupt one is a plain four state fetch, so it would not serve as an oracle for an acknowledge cycle even if it were published.",
+        "verifiedOn": "2026-08-21",
+        "fullMemoryCycleRun": {
+          "note": "The same generator run with Z80_DO_FULL_MEMCYCLES on, which widens the data strobes to what the manual's figures draw. That corpus is a second oracle, for the pin shape this package uses by default rather than for the one the published corpus carries.",
+          "flags": {
+            "Z80_DO_FULL_MEMCYCLES": true,
+            "Z80_DO_MEM_REFRESHES": true
+          },
+          "howToCompare": "python3 conformance/cycles.py <directory> --shape manual",
+          "measured": {
+            "on": "2026-08-21",
+            "cases": 1610000,
+            "tStates": 22063372,
+            "failed": 7000,
+            "opcodesAffected": ["dd 36", "dd e3", "e3", "ed 67", "ed 6f", "fd 36", "fd e3"],
+            "reading": "Every case of seven opcodes and no case of any other. All seven are among the eleven the generator's head already disagrees with the pinned corpus about, and all eleven are in territory the manual does not cover. The pin shape itself agrees on 1603 of the 1610 entries."
+          },
+          "allowance": {
+            "what": "The first T state of every opcode fetch and of every memory read, skipped rather than compared.",
+            "why": "The generator writes that column idle without consulting the flag that widens every other strobe, and it routes the fourth byte of an indexed bit instruction through the same opcode fetch routine even though that byte does not refresh.",
+            "counted": "The runner prints how many states it skipped, so a run that skipped something never reads as a run that checked it."
+          },
+          "howToBuild": "python3 conformance/regenerate.py <directory> --full"
+        },
+        "howToRun": "python3 conformance/regenerate.py <directory> [--full]"
+      }
     }
   ]
 }
