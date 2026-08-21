@@ -137,6 +137,14 @@ def columns(cycle: str) -> tuple[str, ...]:
     )
 
 
+COLUMNS: dict[str, tuple[str, ...]] = {name: columns(name) for name in EDGES}
+"""Every machine cycle's pins, derived once rather than on each cycle spent.
+
+The derivation above is what makes the columns a consequence of the measurements.
+Running it per machine cycle would make the default shape pay for that on every
+instruction of every program, which is the one shape a caller gets without asking.
+"""
+
 FETCH_STATES = EDGES[FETCH][0]
 
 MEMORY_STATES = EDGES[READ_CYCLE][0]
@@ -209,8 +217,12 @@ class Bus:
     ) -> None:
         """One machine cycle, in whichever shape this bus was asked for.
 
-        The addresses and the values are the same either way. Only the pins
-        differ, because only the pins depend on how a waveform becomes a column.
+        The addresses are the same either way. The pins are not, because they
+        depend on how a waveform becomes a column, and on a cycle that drives the
+        data bus the values are not either: the recording shows the data only
+        while its strobe is down, where the figures show it held across the whole
+        cycle. That is why the caller passes the values rather than this deriving
+        them, and why the two write methods are the only ones that pass two sets.
 
         A recording bus also notes where each machine cycle began and which kind
         it was, so that a reader of the transcript does not have to infer the
@@ -219,7 +231,7 @@ class Bus:
         """
         if self.recording:
             self.cycles.append((self.states, cycle))
-        pins = columns(cycle) if self.follows_the_manual else recorded
+        pins = COLUMNS[cycle] if self.follows_the_manual else recorded
         for address, value, held in zip(addresses, values, pins, strict=True):
             self.mark(address, value, held)
 
@@ -260,12 +272,12 @@ class Bus:
         )
 
     def write(self, address: int, value: int) -> None:
-        """A write, whose value appears a T state earlier than a read's.
+        """A write, whose value is on the bus before a read's has arrived.
 
         On a read the part is waiting for memory and latches at the end. On a
         write it is driving, so the data is already out when the write strobe
-        falls. A model that treated the two symmetrically would disagree on the
-        middle T state of every store.
+        falls, and Figure 6 holds it there across the whole cycle. A model that
+        treated the two symmetrically would disagree on every store.
 
         The manual separates the two strobes rather than running them together:
         memory request goes active "when the address bus is stable", half a clock
@@ -296,6 +308,13 @@ class Bus:
         )
 
     def port_write(self, address: int, value: int) -> None:
+        """A port write, which drives its data from a state before its strobe.
+
+        Figure 7 puts the data on the bus half a clock into T1 and holds it past
+        the end of T3, so every state of the cycle carries it, while the strobe
+        covers only the last three. The recording shows the data on the strobed
+        state alone, which is the same simplification it makes for a memory write.
+        """
         manual = self.follows_the_manual
         self.spend(
             PORT_WRITE_CYCLE,

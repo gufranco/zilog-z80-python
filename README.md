@@ -28,7 +28,7 @@
   <a href="https://github.com/gufranco/zilog-z80-python/issues">Issues</a>
 </p>
 
-**2** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **370** tests · **100%** statement and branch coverage
+**2** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **532** tests · **100%** statement and branch coverage
 
 ```python
 from z80 import Ports, SparseMemory, describe
@@ -236,22 +236,22 @@ state. A model whose smallest column is a whole T state has to pick a rule for
 turning a waveform into a column, and the manual states no such rule. So there
 are two shapes and both are named.
 
-`bus.MANUAL` is the default and draws a pin in every state the figure shows it
-asserted in. The edges behind it were measured off the pages of the pinned
-document rendered at 200 dpi, and every one of them is in
+`bus.MANUAL` is the default. Its rule is stated rather than implied: a pin
+belongs to a T state when it went active before the clock edge that ends that
+state and had not yet gone inactive at it. That names a real instant, and it is
+insensitive to the slew every edge in a drawing carries, which a rule asking
+whether a pin was asserted at any point during the state is not. The edges it is
+applied to were measured off the pages of the pinned document rendered at 200
+dpi, and every one of them is in
 [`conformance/hardware.json`](conformance/hardware.json) under `figureEdges`, so
-a reader can apply a different rule without opening the PDF. `bus.RECORDING`
-draws one strobe per transfer, which is what the pinned corpus contains and what
-its own generator describes as a deliberate simplification. Only
-[`conformance/cycles.py`](conformance/cycles.py) asks for it, so the corpus still
-checks this core cycle for cycle without either shape being bent to fit the
-other.
+a reader can apply a different rule without opening the PDF. The rule that was
+not chosen is recorded there too, with the columns it gives instead.
 
-The rule is stated rather than implied: a pin belongs to a T state when it went
-active before the clock edge that ends that state and had not yet gone inactive
-at it. That names a real instant, and it is insensitive to the slew every edge in
-a drawing carries, which a rule asking whether a pin was asserted at any point
-during the state is not.
+`bus.RECORDING` draws one strobe per transfer, which is what the pinned corpus
+contains and what its own generator describes as a deliberate simplification.
+Only [`conformance/cycles.py`](conformance/cycles.py) asks for it, so the corpus
+still checks this core cycle for cycle without either shape being bent to fit the
+other.
 
 It is also not only this package's reading. The corpus generator has a flag that
 widens the data strobes to what the figures draw, and a corpus regenerated with
@@ -266,18 +266,16 @@ python3 conformance/cycles.py ~/.cache/z80-full --shape manual
 That reports 7,000 differences across 1,610,000 cases, which is every case of
 seven opcodes and no case of any other, and all seven are opcodes where the
 generator's current commit already disagrees with the pinned corpus about
-behaviour Zilog never printed.
+behaviour Zilog never printed. It skips one state per fetch and per read, because
+the generator writes that column idle without consulting the flag that widens
+every other strobe, and it prints how many it skipped, so a run that checked less
+than it looks like says so.
 
 Running the generator without `--full` rebuilds the published corpus instead.
 1,593 of its 1,604 files come out byte for byte identical; the eleven that do
 not are the same seven plus four where only the two undocumented flag bits
 differ. That is how those eleven were found, and it is why the generator is
 pinned by commit next to the corpus rather than merely credited.
-
-That run skips one state per fetch and per read, because the generator writes
-that column idle without consulting the flag that widens every other strobe. The
-count of skipped states is printed, so a run that checked less than it looks like
-says so.
 
 Measuring the figures rather than reading the prose turned up three things the
 prose does not give. A memory read outside a fetch holds its strobes half a clock
@@ -293,10 +291,10 @@ One detail of the pin encoding is the suite's rather than Zilog's, and its own
 generator documents it: it puts the refresh value on all sixteen address pins
 where the manual guarantees only seven.
 [`conformance/divergences.json`](conformance/divergences.json) records it,
-quoting the generator admitting it. **This core draws the coverage the manual's
-figures give, and reproduces the recorded bus exactly when asked for the recorded
-shape. Neither is a measurement of silicon, and the difference is written down
-rather than glossed.**
+quoting the generator admitting it. **This core draws the columns the manual's
+own edges give under a stated rule, and reproduces the recorded bus exactly when
+asked for the recorded shape. Neither is a measurement of silicon, and the
+difference is written down rather than glossed.**
 
 ## Where each answer comes from
 

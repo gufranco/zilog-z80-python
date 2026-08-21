@@ -115,6 +115,14 @@ class EdgeTest(unittest.TestCase):
     def test_the_refresh_state_requests_memory_without_reading_it(self) -> None:
         self.assertEqual(bus.columns(bus.FETCH)[2].count(bus.READ), 0)
 
+    def test_the_derivation_and_the_table_it_fills_agree(self) -> None:
+        derived = {name: bus.columns(name) for name in bus.EDGES}
+
+        self.assertEqual(bus.COLUMNS, derived)
+
+    def test_the_table_covers_every_machine_cycle_kind(self) -> None:
+        self.assertEqual(set(bus.COLUMNS), set(bus.EDGES))
+
     def test_a_port_cycle_leaves_its_first_state_bare_and_a_memory_one_does_not(self) -> None:
         first = (bus.columns(bus.PORT_READ_CYCLE)[0], bus.columns(bus.READ_CYCLE)[0])
 
@@ -329,6 +337,13 @@ class PortTest(unittest.TestCase):
 
         self.assertEqual([entry[1] for entry in line.log], [None, None, None, 0x42])
 
+    def test_a_write_drives_its_value_through_the_whole_cycle(self) -> None:
+        line = recorder()
+
+        line.write(0x2000, 0x42)
+
+        self.assertEqual([entry[1] for entry in line.log], [0x42] * 3)
+
     def test_a_port_write_drives_its_value_from_the_first_state(self) -> None:
         line = recorder()
 
@@ -377,7 +392,7 @@ class PortTest(unittest.TestCase):
 class AcknowledgeTest(unittest.TestCase):
     """The special fetch that answers an interrupt, with its two added waits."""
 
-    def test_it_costs_the_six_the_manual_accounts_for(self) -> None:
+    def test_it_draws_the_six_states_the_figure_draws(self) -> None:
         line = bus.Bus()
 
         line.acknowledge(0x1234, 0x5678, 0xFF)

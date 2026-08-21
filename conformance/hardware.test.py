@@ -204,13 +204,42 @@ class MachineCycleShapeTest(unittest.TestCase):
 
         self.assertEqual(bus.PORT_STATES - bus.MEMORY_STATES, inserted)
 
+    def test_the_bus_draws_the_states_the_acknowledge_figure_draws(self) -> None:
+        self.assertEqual(bus.ACKNOWLEDGE_STATES, SHAPES["interruptAcknowledge"]["drawnStates"])
+
+    def test_and_the_cycle_costs_one_more_than_that(self) -> None:
+        drawn = SHAPES["interruptAcknowledge"]["drawnStates"]
+
+        self.assertEqual(SHAPES["interruptAcknowledge"]["tStates"] - drawn, 1)
+
+    def test_which_the_response_spends_beyond_its_two_stack_writes(self) -> None:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 1
+        undrawn = SHAPES["interruptAcknowledge"]["tStates"] - bus.ACKNOWLEDGE_STATES
+
+        cpu.interrupt(0xFF)
+
+        beyond = len(cpu.bus) - bus.ACKNOWLEDGE_STATES - 2 * bus.MEMORY_STATES
+        self.assertEqual(beyond, undrawn)
+
+    def test_the_drawn_states_are_a_fetch_and_the_two_added_waits(self) -> None:
+        added = SHAPES["interruptAcknowledge"]["automaticWaitStates"]
+
+        self.assertEqual(bus.ACKNOWLEDGE_STATES - bus.FETCH_STATES, added)
+
+    def test_and_the_cost_is_the_five_state_kind_of_fetch_plus_them(self) -> None:
+        base = SHAPES["interruptAcknowledge"]["baseM1States"]
+        added = SHAPES["interruptAcknowledge"]["automaticWaitStates"]
+
+        self.assertEqual(SHAPES["interruptAcknowledge"]["tStates"], base + added)
+
 
 class FigureEdgeTest(unittest.TestCase):
     """The pins this bus draws, against the edges measured off the manual's figures.
 
-    The record holds where each edge falls and the per-state coverage those edges
-    give. This asserts the bus produces that coverage, so a change to either has
-    to be a change to both.
+    The record holds where each edge falls and the columns the rule gives when
+    applied to them. This asserts the bus produces those columns, so a change to
+    either has to be a change to both.
     """
 
     def pins(self, cycle: Callable[[bus.Bus], None]) -> list[str]:
@@ -218,43 +247,43 @@ class FigureEdgeTest(unittest.TestCase):
         cycle(line)
         return [entry[2] for entry in line.log]
 
-    def test_a_fetch_draws_the_coverage_figure_5_gives_it(self) -> None:
+    def test_a_fetch_draws_the_columns_figure_5_gives_it(self) -> None:
         self.assertEqual(
             self.pins(lambda line: line.fetch(0x1234, 0x5678, 0xAB)),
-            EDGES["opcodeFetch"]["coverage"],
+            EDGES["opcodeFetch"]["columns"],
         )
 
-    def test_a_read_draws_the_coverage_figure_6_gives_it(self) -> None:
+    def test_a_read_draws_the_columns_figure_6_gives_it(self) -> None:
         self.assertEqual(
             self.pins(lambda line: line.read(0x2000, 0x42)),
-            EDGES["memoryRead"]["coverage"],
+            EDGES["memoryRead"]["columns"],
         )
 
-    def test_a_write_draws_the_coverage_figure_6_gives_it(self) -> None:
+    def test_a_write_draws_the_columns_figure_6_gives_it(self) -> None:
         self.assertEqual(
             self.pins(lambda line: line.write(0x2000, 0x42)),
-            EDGES["memoryWrite"]["coverage"],
+            EDGES["memoryWrite"]["columns"],
         )
 
-    def test_a_port_read_draws_the_coverage_figure_7_gives_it(self) -> None:
+    def test_a_port_read_draws_the_columns_figure_7_gives_it(self) -> None:
         self.assertEqual(
             self.pins(lambda line: line.port_read(0x8000, 0x42)),
-            EDGES["inputOrOutput"]["coverage"]["read"],
+            EDGES["inputOrOutput"]["columns"]["read"],
         )
 
-    def test_a_port_write_draws_the_coverage_figure_7_gives_it(self) -> None:
+    def test_a_port_write_draws_the_columns_figure_7_gives_it(self) -> None:
         self.assertEqual(
             self.pins(lambda line: line.port_write(0x8000, 0x42)),
-            EDGES["inputOrOutput"]["coverage"]["write"],
+            EDGES["inputOrOutput"]["columns"]["write"],
         )
 
-    def test_an_acknowledge_draws_the_coverage_figure_9_gives_it(self) -> None:
+    def test_an_acknowledge_draws_the_columns_figure_9_gives_it(self) -> None:
         self.assertEqual(
             self.pins(lambda line: line.acknowledge(0x1234, 0x5678, 0xFF)),
-            EDGES["interruptAcknowledge"]["coverage"],
+            EDGES["interruptAcknowledge"]["columns"],
         )
 
-    def test_every_coverage_is_as_long_as_the_cycle_it_describes(self) -> None:
+    def test_every_set_of_columns_is_as_long_as_its_cycle(self) -> None:
         lengths = {
             "opcodeFetch": bus.FETCH_STATES,
             "memoryRead": bus.MEMORY_STATES,
@@ -262,12 +291,12 @@ class FigureEdgeTest(unittest.TestCase):
             "interruptAcknowledge": bus.ACKNOWLEDGE_STATES,
         }
 
-        found = {name: len(EDGES[name]["coverage"]) for name in lengths}
+        found = {name: len(EDGES[name]["columns"]) for name in lengths}
 
         self.assertEqual(found, lengths)
 
     def test_and_a_port_cycle_is_as_long_either_way_round(self) -> None:
-        both = EDGES["inputOrOutput"]["coverage"]
+        both = EDGES["inputOrOutput"]["columns"]
 
         self.assertEqual(
             (len(both["read"]), len(both["write"])), (bus.PORT_STATES, bus.PORT_STATES)
@@ -311,12 +340,52 @@ class FigureEdgeTest(unittest.TestCase):
     def test_the_rule_that_turns_an_edge_into_a_column_is_written_down(self) -> None:
         self.assertEqual(EDGES["rule"]["name"], "read at the clock edge that ends each T state")
 
-    def test_and_so_is_the_reading_that_was_not_chosen(self) -> None:
-        alternative = EDGES["rule"]["alternative"]["gives"]
+    def covered(self, cycle: str) -> list[str]:
+        """The reading that was not chosen, applied to the same measured edges.
 
-        differs = [name for name in alternative if alternative[name] == EDGES[name].get("coverage")]
+        A pin belongs to a state when it is asserted at any point during it,
+        rather than when the state ends. Computing it here rather than reading it
+        out of the record is what makes the record's copy a checked figure.
+        """
+        states, edges = bus.EDGES[cycle]
+        return [
+            "".join(
+                pin
+                if any(pin == name and start < n + 1 and end > n for name, start, end in edges)
+                else "-"
+                for pin in bus.PIN_ORDER
+            )
+            for n in range(states)
+        ]
 
-        self.assertEqual(differs, [])
+    def test_the_reading_that_was_not_chosen_is_recorded_as_it_computes(self) -> None:
+        gives = EDGES["rule"]["alternative"]["gives"]
+        found: dict[str, Any] = {name: self.covered(cycle) for cycle, name in CYCLE_KEYS.items()}
+        found["inputOrOutput"] = {
+            "read": self.covered(bus.PORT_READ_CYCLE),
+            "write": self.covered(bus.PORT_WRITE_CYCLE),
+        }
+
+        self.assertEqual(gives, found)
+
+    def test_and_it_differs_from_the_reading_that_was(self) -> None:
+        gives = EDGES["rule"]["alternative"]["gives"]
+
+        same = [name for name in gives if gives[name] == EDGES[name]["columns"]]
+
+        self.assertEqual(same, [])
+
+    def asserted(self, columns: list[str]) -> int:
+        return sum(len(column) - column.count("-") for column in columns)
+
+    def test_it_holds_every_strobe_longer_and_never_shorter(self) -> None:
+        gives = EDGES["rule"]["alternative"]["gives"]
+        longer = {
+            name: self.asserted(gives[name]) - self.asserted(EDGES[name]["columns"])
+            for name in CYCLE_KEYS.values()
+        }
+
+        self.assertEqual([name for name, more in longer.items() if more <= 0], [])
 
     def test_every_measured_edge_is_recorded_as_read_from_a_figure(self) -> None:
         self.assertEqual(EDGES["provenance"], "read from the figure rather than from the prose")
@@ -568,6 +637,47 @@ class InterruptResponseTest(unittest.TestCase):
 
         self.assertEqual(spent_now - spent((supplied,)), 2)
 
+    def supplied(self, program: tuple[int, ...]) -> int:
+        """What a mode zero response to this instruction costs over the instruction."""
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.pc, cpu.registers.sp = START, 0x8000
+        cpu.registers.iff1, cpu.registers.im = True, 0
+        cpu.interrupt(program[0])
+        return len(cpu.bus) - spent(program)
+
+    def test_whatever_the_supplied_instruction_is(self) -> None:
+        added = {
+            "nothing at all": self.supplied((0x00,)),
+            "a restart": self.supplied((0xC7,)),
+            "a jump": self.supplied((0xC3, 0x00, 0x20)),
+            "a push": self.supplied((0xC5,)),
+            "an exchange": self.supplied((0x08,)),
+        }
+
+        self.assertEqual(set(added.values()), {2})
+
+    def test_a_response_of_more_than_one_byte_reads_the_rest_from_memory(self) -> None:
+        space = memory.SparseMemory()
+        space.write8(START, 0x34)
+        space.write8(START + 1, 0x12)
+        cpu = core.Cpu(space, reset=True)
+        cpu.registers.pc, cpu.registers.sp = START, 0x8000
+        cpu.registers.iff1, cpu.registers.im = True, 0
+
+        cpu.interrupt(0xC3)
+
+        self.assertEqual(cpu.registers.pc, 0x1234)
+
+    def test_which_is_written_up_because_a_device_supplies_them_on_the_part(self) -> None:
+        named = {entry["id"] for entry in DIVERGENCES["divergences"]}
+
+        self.assertIn("mode-zero-response-of-more-than-one-byte", named)
+
+    def test_and_so_is_the_register_nothing_constrains_afterwards(self) -> None:
+        named = {entry["id"] for entry in DIVERGENCES["divergences"]}
+
+        self.assertIn("wz-after-an-interrupt-response", named)
+
     def test_and_that_addition_is_the_two_wait_states_the_manual_names(self) -> None:
         self.assertEqual(SHAPES["interruptAcknowledge"]["automaticWaitStates"], 2)
 
@@ -709,7 +819,7 @@ class HaltTest(unittest.TestCase):
 
         cpu.step()
 
-        self.assertEqual([entry[2] for entry in cpu.bus.log], EDGES["opcodeFetch"]["coverage"])
+        self.assertEqual([entry[2] for entry in cpu.bus.log], EDGES["opcodeFetch"]["columns"])
 
     def test_the_counter_does_not_advance(self) -> None:
         cpu = self.halted()

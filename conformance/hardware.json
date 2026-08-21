@@ -61,9 +61,9 @@
           "manual page 19, mode 1 'two more than normal', which gives 13",
           "manual page 20, mode 2 printed as 19 and broken down as seven, six and six"
         ],
-        "coverage": ["----", "----", "---i", "---i", "--m-", "----"],
-        "coverageNote": "Figure 9 draws six of the seven and stops during the refresh. The seventh is the internal state that makes this a five state M1, the figure does not say where within the cycle it falls, and it is spent by the response rather than by this cycle, which is where a restart already spends the fifth state of its own M1. Either grouping gives the same total.",
-        "drawnStates": 6
+        "drawnStates": 6,
+        "columns": ["----", "----", "---i", "---i", "--m-", "----"],
+        "columnsNote": "Figure 9 draws six of the seven and stops during the refresh. The seventh is the internal state that makes this a five state M1, the figure does not say where within the cycle it falls, and it is spent by the response rather than by this cycle, which is where a restart already spends the fifth state of its own M1. Either grouping gives the same total."
       },
       "nonmaskableInterrupt": {
         "quote": "The CPU response to a nonmaskable interrupt is similar to a normal memory read operation. The only difference is that the contents of the data bus are ignored while the processor automatically stores the Program Counter in the external stack and jumps to address 0066h.",
@@ -117,7 +117,7 @@
               }
             ]
           },
-          "coverage": ["r-m-", "r-m-", "--m-", "----"]
+          "columns": ["r-m-", "r-m-", "--m-", "----"]
         },
         "memoryRead": {
           "figure": 6,
@@ -137,8 +137,8 @@
               }
             ]
           },
-          "coverage": ["r-m-", "r-m-", "----"],
-          "note": "Both are released on the falling clock edge of T3, half a T state later than in a fetch, where the rising edge of T3 releases them so the refresh address can have the bus. The prose says they are used the same way in both; the figures do not agree, and that is recorded in documentContradictions."
+          "note": "Both are released on the falling clock edge of T3, half a T state later than in a fetch, where the rising edge of T3 releases them so the refresh address can have the bus. The prose says they are used the same way in both; the figures do not agree, and that is recorded in documentContradictions.",
+          "columns": ["r-m-", "r-m-", "----"]
         },
         "memoryWrite": {
           "figure": 6,
@@ -158,8 +158,8 @@
               }
             ]
           },
-          "coverage": ["--m-", "-wm-", "----"],
-          "note": "The write strobe falls a full T state after the memory request, which is the prose saying the request goes active once the address is stable and the write only once the data is."
+          "note": "The write strobe falls a full T state after the memory request, which is the prose saying the request goes active once the address is stable and the write only once the data is.",
+          "columns": ["--m-", "-wm-", "----"]
         },
         "inputOrOutput": {
           "figure": 7,
@@ -185,11 +185,11 @@
               }
             ]
           },
-          "coverage": {
+          "note": "The strobes go active on the rising edge of T2 rather than half a clock into T1, so a port cycle leaves its first state bare where a memory cycle does not. The automatically inserted wait state sits inside the strobe rather than before it.",
+          "columns": {
             "read": ["----", "r--i", "r--i", "----"],
             "write": ["----", "-w-i", "-w-i", "----"]
-          },
-          "note": "The strobes go active on the rising edge of T2 rather than half a clock into T1, so a port cycle leaves its first state bare where a memory cycle does not. The automatically inserted wait state sits inside the strobe rather than before it."
+          }
         },
         "interruptAcknowledge": {
           "figure": 9,
@@ -215,8 +215,8 @@
               }
             ]
           },
-          "coverage": ["----", "----", "---i", "---i", "--m-", "----"],
-          "note": "No read strobe appears at any point in the figure. The figure ends during T3, so the two states that close the cycle are taken from the ordinary fetch, which the manual calls this cycle a special case of. The seventh state the printed totals require is not drawn."
+          "note": "No read strobe appears at any point in the figure. The figure ends during T3, so the two states that close the cycle are taken from the ordinary fetch, which the manual calls this cycle a special case of. The seventh state the printed totals require is not drawn.",
+          "columns": ["----", "----", "---i", "---i", "--m-", "----"]
         },
         "rule": {
           "name": "read at the clock edge that ends each T state",
@@ -225,17 +225,22 @@
           "corroboration": "Regenerating the corpus with the generator's full memory cycle flag on produces exactly these columns for a read, a write, a port read and a port write, from an implementation that read the same figures independently. It differs on the first state of a fetch, where its fetch routine writes an idle column regardless of the flag.",
           "alternative": {
             "name": "asserted at any point during the T state",
+            "whyNot": "It holds every strobe one state longer, and it is decided by the slew of a drawn edge rather than by anything the part does.",
             "gives": {
               "opcodeFetch": ["r-m-", "r-m-", "--m-", "--m-"],
               "memoryRead": ["r-m-", "r-m-", "r-m-"],
               "memoryWrite": ["--m-", "-wm-", "-wm-"],
-              "inputOrOutput": ["----", "r--i", "r--i", "r--i"],
+              "inputOrOutput": {
+                "read": ["----", "r--i", "r--i", "r--i"],
+                "write": ["----", "-w-i", "-w-i", "-w-i"]
+              },
               "interruptAcknowledge": ["----", "----", "---i", "---i", "--m-", "--m-"]
             },
-            "whyNot": "It holds every strobe one state longer, and it is decided by the slew of a drawn edge rather than by anything the part does."
+            "statement": "A pin belongs to state n when it is asserted at any point during that state."
           }
         },
-        "units": "T states from the start of the machine cycle"
+        "units": "T states from the start of the machine cycle",
+        "columnsNote": "The columns each cycle carries are what the rule above gives when applied to the edges beside them. They are not a coverage of the intervals: a pin asserted for part of a state and released before that state ends does not appear in it."
       }
     },
     "pins": {

@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import Ports, SparseMemory, models
+from z80 import Ports, SparseMemory, bus, models
 from z80.core import Cpu
 
 
@@ -52,6 +52,16 @@ class BuildTest(unittest.TestCase):
         cpu = models.describe("z80").build(SparseMemory(), ports=Ports())
 
         self.assertEqual(cpu.model, "z80")
+
+    def test_a_machine_it_builds_draws_the_pins_the_manual_draws(self) -> None:
+        cpu = models.describe("z80").build(SparseMemory(), ports=Ports())
+
+        self.assertTrue(cpu.bus.follows_the_manual)
+
+    def test_and_the_other_shape_reaches_it_like_any_other_option(self) -> None:
+        cpu = models.describe("z80").build(SparseMemory(), shape=bus.RECORDING)
+
+        self.assertFalse(cpu.bus.follows_the_manual)
 
     def test_the_original_part_sends_zero_for_the_output_with_no_source(self) -> None:
         cpu, ports = self.machine("z80")

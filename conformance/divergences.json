@@ -289,6 +289,47 @@
       "consequence": "There is no clock here to stop. A caller that stops stepping has produced the same observable result, which is that nothing changes.",
       "why": "This is a statement about what the part does when its clock is taken away, and a model that is stepped rather than clocked has no way to take it away and nothing to report if it did. Modelling it would mean adding a state that is indistinguishable from not calling step.",
       "wouldReopenIt": "A clocked rather than stepped interface, which would also be what a requested wait state needed."
+    },
+    {
+      "id": "wz-after-an-interrupt-response",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "What the internal address register holds once an interrupt has been taken.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. The register is not in the manual at all, so neither is what an interrupt response leaves in it.",
+        "source": "Zilog UM008011-0816, Architectural Overview"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Nothing either. The corpus carries the register on every case and carries no interrupt cases, so it constrains this no more than the manual does.",
+        "source": "suites.json"
+      },
+      "packageFollows": "neither",
+      "consequence": "The response sets it to the address it jumps to, which is what an ordinary restart and an ordinary call both do here. That is a guess shaped like the surrounding code rather than a measurement, and a program that reads the register through one of the two instructions that expose it would see it.",
+      "why": "Leaving it alone would be as much of a guess as setting it, and it would be a quieter one. Setting it the way the nearest documented instruction does at least makes the guess a consistent one, and this entry is what stops it reading as a finding.",
+      "wouldSettleIt": [
+        "A recording that takes an interrupt and reports the register afterwards.",
+        "A die analysis, or Zilog documenting the internal register file."
+      ]
+    },
+    {
+      "id": "mode-zero-response-of-more-than-one-byte",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Where the later bytes of a multi byte mode zero response come from.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "That the device supplies the instruction, without saying how a device supplies a second or third byte.",
+        "quote": "With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it. Consequently, the interrupting device provides the next instruction to be executed. Often this response is a restart instruction because the interrupting device is required to supply only a single-byte instruction. Alternatively, any other instruction such as a 3-byte call to any location in memory could be executed.",
+        "source": "Zilog UM008011-0816, manual page 19"
+      },
+      "packageFollows": "document, for the cycles; neither, for the bytes",
+      "consequence": "The acknowledge cycle carries the byte the caller supplies. Any further byte the instruction needs is read from memory at the program counter, with an ordinary memory read cycle, and the counter advances across it. The machine cycles are therefore right and the bytes come from the wrong place unless the caller has put them there.",
+      "why": "The device sits on the same data bus and answers those reads on real hardware, so the cycles a multi byte response performs are ordinary memory reads either way. What this cannot model is a device that answers them without the memory holding the same bytes, because there is one byte in the call and no pin for a device to drive.",
+      "wouldSettleIt": [
+        "An interface that lets a caller answer each read of a response rather than only the acknowledge, at which point the cycles above are already right."
+      ]
     }
   ]
 }
