@@ -113,6 +113,19 @@ two symmetrically disagrees on the middle T state of every store.
 **Internal cycles hold the last address.** They invent nothing. After a fetch
 that is the refresh address, after a read it is the address read.
 
+**The pin columns are derived, not typed in.** `bus.EDGES` holds where each
+control pin goes active and inactive, in T states from the start of the machine
+cycle, measured off the figures and snapped to the clock. `bus.columns` turns
+that into pins by reading them at the clock edge that ends each state. Changing a
+column means changing a measurement, and `conformance/hardware.test.py` checks
+the record holds the same edges.
+
+**There is a second oracle for the manual shape.** Regenerate the corpus with the
+generator's `Z80_DO_FULL_MEMCYCLES` on, per `suites.json`, and run
+`conformance/cycles.py <directory> --shape manual`. Expect 7,000 differences over
+1,610,000 cases, all of them in the seven opcodes already recorded as places the
+generator's head has moved away from the pinned corpus.
+
 **There are two pin shapes and the manual's is the default.** A four character
 string per T state cannot express a waveform whose edges land on clock edges, so
 turning a figure into a column is a modelling choice. `bus.MANUAL` draws a pin in

@@ -39,6 +39,15 @@ EDGES = SHAPES["figureEdges"]
 
 RESPONSE = FACTS["interruptResponse"]
 
+PIN_LABELS = {"r": "RD", "w": "WR", "m": "MREQ", "i": "IORQ"}
+
+CYCLE_KEYS = {
+    bus.FETCH: "opcodeFetch",
+    bus.READ_CYCLE: "memoryRead",
+    bus.WRITE_CYCLE: "memoryWrite",
+    bus.ACKNOWLEDGE: "interruptAcknowledge",
+}
+
 CYCLES_WITH_FIGURES = (
     "opcodeFetch",
     "memoryRead",
@@ -265,12 +274,49 @@ class FigureEdgeTest(unittest.TestCase):
         )
 
     def test_the_acknowledge_asserts_no_read_because_the_figure_draws_none(self) -> None:
-        self.assertEqual(EDGES["interruptAcknowledge"]["pins"]["RD"], [])
+        self.assertNotIn("RD", EDGES["interruptAcknowledge"]["pins"])
 
     def test_the_clock_rises_at_the_boundary_and_falls_mid_state(self) -> None:
         clock = EDGES["clock"]
 
         self.assertEqual((clock["rises"], float(clock["falls"])), ("+0.00", 0.56))
+
+    def test_the_record_holds_the_same_edges_the_bus_derives_from(self) -> None:
+        recorded = {
+            (name, pin, window["activeFrom"], window["activeUntil"])
+            for name in CYCLES_WITH_FIGURES
+            for pin, windows in EDGES[name]["pins"].items()
+            for window in windows
+            if pin in set(PIN_LABELS.values())
+        }
+        held = {
+            (name, PIN_LABELS[pin], start, end)
+            for key, name in CYCLE_KEYS.items()
+            for pin, start, end in bus.EDGES[key][1]
+        }
+
+        self.assertLessEqual(held, recorded)
+
+    def test_every_edge_in_the_record_falls_on_the_clock(self) -> None:
+        offsets = {
+            value % 0.5
+            for name in CYCLES_WITH_FIGURES
+            for windows in EDGES[name]["pins"].values()
+            for window in windows
+            for value in (window["activeFrom"], window["activeUntil"])
+        }
+
+        self.assertEqual(offsets, {0.0})
+
+    def test_the_rule_that_turns_an_edge_into_a_column_is_written_down(self) -> None:
+        self.assertEqual(EDGES["rule"]["name"], "read at the clock edge that ends each T state")
+
+    def test_and_so_is_the_reading_that_was_not_chosen(self) -> None:
+        alternative = EDGES["rule"]["alternative"]["gives"]
+
+        differs = [name for name in alternative if alternative[name] == EDGES[name].get("coverage")]
+
+        self.assertEqual(differs, [])
 
     def test_every_measured_edge_is_recorded_as_read_from_a_figure(self) -> None:
         self.assertEqual(EDGES["provenance"], "read from the figure rather than from the prose")
@@ -798,6 +844,35 @@ class SuiteRecordTest(unittest.TestCase):
 
     def test_the_entries_the_generator_emits_and_the_corpus_omits_are_named(self) -> None:
         self.assertEqual(len(self.generator["excludedFromPublication"]), 2)
+
+    def test_the_second_oracle_is_recorded_with_the_flags_that_build_it(self) -> None:
+        run = self.generator["fullMemoryCycleRun"]
+
+        self.assertEqual(run["flags"]["Z80_DO_FULL_MEMCYCLES"], True)
+
+    def test_and_with_what_it_reported_rather_than_only_that_it_was_run(self) -> None:
+        measured = self.generator["fullMemoryCycleRun"]["measured"]
+        every_case = len(measured["opcodesAffected"]) * self.suite["tests_per_opcode"]
+
+        self.assertEqual(measured["failed"], every_case)
+
+    def test_every_opcode_it_reported_is_one_the_generator_already_moved_on(self) -> None:
+        moved = [
+            entry
+            for entry in DIVERGENCES["divergences"]
+            if entry["id"] == "generator-head-disagrees-with-the-pinned-corpus"
+        ]
+        listed = " ".join(moved[0]["referenceDoes"]["detail"])
+        affected = self.generator["fullMemoryCycleRun"]["measured"]["opcodesAffected"]
+
+        missing = [name for name in affected if name not in listed]
+
+        self.assertEqual(missing, [])
+
+    def test_the_states_it_skips_are_named_and_counted(self) -> None:
+        allowance = self.generator["fullMemoryCycleRun"]["allowance"]
+
+        self.assertEqual(set(allowance), {"what", "why", "counted"})
 
 
 class DivergenceTest(unittest.TestCase):

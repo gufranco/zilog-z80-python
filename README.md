@@ -247,6 +247,30 @@ its own generator describes as a deliberate simplification. Only
 checks this core cycle for cycle without either shape being bent to fit the
 other.
 
+The rule is stated rather than implied: a pin belongs to a T state when it went
+active before the clock edge that ends that state and had not yet gone inactive
+at it. That names a real instant, and it is insensitive to the slew every edge in
+a drawing carries, which a rule asking whether a pin was asserted at any point
+during the state is not.
+
+It is also not only this package's reading. The corpus generator has a flag that
+widens the data strobes to what the figures draw, and a corpus regenerated with
+it on carries exactly these columns for a read, a write, a port read and a port
+write, from an implementation that read the same figures independently. Running
+this core against that corpus reports 7,000 differences across 1,610,000 cases,
+which is every case of seven opcodes and no case of any other, and all seven are
+opcodes where the generator's current commit already disagrees with the pinned
+corpus about behaviour Zilog never printed:
+
+```bash
+python3 conformance/cycles.py <regenerated-directory> --shape manual
+```
+
+That run skips one state per fetch and per read, because the generator writes
+that column idle without consulting the flag that widens every other strobe. The
+count of skipped states is printed, so a run that checked less than it looks like
+says so.
+
 Measuring the figures rather than reading the prose turned up three things the
 prose does not give. A memory read outside a fetch holds its strobes half a clock
 longer than a fetch does, which the summary on manual page 9 flatly denies and

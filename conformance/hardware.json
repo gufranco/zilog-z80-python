@@ -61,7 +61,7 @@
           "manual page 19, mode 1 'two more than normal', which gives 13",
           "manual page 20, mode 2 printed as 19 and broken down as seven, six and six"
         ],
-        "coverage": ["----", "----", "---i", "---i", "--m-", "--m-"],
+        "coverage": ["----", "----", "---i", "---i", "--m-", "----"],
         "coverageNote": "Figure 9 draws six of the seven and stops during the refresh. The seventh is the internal state that makes this a five state M1, the figure does not say where within the cycle it falls, and it is spent by the response rather than by this cycle, which is where a restart already spends the fifth state of its own M1. Either grouping gives the same total.",
         "drawnStates": 6
       },
@@ -75,8 +75,8 @@
         "manualPage": 14
       },
       "figureEdges": {
-        "note": "Where every control pin edge falls, measured off the timing figures of the pinned document. The prose gives a few of these and gives none of them for every cycle kind, so the figures are the only place the rest are stated. A per-T-state pin model has to turn these into columns, and the rule it uses to do that is a modelling choice rather than something the manual states.",
-        "howMeasured": "Each page was rendered from the pinned PDF at 200 dpi and the traces read by locating the two level lines of each signal and the vertical T state rules, then reporting each transition as a fraction of the T state it falls in. The clock in every figure rises at each T state boundary and falls at +0.56, so a transition at +0.6 is the falling clock edge of that state and one at +0.13 is the rising edge, allowing for the slew the drawing gives every edge.",
+        "note": "Where every control pin edge falls, measured off the timing figures of the pinned document and snapped to the clock, which moves in half T states. The prose gives a few of these and gives none of them for every cycle kind, so the figures are the only place the rest are stated. Offsets are in T states from the start of the machine cycle.",
+        "howMeasured": "Each page was rendered from the pinned PDF at 200 dpi and the traces read by locating the two level lines of each signal and the vertical T state rules, then reporting each transition as a fraction of the T state it falls in. The clock in every figure rises at each T state boundary and falls at +0.56, so a transition measured at +0.6 is the falling clock edge of that state and one at +0.13 is the rising edge, allowing for the slew the drawing gives every edge. Each measurement was then snapped to the nearest clock edge.",
         "provenance": "read from the figure rather than from the prose",
         "readOn": "2026-08-21",
         "clock": {
@@ -88,56 +88,56 @@
           "manualPage": 9,
           "states": ["T1", "T2", "T3", "T4"],
           "pins": {
-            "MREQ": [
-              {
-                "activeFrom": "T1+0.65",
-                "activeUntil": "T3+0.13"
-              },
-              {
-                "activeFrom": "T3+0.68",
-                "activeUntil": "T4+0.58"
-              }
-            ],
             "RD": [
               {
-                "activeFrom": "T1+0.70",
-                "activeUntil": "T3+0.14"
+                "activeFrom": 0.5,
+                "activeUntil": 2.0
+              }
+            ],
+            "MREQ": [
+              {
+                "activeFrom": 0.5,
+                "activeUntil": 2.0
+              },
+              {
+                "activeFrom": 2.5,
+                "activeUntil": 3.5
               }
             ],
             "M1": [
               {
-                "activeFrom": "T1+0.13",
-                "activeUntil": "T3+0.12"
+                "activeFrom": 0.0,
+                "activeUntil": 2.0
               }
             ],
             "RFSH": [
               {
-                "activeFrom": "T3+0.13",
-                "activeUntil": "T1+0.13 of the next cycle"
+                "activeFrom": 2.0,
+                "activeUntil": 4.0
               }
             ]
           },
-          "coverage": ["r-m-", "r-m-", "--m-", "--m-"]
+          "coverage": ["r-m-", "r-m-", "--m-", "----"]
         },
         "memoryRead": {
           "figure": 6,
           "manualPage": 10,
           "states": ["T1", "T2", "T3"],
           "pins": {
-            "MREQ": [
-              {
-                "activeFrom": "T1+0.62",
-                "activeUntil": "T3+0.62"
-              }
-            ],
             "RD": [
               {
-                "activeFrom": "T1+0.64",
-                "activeUntil": "T3+0.64"
+                "activeFrom": 0.5,
+                "activeUntil": 2.5
+              }
+            ],
+            "MREQ": [
+              {
+                "activeFrom": 0.5,
+                "activeUntil": 2.5
               }
             ]
           },
-          "coverage": ["r-m-", "r-m-", "r-m-"],
+          "coverage": ["r-m-", "r-m-", "----"],
           "note": "Both are released on the falling clock edge of T3, half a T state later than in a fetch, where the rising edge of T3 releases them so the refresh address can have the bus. The prose says they are used the same way in both; the figures do not agree, and that is recorded in documentContradictions."
         },
         "memoryWrite": {
@@ -145,20 +145,20 @@
           "manualPage": 10,
           "states": ["T1", "T2", "T3"],
           "pins": {
-            "MREQ": [
-              {
-                "activeFrom": "T1+0.58",
-                "activeUntil": "T3+0.58"
-              }
-            ],
             "WR": [
               {
-                "activeFrom": "T2+0.57",
-                "activeUntil": "T3+0.61"
+                "activeFrom": 1.5,
+                "activeUntil": 2.5
+              }
+            ],
+            "MREQ": [
+              {
+                "activeFrom": 0.5,
+                "activeUntil": 2.5
               }
             ]
           },
-          "coverage": ["--m-", "-wm-", "-wm-"],
+          "coverage": ["--m-", "-wm-", "----"],
           "note": "The write strobe falls a full T state after the memory request, which is the prose saying the request goes active once the address is stable and the write only once the data is."
         },
         "inputOrOutput": {
@@ -168,26 +168,26 @@
           "pins": {
             "IORQ": [
               {
-                "activeFrom": "T2+0.15",
-                "activeUntil": "T3+0.66"
+                "activeFrom": 1.0,
+                "activeUntil": 3.5
               }
             ],
             "RD": [
               {
-                "activeFrom": "T2+0.17",
-                "activeUntil": "T3+0.66"
+                "activeFrom": 1.0,
+                "activeUntil": 3.5
               }
             ],
             "WR": [
               {
-                "activeFrom": "T2+0.27",
-                "activeUntil": "T3+0.67"
+                "activeFrom": 1.0,
+                "activeUntil": 3.5
               }
             ]
           },
           "coverage": {
-            "read": ["----", "r--i", "r--i", "r--i"],
-            "write": ["----", "-w-i", "-w-i", "-w-i"]
+            "read": ["----", "r--i", "r--i", "----"],
+            "write": ["----", "-w-i", "-w-i", "----"]
           },
           "note": "The strobes go active on the rising edge of T2 rather than half a clock into T1, so a port cycle leaves its first state bare where a memory cycle does not. The automatically inserted wait state sits inside the strobe rather than before it."
         },
@@ -196,29 +196,46 @@
           "manualPage": 13,
           "states": ["T1", "T2", "TW", "TW", "T3", "T4"],
           "pins": {
-            "M1": [
+            "MREQ": [
               {
-                "activeFrom": "T1+0.21",
-                "activeUntil": "T3+0.14"
+                "activeFrom": 4.5,
+                "activeUntil": 5.5
               }
             ],
             "IORQ": [
               {
-                "activeFrom": "the first TW +0.61",
-                "activeUntil": "T3+0.15"
+                "activeFrom": 2.5,
+                "activeUntil": 4.0
               }
             ],
-            "MREQ": [
+            "M1": [
               {
-                "activeFrom": "T3+0.67",
-                "activeUntil": "not drawn; the figure ends during T3"
+                "activeFrom": 0.0,
+                "activeUntil": 4.0
               }
-            ],
-            "RD": []
+            ]
           },
-          "coverage": ["----", "----", "---i", "---i", "--m-", "--m-"],
+          "coverage": ["----", "----", "---i", "---i", "--m-", "----"],
           "note": "No read strobe appears at any point in the figure. The figure ends during T3, so the two states that close the cycle are taken from the ordinary fetch, which the manual calls this cycle a special case of. The seventh state the printed totals require is not drawn."
-        }
+        },
+        "rule": {
+          "name": "read at the clock edge that ends each T state",
+          "statement": "A pin belongs to state n when it went active strictly before the end of that state and had not yet gone inactive at it.",
+          "why": "A four character string per T state cannot express edges that land between states, so a rule is needed and the manual states none. This one names a real instant, and it is insensitive to the slew every edge in a drawing carries. Asking instead whether a pin was asserted at any point during a state is not: it would put the read strobe on the first refresh state of every fetch on the strength of a tenth of a T state of slew.",
+          "corroboration": "Regenerating the corpus with the generator's full memory cycle flag on produces exactly these columns for a read, a write, a port read and a port write, from an implementation that read the same figures independently. It differs on the first state of a fetch, where its fetch routine writes an idle column regardless of the flag.",
+          "alternative": {
+            "name": "asserted at any point during the T state",
+            "gives": {
+              "opcodeFetch": ["r-m-", "r-m-", "--m-", "--m-"],
+              "memoryRead": ["r-m-", "r-m-", "r-m-"],
+              "memoryWrite": ["--m-", "-wm-", "-wm-"],
+              "inputOrOutput": ["----", "r--i", "r--i", "r--i"],
+              "interruptAcknowledge": ["----", "----", "---i", "---i", "--m-", "--m-"]
+            },
+            "whyNot": "It holds every strobe one state longer, and it is decided by the slew of a drawn edge rather than by anything the part does."
+          }
+        },
+        "units": "T states from the start of the machine cycle"
       }
     },
     "pins": {

@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import cycles
 
+from z80 import bus
+
 SUITE = Path.home() / ".cache" / "conformance-suites" / "z80" / "v1"
 
 HAS_SUITE = SUITE.is_dir()
@@ -33,45 +35,118 @@ def suite_of(cases: list[dict[str, Any]]) -> Path:
     return where
 
 
+WIDE: dict[str, Any] = {
+    "name": "00 0000",
+    "initial": NOP["initial"],
+    "final": NOP["final"],
+    "cycles": [
+        [0x4DDF, None, "----"],
+        [0x4DDF, None, "r-m-"],
+        [0xA610, 0x00, "--m-"],
+        [0xA610, None, "----"],
+    ],
+}
+"""The same case as the corpus draws it with the full memory cycle flag on.
+
+Its first state is idle where the manual's shape strobes, which is the state the
+generator writes without consulting that flag and the one the runner skips.
+"""
+
+
+class ShapeTest(unittest.TestCase):
+    """The manual shape, against a corpus drawn the way that shape draws."""
+
+    def test_the_recorded_shape_is_what_a_run_gets_without_asking(self) -> None:
+        self.assertEqual(cycles.options(["somewhere"])[3], bus.RECORDING)
+
+    def test_the_manual_shape_can_be_asked_for(self) -> None:
+        self.assertEqual(cycles.options(["somewhere", "--shape", "manual"])[3], bus.MANUAL)
+
+    def test_a_shape_that_is_neither_is_refused(self) -> None:
+        with self.assertRaises(cycles.Usage):
+            cycles.options(["somewhere", "--shape", "invented"])
+
+    def test_a_shape_with_nothing_after_it_is_refused(self) -> None:
+        with self.assertRaises(cycles.Usage):
+            cycles.options(["somewhere", "--shape"])
+
+    def test_a_widened_case_is_reproduced_in_the_manual_shape(self) -> None:
+        self.assertEqual(cycles.check(WIDE, bus.MANUAL).differences, [])
+
+    def test_and_the_state_that_went_unchecked_is_counted(self) -> None:
+        self.assertEqual(cycles.check(WIDE, bus.MANUAL).skipped, 1)
+
+    def test_the_recorded_shape_counts_no_skips_because_it_makes_none(self) -> None:
+        self.assertEqual(cycles.check(NOP).skipped, 0)
+
+    def test_the_same_widened_case_fails_against_the_recorded_shape(self) -> None:
+        self.assertNotEqual(cycles.check(WIDE).differences, [])
+
+    def test_a_run_in_the_manual_shape_passes_against_a_widened_suite(self) -> None:
+        self.assertEqual(cycles.run([str(suite_of([WIDE])), "--shape", "manual"]), 0)
+
+    def test_and_fails_against_it_in_the_recorded_shape(self) -> None:
+        self.assertEqual(cycles.run([str(suite_of([WIDE]))]), 1)
+
+    def test_a_difference_outside_an_opening_state_is_still_reported(self) -> None:
+        wrong = dict(WIDE)
+        wrong["cycles"] = [*WIDE["cycles"][:3], [0xA610, None, "r-m-"]]
+
+        self.assertNotEqual(cycles.check(wrong, bus.MANUAL).differences, [])
+
+    def test_the_opening_states_come_from_the_bus_rather_than_the_pins(self) -> None:
+        line = bus.Bus(recording=True)
+        line.read(0x2000, 0x42)
+        line.fetch(0x1234, 0x5678, 0xAB)
+
+        self.assertEqual(cycles.opening_states(line.cycles), {0, 3})
+
+    def test_a_cycle_the_generator_draws_in_full_is_not_skipped(self) -> None:
+        line = bus.Bus(recording=True)
+        line.port_read(0x8000, 0x42)
+
+        self.assertEqual(cycles.opening_states(line.cycles), set())
+
+
 class ComparisonTest(unittest.TestCase):
     def test_a_case_the_model_reproduces_reports_nothing(self) -> None:
-        self.assertEqual(cycles.check(NOP), [])
+        self.assertEqual(cycles.check(NOP).differences, [])
 
     def test_a_case_with_a_changed_address_is_reported(self) -> None:
         wrong = json.loads(json.dumps(NOP))
         wrong["cycles"][0][0] = 0x0000
 
-        self.assertNotEqual(cycles.check(wrong), [])
+        self.assertNotEqual(cycles.check(wrong).differences, [])
 
     def test_a_case_with_a_changed_pin_string_is_reported(self) -> None:
         wrong = json.loads(json.dumps(NOP))
         wrong["cycles"][1][2] = "----"
 
-        self.assertNotEqual(cycles.check(wrong), [])
+        self.assertNotEqual(cycles.check(wrong).differences, [])
 
     def test_a_case_with_a_changed_value_is_reported(self) -> None:
         wrong = json.loads(json.dumps(NOP))
         wrong["cycles"][2][1] = 0xFF
 
-        self.assertNotEqual(cycles.check(wrong), [])
+        self.assertNotEqual(cycles.check(wrong).differences, [])
 
     def test_a_case_with_a_missing_state_is_reported(self) -> None:
         wrong = json.loads(json.dumps(NOP))
         del wrong["cycles"][-1]
 
-        self.assertNotEqual(cycles.check(wrong), [])
+        self.assertNotEqual(cycles.check(wrong).differences, [])
 
     def test_a_report_names_the_state_that_differed(self) -> None:
         wrong = json.loads(json.dumps(NOP))
         wrong["cycles"][2][1] = 0xFF
 
-        self.assertEqual(cycles.check(wrong)[0][0], 2)
+        self.assertEqual(cycles.check(wrong).differences[0][0], 2)
 
     def test_a_comparison_carries_both_readings(self) -> None:
         wrong = json.loads(json.dumps(NOP))
         wrong["cycles"][2][1] = 0xFF
 
-        _index, expected, actual = cycles.check(wrong)[0]
+        _index, expected, actual = cycles.check(wrong).differences[0]
 
         self.assertNotEqual(expected, actual)
 
@@ -156,7 +231,7 @@ class ReportingTest(unittest.TestCase):
         long = json.loads(json.dumps(NOP))
         long["cycles"] = [[0, None, "----"]] * (cycles.STATE_LIMIT + 4)
 
-        self.assertGreater(len(cycles.check(long)), cycles.STATE_LIMIT)
+        self.assertGreater(len(cycles.check(long).differences), cycles.STATE_LIMIT)
 
     def test_a_directory_holding_an_opcode_by_name_is_run_alone(self) -> None:
         self.assertEqual(cycles.run([str(suite_of([NOP])), "--opcode", "00"]), 0)
@@ -186,7 +261,7 @@ class AgainstSuiteTest(unittest.TestCase):
         failed = [
             path.stem
             for path in sorted(SUITE.glob("*.json"))
-            if any(cycles.check(case) for case in json.loads(path.read_text())[:2])
+            if any(cycles.check(case).differences for case in json.loads(path.read_text())[:2])
         ]
 
         self.assertEqual(failed, [])

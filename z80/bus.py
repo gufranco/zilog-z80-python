@@ -31,36 +31,50 @@ the bus, rather than inventing one. A model that drove a plausible address
 through a cycle the part spends thinking would be reporting a bus transaction
 that never happened.
 
-Why there are two shapes rather than one
-----------------------------------------
+Edges, and the rule that turns them into columns
+------------------------------------------------
 
-A four character string per T state cannot express what the manual draws. Every
-edge in Figures 5, 6, 7 and 9 falls on a clock edge, which is a half T state
-boundary, so a per-state model has to choose a rule for turning a waveform into
-a column. There is no rule the manual states, and the choice is a modelling
-decision rather than a fact about the part. Pretending otherwise is how a
-convention becomes a citation.
+The pin columns below are not written out by hand. ``EDGES`` holds where each
+control pin goes active and inactive, in T states from the start of the machine
+cycle, measured off Figures 5, 6, 7 and 9 of the pinned document rendered at 200
+dpi and snapped to the clock, which moves in half T states. Everything else is
+derived from that table, so a column and the measurement behind it cannot drift
+apart.
 
-``MANUAL`` is coverage: a pin appears in every T state the figure shows it
-asserted for any part of. The edges were measured off the figures as rendered
-from the pinned document, and they are recorded in ``conformance/hardware.json``
-under ``figureEdges`` so a reader can apply a different rule without going back
-to the PDF.
+A four character string per T state cannot express those edges directly, because
+they land between states. The rule here is to read the pins at the clock edge
+that ends each T state: a pin belongs to state ``n`` when it went active before
+that instant and had not yet gone inactive. That names a real instant, and it is
+insensitive to the slew every edge in a drawing carries, which a rule asking
+whether a pin was asserted at any point during a state is not.
 
-``RECORDING`` is one strobe per transfer, which is what the pinned corpus
-contains and what its generator describes as a deliberate simplification that
-"simplifies emulator development and speeds up execution at no cost to
-accuracy". ``conformance/cycles.py`` selects it so that the recording still
-checks this core cycle for cycle.
+Reading them at the other obvious instant, or over the whole state, gives a
+different answer on the state each strobe is released in, and
+``conformance/divergences.json`` records what that reading gives and why this one
+was chosen instead. The choice is a modelling decision rather than a fact about
+the part, which is why it is named rather than assumed.
 
-Keeping both here, rather than transforming one into the other after the fact,
-means the difference is stated once, in the module that owns it, instead of
-being spread across a runner that would have to guess which T state was which.
+``RECORDING`` is not derived from the edges at all. It is one strobe per
+transfer, which is what the pinned corpus contains and what its generator
+describes as a deliberate simplification that "simplifies emulator development
+and speeds up execution at no cost to accuracy". ``conformance/cycles.py``
+selects it so that the recording still checks this core cycle for cycle.
 """
 
 from __future__ import annotations
 
 from typing import override
+
+READ = "r"
+
+WRITE = "w"
+
+MEMORY = "m"
+
+PORT = "i"
+
+PIN_ORDER = (READ, WRITE, MEMORY, PORT)
+"""The order the corpus writes the four control pins in."""
 
 IDLE = "----"
 """No control pin asserted, which is what an internal cycle looks like."""
@@ -70,7 +84,7 @@ MEMORY_READ = "r-m-"
 MEMORY_WRITE = "-wm-"
 
 MEMORY_REQUEST = "--m-"
-"""Memory request without read, which is what the refresh states assert."""
+"""Memory request without read, which is what a refresh state asserts."""
 
 PORT_READ = "r--i"
 
@@ -79,18 +93,62 @@ PORT_WRITE = "-w-i"
 PORT_REQUEST = "---i"
 """Port request without read, which is what an interrupt acknowledge asserts."""
 
-FETCH_STATES = 4
+FETCH = "fetch"
 
-MEMORY_STATES = 3
+READ_CYCLE = "read"
 
-PORT_STATES = 4
+WRITE_CYCLE = "write"
 
-ACKNOWLEDGE_STATES = 6
+PORT_READ_CYCLE = "portRead"
+
+PORT_WRITE_CYCLE = "portWrite"
+
+ACKNOWLEDGE = "acknowledge"
+
+EDGES: dict[str, tuple[int, tuple[tuple[str, float, float], ...]]] = {
+    FETCH: (4, ((READ, 0.5, 2.0), (MEMORY, 0.5, 2.0), (MEMORY, 2.5, 3.5))),
+    READ_CYCLE: (3, ((READ, 0.5, 2.5), (MEMORY, 0.5, 2.5))),
+    WRITE_CYCLE: (3, ((MEMORY, 0.5, 2.5), (WRITE, 1.5, 2.5))),
+    PORT_READ_CYCLE: (4, ((READ, 1.0, 3.5), (PORT, 1.0, 3.5))),
+    PORT_WRITE_CYCLE: (4, ((WRITE, 1.0, 3.5), (PORT, 1.0, 3.5))),
+    ACKNOWLEDGE: (6, ((PORT, 2.5, 4.0), (MEMORY, 4.5, 5.5))),
+}
+"""Each machine cycle, as its length and the interval each pin is active over.
+
+Measured off the manual's figures and snapped to the clock. The fetch carries two
+memory request entries because it asserts it twice, once for the opcode and once
+for the refresh, with the read strobe absent from the second: "To prevent data
+from different memory segments from being gated onto the data bus, an RD signal
+is not generated during this refresh period."
+"""
+
+
+def columns(cycle: str) -> tuple[str, ...]:
+    """The pins of one machine cycle, read at the clock edge ending each state."""
+    states, edges = EDGES[cycle]
+    return tuple(
+        "".join(
+            pin
+            if any(pin == name and start < state + 1 <= end for name, start, end in edges)
+            else "-"
+            for pin in PIN_ORDER
+        )
+        for state in range(states)
+    )
+
+
+FETCH_STATES = EDGES[FETCH][0]
+
+MEMORY_STATES = EDGES[READ_CYCLE][0]
+
+PORT_STATES = EDGES[PORT_READ_CYCLE][0]
+
+ACKNOWLEDGE_STATES = EDGES[ACKNOWLEDGE][0]
 
 ADDRESS_MASK = 0xFFFF
 
 MANUAL = "manual"
-"""Coverage of the manual's figures, a pin in every state it is asserted in."""
+"""The manual's measured edges, read at the clock edge ending each T state."""
 
 RECORDING = "recording"
 """One strobe per transfer, which is what the pinned corpus contains."""
@@ -111,7 +169,7 @@ class Bus:
     only the count.
     """
 
-    __slots__ = ("address", "log", "recording", "shape", "states")
+    __slots__ = ("address", "cycles", "log", "recording", "shape", "states")
 
     def __init__(self, recording: bool = False, shape: str = MANUAL) -> None:
         if shape not in SHAPES:
@@ -119,17 +177,19 @@ class Bus:
         self.recording = recording
         self.shape = shape
         self.log: list[tuple[int | None, int | None, str]] = []
+        self.cycles: list[tuple[int, str]] = []
         self.states = 0
         self.address = 0
 
     @property
     def follows_the_manual(self) -> bool:
-        """Whether this bus is drawing a pin in every state it is asserted in."""
+        """Whether this bus is drawing the edges the manual's figures carry."""
         return self.shape == MANUAL
 
     def clear(self) -> None:
         """Start a fresh instruction, keeping the address the last one left."""
         self.log.clear()
+        self.cycles.clear()
         self.states = 0
 
     def mark(self, address: int | None, value: int | None, pins: str) -> None:
@@ -139,6 +199,29 @@ class Bus:
             self.address = address & ADDRESS_MASK
         if self.recording:
             self.log.append((None if address is None else address & ADDRESS_MASK, value, pins))
+
+    def spend(
+        self,
+        cycle: str,
+        addresses: tuple[int, ...],
+        values: tuple[int | None, ...],
+        recorded: tuple[str, ...],
+    ) -> None:
+        """One machine cycle, in whichever shape this bus was asked for.
+
+        The addresses and the values are the same either way. Only the pins
+        differ, because only the pins depend on how a waveform becomes a column.
+
+        A recording bus also notes where each machine cycle began and which kind
+        it was, so that a reader of the transcript does not have to infer the
+        boundaries from the pins. Inferring them works until two cycle kinds draw
+        the same first columns, and then it stops working silently.
+        """
+        if self.recording:
+            self.cycles.append((self.states, cycle))
+        pins = columns(cycle) if self.follows_the_manual else recorded
+        for address, value, held in zip(addresses, values, pins, strict=True):
+            self.mark(address, value, held)
 
     def idle(self, count: int = 1) -> None:
         """Internal cycles, holding the address the last access left on the bus."""
@@ -152,43 +235,29 @@ class Bus:
         counter as it stood when the fetch began, before the increment the fetch
         performs. Reading it after the increment is wrong by one on every
         instruction and by more on a prefixed one.
-
-        Read and memory request fall together half a clock into T1 and are
-        released on the rising edge of T3, so under coverage they hold T1 and T2.
-        Memory request falls a second time for the refresh, half a clock into T3
-        and released half a clock into T4, so those two states carry a request
-        with no read. That is the manual's own reason: "To prevent data from
-        different memory segments from being gated onto the data bus, an RD
-        signal is not generated during this refresh period."
         """
-        if self.follows_the_manual:
-            self.mark(counter, None, MEMORY_READ)
-            self.mark(counter, None, MEMORY_READ)
-            self.mark(refresh, value, MEMORY_REQUEST)
-            self.mark(refresh, None, MEMORY_REQUEST)
-            return
-        self.mark(counter, None, IDLE)
-        self.mark(counter, None, MEMORY_READ)
-        self.mark(refresh, value, IDLE)
-        self.mark(refresh, None, IDLE)
+        self.spend(
+            FETCH,
+            (counter, counter, refresh, refresh),
+            (None, None, value, None),
+            (IDLE, MEMORY_READ, IDLE, IDLE),
+        )
 
     def read(self, address: int, value: int) -> None:
         """A read outside a fetch, whose strobes outlast a fetch's by half a state.
 
         The manual's prose says memory request and read "are used the same way as
         in a fetch cycle", but Figure 6 does not draw them that way: they are
-        released half a clock into T3 rather than on its rising edge, because
-        there is no refresh address waiting for the bus. Under coverage that puts
-        a strobe on all three states.
+        released on the falling clock edge of T3 rather than on the rising edge,
+        because there is no refresh address waiting for the bus. Prose elsewhere
+        in the same document agrees with the figure and not with the summary.
         """
-        if self.follows_the_manual:
-            self.mark(address, None, MEMORY_READ)
-            self.mark(address, None, MEMORY_READ)
-            self.mark(address, value, MEMORY_READ)
-            return
-        self.mark(address, None, IDLE)
-        self.mark(address, None, MEMORY_READ)
-        self.mark(address, value, IDLE)
+        self.spend(
+            READ_CYCLE,
+            (address, address, address),
+            (None, None, value),
+            (IDLE, MEMORY_READ, IDLE),
+        )
 
     def write(self, address: int, value: int) -> None:
         """A write, whose value appears a T state earlier than a read's.
@@ -201,85 +270,66 @@ class Bus:
         The manual separates the two strobes rather than running them together:
         memory request goes active "when the address bus is stable", half a clock
         into T1, and the write strobe only once "the data on the data bus is
-        stable", a full T state later. Both are released half a clock into T3,
-        which is the manual saying the write "goes inactive one-half T state
-        before the address and data bus contents are changed".
+        stable", a full T state later.
         """
-        if self.follows_the_manual:
-            self.mark(address, value, MEMORY_REQUEST)
-            self.mark(address, value, MEMORY_WRITE)
-            self.mark(address, value, MEMORY_WRITE)
-            return
-        self.mark(address, None, IDLE)
-        self.mark(address, value, MEMORY_WRITE)
-        self.mark(address, None, IDLE)
+        manual = self.follows_the_manual
+        self.spend(
+            WRITE_CYCLE,
+            (address, address, address),
+            (value, value, value) if manual else (None, value, None),
+            (IDLE, MEMORY_WRITE, IDLE),
+        )
 
     def port_read(self, address: int, value: int) -> None:
         """A port read, whose strobes start a whole T state later than memory's.
 
         Figure 7 puts the port request and read edges on the rising edge of T2
-        rather than half a clock into T1, and releases them half a clock into T3.
-        Under coverage that leaves T1 bare and strobes the other three, which is
-        the automatic wait state sitting inside the strobe rather than before it.
+        rather than half a clock into T1, so a port cycle leaves its first state
+        bare where a memory cycle does not. The automatically inserted wait state
+        sits inside the strobe rather than before it.
         """
-        if self.follows_the_manual:
-            self.mark(address, None, IDLE)
-            self.mark(address, None, PORT_READ)
-            self.mark(address, None, PORT_READ)
-            self.mark(address, value, PORT_READ)
-            return
-        self.mark(address, None, IDLE)
-        self.mark(address, None, IDLE)
-        self.mark(address, None, PORT_READ)
-        self.mark(address, value, IDLE)
+        self.spend(
+            PORT_READ_CYCLE,
+            (address, address, address, address),
+            (None, None, None, value),
+            (IDLE, IDLE, PORT_READ, IDLE),
+        )
 
     def port_write(self, address: int, value: int) -> None:
-        if self.follows_the_manual:
-            self.mark(address, value, IDLE)
-            self.mark(address, value, PORT_WRITE)
-            self.mark(address, value, PORT_WRITE)
-            self.mark(address, value, PORT_WRITE)
-            return
-        self.mark(address, None, IDLE)
-        self.mark(address, None, IDLE)
-        self.mark(address, value, PORT_WRITE)
-        self.mark(address, None, IDLE)
+        manual = self.follows_the_manual
+        self.spend(
+            PORT_WRITE_CYCLE,
+            (address, address, address, address),
+            (value, value, value, value) if manual else (None, None, value, None),
+            (IDLE, IDLE, PORT_WRITE, IDLE),
+        )
 
     def acknowledge(self, counter: int, refresh: int, value: int) -> None:
-        """The special fetch that answers an interrupt, seven T states long.
+        """The special fetch that answers an interrupt.
 
         It is an M1 cycle with the port request asserted "instead of the normal
         MREQ", and with two wait states added so a daisy chain has time to settle.
         Figure 9 puts the port request half a clock into the first wait state and
-        releases it on the rising edge of T3, so under coverage it covers the two
-        wait states and nothing else. Refresh follows exactly as it does in an
-        ordinary fetch, which is why the next two states look the same.
+        releases it on the rising edge of T3. Refresh follows as it does in an
+        ordinary fetch, which is why the last states look the same.
 
         No read strobe appears anywhere in the figure. A device answering an
         acknowledge is told by the port request and the machine cycle pin
         together, not by a read.
 
-        These are the six states Figure 9 draws. The cycle the manual costs is
+        These are the six states the figure draws. The cycle the manual costs is
         seven, because six would make the printed mode 2 total eighteen against a
         printed nineteen, so the M1 underneath the two waits is the five state
         kind a restart already has. The figure stops before drawing that state and
         never says where in the cycle it falls, so it is spent by the response,
         which is where a restart spends its own.
         """
-        if self.follows_the_manual:
-            self.mark(counter, None, IDLE)
-            self.mark(counter, None, IDLE)
-            self.mark(counter, None, PORT_REQUEST)
-            self.mark(counter, value, PORT_REQUEST)
-            self.mark(refresh, None, MEMORY_REQUEST)
-            self.mark(refresh, None, MEMORY_REQUEST)
-            return
-        self.mark(counter, None, IDLE)
-        self.mark(counter, None, IDLE)
-        self.mark(counter, None, IDLE)
-        self.mark(counter, value, PORT_REQUEST)
-        self.mark(refresh, None, IDLE)
-        self.mark(refresh, None, IDLE)
+        self.spend(
+            ACKNOWLEDGE,
+            (counter, counter, counter, counter, refresh, refresh),
+            (None, None, None, value, None, None),
+            (IDLE, IDLE, IDLE, PORT_REQUEST, IDLE, IDLE),
+        )
 
     def __len__(self) -> int:
         return self.states

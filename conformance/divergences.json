@@ -43,7 +43,8 @@
         "A logic capture of a real Z80, which would give the edges directly rather than through a drawing.",
         "Nothing in the document settles it, because the question is about the model's resolution rather than about the part."
       ],
-      "whatIsClaimed": "This core draws the coverage the manual's figures give, and reproduces the recorded bus activity exactly when asked for the recorded shape. Neither is a measurement of silicon."
+      "whatIsClaimed": "This core draws the coverage the manual's figures give, and reproduces the recorded bus activity exactly when asked for the recorded shape. Neither is a measurement of silicon.",
+      "corroboration": "Regenerating the corpus with the generator's full memory cycle flag on gives, for a read, a write, a port read and a port write, exactly the columns this package's manual shape derives from its own measurements. That is a second implementation reading the same figures and landing on the same rule."
     },
     {
       "id": "recording-refresh-on-address-pins",
@@ -165,7 +166,7 @@
       },
       "packageFollows": "document",
       "consequence": "Cpu.interrupt and Cpu.nonmaskable are implemented and cost the thirteen, thirteen, nineteen and eleven T states the manual's own totals give. conformance/hardware.test.py checks those totals. No recording checks the pins, because the corpus contains none.",
-      "why": "The generator does emit an entry for the interrupt request, and the published corpus leaves it out. That entry would not settle anything if it were published: every case in it is a plain four state opcode fetch with the ordinary memory request, so it is not a recording of an acknowledge cycle at all.",
+      "why": "The generator does emit entries for the interrupt request and for reset, and the published corpus leaves both out. Neither would settle anything if it were published: each case is an ordinary instruction stepped from the given state, with the opcode at the program counter deciding the transcript, so the interrupt entry is not a recording of an acknowledge cycle at all.",
       "wouldSettleIt": [
         "A logic capture of a real Z80 answering an interrupt, which would give the pins and the length together.",
         "A corpus that contains acknowledge cycles, which this one does not."
@@ -221,7 +222,7 @@
         "claim": "Running the generator at its current head reproduces 1593 of the 1604 published files byte for byte and differs on eleven.",
         "source": "suites.json, generator",
         "detail": [
-          "dd 37, dd 3f, fd 37, fd 3f: the final flag register differs in bits 3 and 5 and nowhere else, which are the two bits Zilog never documented.",
+          "dd 37, dd 3f, fd 37, fd 3f: the final flag register differs in bits 3 and 5 and nowhere else, which are the two bits Zilog never documented. The bus is identical.",
           "e3, dd e3, fd e3: the two writes of the exchange with the stack are in the opposite order. The manual gives the instruction 19 T states as (4, 3, 4, 3, 5) and does not say which half is written first.",
           "ed 67, ed 6f: the write falls three T states earlier in the cycle, with the same total.",
           "dd 36, fd 36: the internal states fall in a different place, with the same total."
@@ -236,7 +237,8 @@
       "wouldSettleIt": [
         "A real part, for any of the eleven. Nothing else can, because no document speaks to any of them."
       ],
-      "measuredOn": "2026-08-21"
+      "measuredOn": "2026-08-21",
+      "alsoSeenIn": "The same seven placement disagreements, and only those seven, are what a manual shape comparison against a regenerated full strobe corpus reports: 7000 failures across 1610000 cases, which is every case of those seven opcodes and no case of any other."
     },
     {
       "id": "acknowledge-internal-state-placement",

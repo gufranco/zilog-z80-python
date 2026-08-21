@@ -38,6 +38,89 @@ class ShapeTest(unittest.TestCase):
         self.assertEqual(bus.SHAPES, (bus.MANUAL, bus.RECORDING))
 
 
+class EdgeTest(unittest.TestCase):
+    """The columns are derived from the measured edges, not written out by hand."""
+
+    def test_every_machine_cycle_kind_has_a_measured_edge_table(self) -> None:
+        self.assertEqual(
+            set(bus.EDGES),
+            {
+                bus.FETCH,
+                bus.READ_CYCLE,
+                bus.WRITE_CYCLE,
+                bus.PORT_READ_CYCLE,
+                bus.PORT_WRITE_CYCLE,
+                bus.ACKNOWLEDGE,
+            },
+        )
+
+    def test_every_edge_names_a_pin_the_encoding_carries(self) -> None:
+        named = {pin for states, edges in bus.EDGES.values() for pin, _, _ in edges}
+
+        self.assertLessEqual(named, set(bus.PIN_ORDER))
+
+    def test_every_edge_falls_on_the_clock(self) -> None:
+        offsets = {
+            value % 0.5
+            for states, edges in bus.EDGES.values()
+            for _, start, end in edges
+            for value in (start, end)
+        }
+
+        self.assertEqual(offsets, {0.0})
+
+    def test_no_pin_goes_inactive_before_it_goes_active(self) -> None:
+        backwards = [
+            (name, pin)
+            for name, (states, edges) in bus.EDGES.items()
+            for pin, start, end in edges
+            if end <= start
+        ]
+
+        self.assertEqual(backwards, [])
+
+    def test_no_edge_falls_outside_the_cycle_it_belongs_to(self) -> None:
+        outside = [
+            (name, pin)
+            for name, (states, edges) in bus.EDGES.items()
+            for pin, start, end in edges
+            if start < 0 or end > states
+        ]
+
+        self.assertEqual(outside, [])
+
+    def test_a_column_is_as_wide_as_the_pins_there_are(self) -> None:
+        widths = {len(column) for name in bus.EDGES for column in bus.columns(name)}
+
+        self.assertEqual(widths, {len(bus.PIN_ORDER)})
+
+    def test_a_cycle_has_as_many_columns_as_it_has_states(self) -> None:
+        found = {name: len(bus.columns(name)) for name in bus.EDGES}
+
+        self.assertEqual(found, {name: states for name, (states, _) in bus.EDGES.items()})
+
+    def test_the_pins_are_written_in_the_order_the_corpus_writes_them(self) -> None:
+        self.assertEqual("".join(bus.PIN_ORDER), "rwmi")
+
+    def test_a_strobe_belongs_to_the_state_whose_end_it_is_still_active_at(self) -> None:
+        edges = ((bus.MEMORY, 0.5, 2.0),)
+
+        held = [any(start < state + 1 <= end for _, start, end in edges) for state in range(3)]
+
+        self.assertEqual(held, [True, True, False])
+
+    def test_and_not_to_one_it_merely_overlaps(self) -> None:
+        self.assertEqual(bus.columns(bus.FETCH)[2], bus.MEMORY_REQUEST)
+
+    def test_the_refresh_state_requests_memory_without_reading_it(self) -> None:
+        self.assertEqual(bus.columns(bus.FETCH)[2].count(bus.READ), 0)
+
+    def test_a_port_cycle_leaves_its_first_state_bare_and_a_memory_one_does_not(self) -> None:
+        first = (bus.columns(bus.PORT_READ_CYCLE)[0], bus.columns(bus.READ_CYCLE)[0])
+
+        self.assertEqual(first, (bus.IDLE, bus.MEMORY_READ))
+
+
 class CountingTest(unittest.TestCase):
     """Counting is always on, because a cycle count nobody can read is not a claim."""
 
@@ -119,7 +202,7 @@ class FetchTest(unittest.TestCase):
 
         line.fetch(0x1234, 0x5678, 0xAB)
 
-        self.assertEqual([entry[2] for entry in line.log[2:]], [bus.MEMORY_REQUEST] * 2)
+        self.assertEqual([entry[2] for entry in line.log[2:]], [bus.MEMORY_REQUEST, bus.IDLE])
 
     def test_the_opcode_appears_on_the_third(self) -> None:
         line = recorder()
@@ -161,12 +244,13 @@ class MemoryTest(unittest.TestCase):
 
         self.assertEqual([entry[1] for entry in line.log], [None, None, 0x42])
 
-    def test_a_read_strobes_every_state_because_no_refresh_is_waiting(self) -> None:
-        line = recorder()
+    def test_a_read_holds_its_strobes_half_a_state_longer_than_a_fetch(self) -> None:
+        released = {
+            name: [end for pin, _, end in bus.EDGES[name][1] if pin == bus.READ]
+            for name in (bus.FETCH, bus.READ_CYCLE)
+        }
 
-        line.read(0x2000, 0x42)
-
-        self.assertEqual([entry[2] for entry in line.log], [bus.MEMORY_READ] * 3)
+        self.assertEqual(released[bus.READ_CYCLE][0] - released[bus.FETCH][0], 0.5)
 
     def test_a_write_asserts_memory_request_before_the_write_strobe(self) -> None:
         line = recorder()
@@ -175,7 +259,7 @@ class MemoryTest(unittest.TestCase):
 
         self.assertEqual(
             [entry[2] for entry in line.log],
-            [bus.MEMORY_REQUEST, bus.MEMORY_WRITE, bus.MEMORY_WRITE],
+            [bus.MEMORY_REQUEST, bus.MEMORY_WRITE, bus.IDLE],
         )
 
     def test_a_write_drives_its_value_from_the_start_because_the_part_is_driving(self) -> None:
@@ -233,7 +317,10 @@ class PortTest(unittest.TestCase):
 
         line.port_read(0x8000, 0x42)
 
-        self.assertEqual([entry[2] for entry in line.log], [bus.IDLE] + [bus.PORT_READ] * 3)
+        self.assertEqual(
+            [entry[2] for entry in line.log],
+            [bus.IDLE, bus.PORT_READ, bus.PORT_READ, bus.IDLE],
+        )
 
     def test_a_port_read_latches_its_value_at_the_end(self) -> None:
         line = recorder()
@@ -254,7 +341,10 @@ class PortTest(unittest.TestCase):
 
         line.port_write(0x8000, 0x42)
 
-        self.assertEqual([entry[2] for entry in line.log], [bus.IDLE] + [bus.PORT_WRITE] * 3)
+        self.assertEqual(
+            [entry[2] for entry in line.log],
+            [bus.IDLE, bus.PORT_WRITE, bus.PORT_WRITE, bus.IDLE],
+        )
 
     def test_a_port_uses_all_sixteen_address_lines(self) -> None:
         line = recorder()
@@ -323,7 +413,7 @@ class AcknowledgeTest(unittest.TestCase):
 
         line.acknowledge(0x1234, 0x5678, 0xFF)
 
-        self.assertEqual([entry[2] for entry in line.log[4:]], [bus.MEMORY_REQUEST] * 2)
+        self.assertEqual([entry[2] for entry in line.log[4:]], [bus.MEMORY_REQUEST, bus.IDLE])
 
     def test_the_refresh_address_reaches_the_bus_for_the_last_two(self) -> None:
         line = recorder()
