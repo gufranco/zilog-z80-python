@@ -67,6 +67,7 @@ than allowed to decide.
 | Analysis | CodeQL and Scorecard |
 | Release | semantic-release from `main`, never tagged by hand |
 | Docs | README, AGENTS.md plus the one-line pointer each tool reads, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT |
+| Review | CODEOWNERS on every path, and templates that ask a report for the run that settles it |
 | Specs | `specs/current/`, requirements with checkable scenarios |
 | Hardware facts | `conformance/hardware.json`, every fact with the sentence it came from |
 | Disagreements | `conformance/divergences.json`, both readings and what would settle it |
