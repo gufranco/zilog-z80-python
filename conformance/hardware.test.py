@@ -648,6 +648,34 @@ class InterruptResponseTest(unittest.TestCase):
 
         self.assertEqual(cpu.interrupt(0xFF), True)
 
+    def test_a_repeating_instruction_is_resumed_rather_than_abandoned(self) -> None:
+        space = memory.SparseMemory()
+        space.write8(START, 0xED)
+        space.write8(START + 1, 0xB0)
+        cpu = core.Cpu(space, reset=True)
+        cpu.registers.pc, cpu.registers.sp = START, 0x8000
+        cpu.registers.bc, cpu.registers.hl, cpu.registers.de = 4, 0x3000, 0x4000
+        cpu.registers.iff1, cpu.registers.im = True, 1
+        cpu.step()
+
+        cpu.interrupt(0xFF)
+
+        self.assertEqual(
+            cpu.memory.read8(cpu.registers.sp) | (cpu.memory.read8(0x7FFF) << 8), START
+        )
+
+    def test_which_is_the_part_backing_the_counter_up_rather_than_looping(self) -> None:
+        space = memory.SparseMemory()
+        space.write8(START, 0xED)
+        space.write8(START + 1, 0xB0)
+        cpu = core.Cpu(space, reset=True)
+        cpu.registers.pc = START
+        cpu.registers.bc, cpu.registers.hl, cpu.registers.de = 4, 0x3000, 0x4000
+
+        cpu.step()
+
+        self.assertEqual((cpu.registers.pc, cpu.registers.bc), (START, 3))
+
     def test_reset_leaves_the_part_in_the_mode_the_manual_names(self) -> None:
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
 

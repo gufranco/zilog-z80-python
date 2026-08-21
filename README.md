@@ -353,7 +353,14 @@ cpu.nonmaskable()  # the other one, which is always taken
 `interrupt` reports whether the part took it, and refuses while the enable flip
 flop is clear or for one instruction after an enable, which is the delay that
 exists so an enable followed by a return is not interrupted between the two.
-`nonmaskable` always reports taken.
+`nonmaskable` reports nothing, because the part has no way of refusing it.
+
+Offering them only between steps is less of a restriction than it sounds. A
+repeating block instruction is one step per iteration here, exactly as it is one
+machine cycle group per iteration on the part, which backs the counter up by two
+rather than looping internally. An interrupt offered between iterations therefore
+pushes the address of the instruction itself, and the service routine returns to
+an instruction that carries on where it left off.
 
 The four responses cost 13, 13, 19 and 11 T states, and not one of those numbers
 is written down in this package. The bus spends them and
