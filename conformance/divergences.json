@@ -446,6 +446,31 @@
       "wouldSettleIt": [
         "An interface that lets a caller answer each cycle of a response rather than only the first."
       ]
+    },
+    {
+      "id": "die-netlist-not-yet-runnable-here",
+      "severity": "unchecked",
+      "status": "open",
+      "topic": "The one source that could settle most of the entries above, and why it is not being used.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. This is about a source, not about the part.",
+        "source": "not applicable"
+      },
+      "referenceDoes": {
+        "rung": 2,
+        "claim": "A transistor level netlist of the die exists and is public: 6813 transistors, 3593 nets, 2059 of them pulled up, and every control pad named. Simulating it would answer the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.",
+        "source": "https://github.com/gdevic/Z80Explorer, resource/transdefs.js, segdefs.js and nodenames.js",
+        "licence": "CC BY-NC-SA 4.0, so it can be pinned and fetched but never carried here"
+      },
+      "packageFollows": "neither",
+      "consequence": "Every entry above that says a logic capture would settle it still says so. This would have been the nearest thing to one that does not need a bench.",
+      "why": "A port of the netlist's own resolver was written and does not work yet. What is established: the three files parse to the counts the reference expects, the transistors switch, and the chip holds the reset address for the first several half clocks. What is not: the netlist does not come to rest on a falling clock edge, a ring of about eight nets flips forever, and the state degrades over tens of half clocks until the pins read as a chip no silicon could be. The reference has a loop limiter for the same non convergence, so tolerating it is not the difference. Shipping a simulator that does not run the part would be worse than not having one.",
+      "wouldSettleIt": [
+        "Finding what the port does differently on a falling edge. The resolver, the group walk, the queueing, the pull-up parse and the transistor orientation were each checked against the reference and match, so the difference is somewhere finer than those.",
+        "Driving the reference application itself, which is a Qt program rather than a library, and reading its waveform export."
+      ],
+      "measuredOn": "2026-08-21"
     }
   ]
 }

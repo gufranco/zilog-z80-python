@@ -15,12 +15,12 @@ HELD = json.loads((Path(__file__).resolve().parent / "independent.json").read_te
 START = 0x0100
 
 
-def run(program: Sequence[int], model: str = "z80", **setup: int) -> Any:
+def run(program: Sequence[int], **setup: int) -> Any:
     """One instruction, assembled where nothing else is, and stepped."""
     space = memory.SparseMemory()
     for offset, byte in enumerate(program):
         space.write8(START + offset, byte)
-    cpu = models.describe(model).build(space, reset=True)
+    cpu = models.describe("z80").build(space, reset=True)
     cpu.registers.pc = START
     for name, value in setup.items():
         setattr(cpu.registers, name, value)
