@@ -95,7 +95,7 @@ jobs:
             echo "::group::${file}"
             python -m coverage run -a "${file}" || status=1
             echo "::endgroup::"
-          done < <(find z80 conformance -name '*.test.py' | sort)
+          done < <(find z80 conformance docs -name '*.test.py' | sort)
           exit "${status}"
         shell: bash
 
