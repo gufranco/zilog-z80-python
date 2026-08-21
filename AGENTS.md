@@ -164,9 +164,11 @@ Recorded in `divergences.json` with the reason and what would change it.
   with the pins of one, which is what the manual describes. Which address it
   carries is not settled: the note under Figure 11 says the halt instruction is
   repeated, and this fetches from the counter, which has already passed it.
-- **No requested wait states.** The two automatic ones are modelled, in an I/O
-  cycle and in an interrupt acknowledge, because the part inserts them itself. A
-  wait a device asks for is a property of the board, and there is no board here.
+- **Nothing a board does.** Requested wait states, a device taking the buses, and
+  the clock being stopped are all documented and all absent. The two automatic
+  waits are modelled, in an I/O cycle and in an interrupt acknowledge, because the
+  part inserts those itself. The rest need a clocked interface rather than a
+  stepped one, and all three are recorded as reopening together on that.
 - **The seventh state of an acknowledge is placed rather than known.** The cycle
   is seven T states, which the manual gives twice over and never directly, and
   Figure 9 draws six of them. The seventh is spent by the response here, which is

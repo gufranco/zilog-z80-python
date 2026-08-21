@@ -257,6 +257,38 @@
       "wouldSettleIt": [
         "A logic capture of a real Z80 answering an interrupt, counting the states of the acknowledge cycle."
       ]
+    },
+    {
+      "id": "bus-request-not-modelled",
+      "severity": "outOfScope",
+      "status": "closed",
+      "topic": "The bus request and acknowledge cycle.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "An external device can take the buses at the end of any machine cycle, for as long as it likes, and the part floats every control signal until it gives them back.",
+        "quote": "The BUSREQ signal is sampled by the CPU with the rising edge of the most recent clock period of any machine cycle. If the BUSREQ signal is active, the CPU sets its address, data, and tristate control signals to the high-impedance state with the rising edge of the next clock pulse.",
+        "source": "Zilog UM008011-0816, manual page 11"
+      },
+      "packageFollows": "neither",
+      "consequence": "There is no way to ask for the buses here, and no cycle in which this core reports them floating. Nothing about the registers or memory changes during such a cycle, so no state comparison could see its absence either.",
+      "why": "The same distinction as a requested wait state. A device taking the bus is a property of the board, and the length of the cycle is decided by that device rather than by the processor. Refreshing during a long hold is also the external controller's job, which the manual says outright.",
+      "wouldReopenIt": "A caller that can hold the line, at which point the sampling rule above says when the part lets go and the manual's figure says which signals float."
+    },
+    {
+      "id": "power-down-not-modelled",
+      "severity": "outOfScope",
+      "status": "closed",
+      "topic": "The power-down acknowledge and release cycles.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Stopping the clock stops the part with everything held, and supplying it again resumes from where it stopped.",
+        "quote": "When the clock input to the Z80 CPU is stopped at either a High or Low level, the Z80 CPU stops its operation and maintains all registers and control signals.",
+        "source": "Zilog UM008011-0816, manual page 15"
+      },
+      "packageFollows": "neither",
+      "consequence": "There is no clock here to stop. A caller that stops stepping has produced the same observable result, which is that nothing changes.",
+      "why": "This is a statement about what the part does when its clock is taken away, and a model that is stepped rather than clocked has no way to take it away and nothing to report if it did. Modelling it would mean adding a state that is indistinguishable from not calling step.",
+      "wouldReopenIt": "A clocked rather than stepped interface, which would also be what a requested wait state needed."
     }
   ]
 }

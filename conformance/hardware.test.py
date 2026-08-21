@@ -952,6 +952,27 @@ class DivergenceTest(unittest.TestCase):
             },
         )
 
+    def test_every_timing_chapter_cycle_is_modelled_or_written_up(self) -> None:
+        named = {entry["id"] for entry in self.entries}
+
+        self.assertLessEqual(
+            {
+                "wait-states-not-modelled",
+                "bus-request-not-modelled",
+                "power-down-not-modelled",
+            },
+            named,
+        )
+
+    def test_and_each_of_those_says_what_would_bring_it_into_scope(self) -> None:
+        missing = [
+            entry["id"]
+            for entry in self.entries
+            if entry["severity"] == "outOfScope" and not entry.get("wouldReopenIt")
+        ]
+
+        self.assertEqual(missing, [])
+
     def test_the_places_the_manual_is_silent_are_each_written_up(self) -> None:
         named = {entry["id"] for entry in self.entries}
 

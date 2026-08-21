@@ -148,7 +148,9 @@ five state M1 under the waits. Both interrupt lines and the halted fetch are
 modelled on that basis, and the four response totals the bus spends are checked
 against the four the manual prints.
 
-**One behaviour is deliberately not modelled**, recorded with what would change
-it: wait states a device requests, which are a property of a board rather than of
-the processor. Two more are modelled and unchecked, because no recording of an
-acknowledge cycle or of a halted machine exists to check them against.
+**Everything a board does is deliberately absent**, recorded with what would
+change it: wait states a device requests, a device taking the buses, and the
+clock being stopped. All three need a clocked interface rather than a stepped
+one, and all three reopen together on that. Two behaviours are modelled and
+unchecked, because no recording of an acknowledge cycle or of a halted machine
+exists to check them against.
