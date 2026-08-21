@@ -331,7 +331,7 @@ difference is written down rather than glossed.**
 |:-----|:-------|:--------|
 | 1 | [Zilog, *Z80 CPU User Manual* UM008011-0816](conformance/hardware.json) | Anything Zilog printed: pin function, machine cycle shape, T states per instruction, what reset does, which bit of the flag register is which |
 | 2 | The pinned suite | What the manual does not: the two undocumented flag bits, the internal `WZ` register, the `Q` latch, every opcode the manual does not list, and where the idle states sit inside a long machine cycle |
-| 3 | Nothing else | Nothing |
+| 3 | [The independent research](conformance/independent.json), listed under References below | Nothing on its own. It is never a citation for a figure a manufacturer gave. It is kept because where two lineages that never consulted each other agree, the agreement is worth checking against |
 
 ### The manual contradicts itself in four places
 
@@ -578,6 +578,57 @@ read, for a quicker answer while iterating.
   instruction at a time and cannot measure it, so anything written would be
   unverified.
 - Cycle timing is absent for the same reason.
+
+## References
+
+This repository carries no documents. Every claim it makes is traced to something
+published elsewhere, and that is listed here so a reader can fetch the same file
+and check the same page. Each row gives the page count and the first sixteen
+characters of the file's SHA-256, because vendor links move and a link that has
+rotted into a different revision is easy to follow without noticing.
+
+### Rung 1: what the manufacturers printed
+
+| Document | Date | Pages | SHA-256 | Redistributable |
+|:---------|:-----|------:|:--------|:----------------|
+| [Zilog, *Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf) | 2016-08 | 332 | `e3c83da5a5d8e372…` | No |
+| Zilog, *Z80 Family Data Book*, 00-2490-01 | 1989-01 | 448 | `844681b63ffc45bd…` | No |
+| Zilog, *Z84C00 Product Specification*, PS017801-0602 | undated | 36 | `06198d3c22a79a3f…` | No |
+| NEC, *µPD780C* data sheet | undated | 24 | `2036fa845533feee…` | No |
+
+Zilog's notice reads "Copyright ©2016 Zilog, Inc. All rights reserved." Individual
+sentences are quoted in [`conformance/hardware.json`](conformance/hardware.json)
+with the page each came from, which is what makes those records checkable without
+reproducing the work.
+
+### Rung 3: the research nobody at Zilog wrote
+
+These settle nothing on their own. They are here because the model is held to
+them in [`conformance/independent.json`](conformance/independent.json), and
+because where two lineages that never consulted each other agree, the agreement
+is evidence worth having.
+
+| Document | Author | Pages | SHA-256 | Licence |
+|:---------|:-------|------:|:--------|:--------|
+| [*The Undocumented Z80 Documented*, v0.91](https://archive.org/details/the-undocumented-z80-documented) | Sean Young, 2005-09-18 | 52 | `6413048f39c2e735…` | GFDL 1.1 or later |
+| [*Z80 CCF SCF Outcome Stability*](https://github.com/redcode/Z80/wiki/Z80-CCF-SCF-Outcome-Stability) | Sainz de Baranda y Goñi, Brewer, Helcmanovsky | 4 | `be87311012f9edaf…` | GFDL 1.3 |
+| *Undocumented Z80 Flags*, rev 1.0 | David Banks, 2018-08-21 | 3 | `33766df5494e2fdf…` | None stated |
+| *MEMPTR, esoteric register of the ZiLOG Z80 CPU* | Boo-boo, trans. Vladimir Kladov | text | `f9e8e87cdd205e15…` | None stated |
+| [redcode/Z80 wiki: Interrupts](https://github.com/redcode/Z80/wiki/Interrupts) and [MEMPTR](https://github.com/redcode/Z80/wiki/MEMPTR) | Sainz de Baranda y Goñi and contributors | web | n/a | GFDL 1.3 |
+
+The first two carry an explicit grant and could be redistributed. They are linked
+rather than vendored because a link and a digest serve a reader identically and
+keep binaries out of the history. The last two state no licence, which is the
+absence of permission rather than the presence of it, so only the sentences they
+are cited for appear here.
+
+### The corpora and the tools
+
+| Source | Used for |
+|:-------|:---------|
+| [SingleStepTests/z80](https://github.com/SingleStepTests/z80.git) | The pinned corpus, 1,604,000 cases. Commit in [`conformance/suites.json`](conformance/suites.json) |
+| [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git) | The generator that produced that corpus, so it can be rebuilt rather than only downloaded |
+| [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer) | The netlist whose behaviour is recorded in [`conformance/divergences.json`](conformance/divergences.json) |
 
 ## Licence
 

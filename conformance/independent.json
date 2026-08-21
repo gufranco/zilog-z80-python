@@ -1,10 +1,10 @@
 {
-  "note": "Behaviour no manufacturer printed, taken from the independent research pinned in docs/documents.json. Everything here is rung three: it settles nothing on its own, and it is never a citation for a figure a manufacturer gave. It is kept because agreement between two lineages that never consulted each other is worth more than either alone, and because a disagreement between them is a finding.",
+  "note": "Behaviour no manufacturer printed, taken from the independent research pinned in the References section of README.md. Everything here is rung three: it settles nothing on its own, and it is never a citation for a figure a manufacturer gave. It is kept because agreement between two lineages that never consulted each other is worth more than either alone, and because a disagreement between them is a finding.",
   "authority": "Rung 3. Where one of these disagrees with a manufacturer document, the disagreement goes in divergences.json rather than being resolved here.",
   "readOn": "2026-08-21",
   "internalAddressRegister": {
     "note": "The register the community calls MEMPTR and this package calls WZ. Zilog never names it, and two instructions report two of its bits through the flags, which is the only way a program can see it at all.",
-    "source": "https://github.com/redcode/Z80/wiki/MEMPTR, itself built on docs/independent/booboo-kladov-memptr.txt",
+    "source": "https://github.com/redcode/Z80/wiki/MEMPTR, itself built on Boo-boo and Kladov, MEMPTR, esoteric register of the ZiLOG Z80 CPU",
     "why": "The corpus already fixes this register on every one of its cases, so this is not new evidence. It is a second lineage: the table was worked out by running programs on real machines and the corpus by translating a core, and neither consulted the other.",
     "notation": {
       "before": "the value the register held when the instruction started",
@@ -63,13 +63,13 @@
   },
   "modeTwoVector": {
     "note": "How much of the device's byte reaches the pointer.",
-    "source": "docs/independent/young-undocumented-z80-documented-v0.91.pdf, section 5.2",
+    "source": "Young, The Undocumented Z80 Documented v0.91, section 5.2",
     "quote": "Zilog's user manual states (very convincingly) that the least significant bit of the address is always 0, so they calculate the address that is read from as: (I register) x 256 + (value on bus & 0xFE). I have tested this and it not correct.",
     "consequence": "All eight bits reach the pointer. The manual's sentence is advice to whoever builds the table rather than a description of the part."
   },
   "responseCost": {
     "note": "What each response costs, from a source that is not the manual's arithmetic.",
-    "source": "docs/independent/young-undocumented-z80-documented-v0.91.pdf, section 5.2, and https://github.com/redcode/Z80/wiki/Interrupts",
+    "source": "Young, The Undocumented Z80 Documented v0.91, section 5.2, and https://github.com/redcode/Z80/wiki/Interrupts",
     "nonmaskable": 11,
     "modeZeroRestart": 13,
     "modeOne": 13,
