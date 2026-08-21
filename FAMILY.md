@@ -109,27 +109,46 @@ the machine, fifty-four documented instructions are assembled, stepped, and chec
 against the figure Zilog printed for each, naming the manual page rather than
 repeating the number.
 
-**What that claim does not cover**, all recorded in
-[`conformance/divergences.json`](conformance/divergences.json) with what would
-settle each: the suite asserts the strobes for one T state where the manual has
-them span two, and puts the refresh value on all sixteen address pins where the
-manual guarantees seven. Its generator documents both as deliberate options and
-is quoted saying so. This core reproduces the recorded bus exactly, which is a
-weaker claim than reproducing the pins of a Z80.
+**The pins are drawn from measured edges, under a rule that is named.** Every
+control pin edge in Figures 5, 6, 7 and 9 was measured off the pages rendered at
+200 dpi and snapped to the clock. The columns are derived from those edges by
+reading the pins at the clock edge that ends each T state, so a column and the
+measurement behind it cannot drift apart. That rule is a modelling choice, not a
+fact about the part, and the reading it was chosen over is recorded with what it
+gives instead. The suite's own single strobe encoding is kept under a name, and
+the comparison runner selects it.
 
-**Three contradictions inside the manual itself.** Its M Cycles column disagrees
-with its own T states breakdown on pages 99, 260 and 269. All three were found by
-checking every one of the 184 timing rows twice, once for arithmetic and once for
-structure, and each was then read off the rendered page image to confirm the
-document really prints it. The breakdown wins.
+**A second oracle, built rather than downloaded.**
+[`conformance/regenerate.py`](conformance/regenerate.py) runs the generator that
+made the corpus, at a pinned commit. Rebuilding the published corpus reproduces
+1,593 of its 1,604 files byte for byte, which is how eleven opcodes where the
+generator's current commit has changed its mind were found, every one of them in
+territory Zilog never printed. Rebuilding it with the generator's wide strobes
+gives a corpus this core's manual shape agrees with on 1,603 of 1,610 entries,
+the seven exceptions being among the same eleven.
+
+**Four contradictions inside the manual itself.** Its M Cycles column disagrees
+with its own T states breakdown on pages 99, 260 and 269, found by checking every
+one of the 184 timing rows twice, once for arithmetic and once for structure, and
+each read off the rendered page image to confirm the document really prints it.
+The fourth is a summary its own figures contradict: page 9 says a plain read uses
+the two strobes the same way a fetch does, and Figures 5 and 6 release them half a
+clock apart. Prose on page 23 agrees with the figures.
 
 **A defect only the bus comparison could find.** A push was writing the low half
 of the register pair first where the part writes the high half. Both orders touch
 the same two addresses and leave identical final state, so the state comparison
 had passed it for as long as it existed.
 
-**Three behaviours are deliberately not modelled**, each recorded with what would
-change it: the interrupt acknowledge cycle, because this core has no pin for an
-interrupt and the suite never raises one; bus activity while halted, for the same
-reason; and wait states a device requests, which are a property of a board rather
-than of the processor.
+**A figure the manual never prints, and gives twice.** An interrupt acknowledge
+is seven T states rather than the six a four state fetch plus two added waits
+would give. Six makes the printed mode 2 total eighteen against a printed
+nineteen, and the reading that satisfies both that total and the mode 1 rule is a
+five state M1 under the waits. Both interrupt lines and the halted fetch are
+modelled on that basis, and the four response totals the bus spends are checked
+against the four the manual prints.
+
+**One behaviour is deliberately not modelled**, recorded with what would change
+it: wait states a device requests, which are a property of a board rather than of
+the processor. Two more are modelled and unchecked, because no recording of an
+acknowledge cycle or of a halted machine exists to check them against.
