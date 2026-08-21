@@ -264,6 +264,22 @@ class LimitTest(unittest.TestCase):
         with self.assertRaises(core.StepLimit):
             cpu.run_until(lambda _: False)
 
+    def test_an_offered_interrupt_counts_against_the_same_limit(self) -> None:
+        cpu, _ = machine([0x00])
+        cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 1
+        cpu.step_limit = 0
+
+        with self.assertRaises(core.StepLimit):
+            cpu.interrupt(0xFF)
+
+    def test_and_so_does_the_nonmaskable_line(self) -> None:
+        cpu, _ = machine([0x00])
+        cpu.registers.sp = 0x8000
+        cpu.step_limit = 0
+
+        with self.assertRaises(core.StepLimit):
+            cpu.nonmaskable()
+
 
 if __name__ == "__main__":
     unittest.main()

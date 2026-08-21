@@ -15,6 +15,7 @@ machine with no suite on it still runs it.
 import json
 import sys
 import unittest
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, override
 
@@ -26,11 +27,25 @@ HELD = json.loads((Path(__file__).resolve().parent / "hardware.json").read_text(
 
 DIVERGENCES = json.loads((Path(__file__).resolve().parent / "divergences.json").read_text())
 
+SUITES = json.loads((Path(__file__).resolve().parent / "suites.json").read_text())
+
 FACTS = HELD["facts"]
 
 SHAPES = FACTS["machineCycleShapes"]
 
 ROWS = FACTS["instructionTiming"]["rows"]
+
+EDGES = SHAPES["figureEdges"]
+
+RESPONSE = FACTS["interruptResponse"]
+
+CYCLES_WITH_FIGURES = (
+    "opcodeFetch",
+    "memoryRead",
+    "memoryWrite",
+    "inputOrOutput",
+    "interruptAcknowledge",
+)
 
 START = 0x0100
 """Where a probe instruction is assembled, clear of the vectors and of zero."""
@@ -129,9 +144,30 @@ class TimingTableTest(unittest.TestCase):
         self.assertEqual(flagged, {99, 260, 269})
 
     def test_and_each_of_those_is_written_up_as_a_contradiction(self) -> None:
-        pages = {entry["manualPage"] for entry in HELD["documentContradictions"]}
+        pages = {
+            entry["manualPage"]
+            for entry in HELD["documentContradictions"]
+            if entry["kind"] == "timingTableMisprint"
+        }
 
         self.assertEqual(pages, {99, 260, 269})
+
+    def test_every_contradiction_says_which_kind_it_is(self) -> None:
+        kinds = {entry["kind"] for entry in HELD["documentContradictions"]}
+
+        self.assertEqual(kinds, {"timingTableMisprint", "proseVersusFigure"})
+
+    def test_the_prose_the_figures_contradict_is_quoted_rather_than_summarised(self) -> None:
+        found = [
+            entry
+            for entry in HELD["documentContradictions"]
+            if entry["kind"] == "proseVersusFigure"
+        ]
+
+        self.assertEqual(
+            [entry["printed"] for entry in found],
+            ["The MREQ signal and the RD signal are used the same way as in a fetch cycle."],
+        )
 
     def test_no_other_row_disagrees_with_its_own_breakdown(self) -> None:
         wrong = [
@@ -158,6 +194,100 @@ class MachineCycleShapeTest(unittest.TestCase):
         inserted = SHAPES["inputOrOutput"]["automaticWaitStates"]
 
         self.assertEqual(bus.PORT_STATES - bus.MEMORY_STATES, inserted)
+
+
+class FigureEdgeTest(unittest.TestCase):
+    """The pins this bus draws, against the edges measured off the manual's figures.
+
+    The record holds where each edge falls and the per-state coverage those edges
+    give. This asserts the bus produces that coverage, so a change to either has
+    to be a change to both.
+    """
+
+    def pins(self, cycle: Callable[[bus.Bus], None]) -> list[str]:
+        line = bus.Bus(recording=True)
+        cycle(line)
+        return [entry[2] for entry in line.log]
+
+    def test_a_fetch_draws_the_coverage_figure_5_gives_it(self) -> None:
+        self.assertEqual(
+            self.pins(lambda line: line.fetch(0x1234, 0x5678, 0xAB)),
+            EDGES["opcodeFetch"]["coverage"],
+        )
+
+    def test_a_read_draws_the_coverage_figure_6_gives_it(self) -> None:
+        self.assertEqual(
+            self.pins(lambda line: line.read(0x2000, 0x42)),
+            EDGES["memoryRead"]["coverage"],
+        )
+
+    def test_a_write_draws_the_coverage_figure_6_gives_it(self) -> None:
+        self.assertEqual(
+            self.pins(lambda line: line.write(0x2000, 0x42)),
+            EDGES["memoryWrite"]["coverage"],
+        )
+
+    def test_a_port_read_draws_the_coverage_figure_7_gives_it(self) -> None:
+        self.assertEqual(
+            self.pins(lambda line: line.port_read(0x8000, 0x42)),
+            EDGES["inputOrOutput"]["coverage"]["read"],
+        )
+
+    def test_a_port_write_draws_the_coverage_figure_7_gives_it(self) -> None:
+        self.assertEqual(
+            self.pins(lambda line: line.port_write(0x8000, 0x42)),
+            EDGES["inputOrOutput"]["coverage"]["write"],
+        )
+
+    def test_an_acknowledge_draws_the_coverage_figure_9_gives_it(self) -> None:
+        self.assertEqual(
+            self.pins(lambda line: line.acknowledge(0x1234, 0x5678, 0xFF)),
+            EDGES["interruptAcknowledge"]["coverage"],
+        )
+
+    def test_every_coverage_is_as_long_as_the_cycle_it_describes(self) -> None:
+        lengths = {
+            "opcodeFetch": bus.FETCH_STATES,
+            "memoryRead": bus.MEMORY_STATES,
+            "memoryWrite": bus.MEMORY_STATES,
+            "interruptAcknowledge": bus.ACKNOWLEDGE_STATES,
+        }
+
+        found = {name: len(EDGES[name]["coverage"]) for name in lengths}
+
+        self.assertEqual(found, lengths)
+
+    def test_and_a_port_cycle_is_as_long_either_way_round(self) -> None:
+        both = EDGES["inputOrOutput"]["coverage"]
+
+        self.assertEqual(
+            (len(both["read"]), len(both["write"])), (bus.PORT_STATES, bus.PORT_STATES)
+        )
+
+    def test_the_acknowledge_asserts_no_read_because_the_figure_draws_none(self) -> None:
+        self.assertEqual(EDGES["interruptAcknowledge"]["pins"]["RD"], [])
+
+    def test_the_clock_rises_at_the_boundary_and_falls_mid_state(self) -> None:
+        clock = EDGES["clock"]
+
+        self.assertEqual((clock["rises"], float(clock["falls"])), ("+0.00", 0.56))
+
+    def test_every_measured_edge_is_recorded_as_read_from_a_figure(self) -> None:
+        self.assertEqual(EDGES["provenance"], "read from the figure rather than from the prose")
+
+    def test_each_cycle_names_the_figure_it_was_read_from(self) -> None:
+        named = {name: EDGES[name]["figure"] for name in CYCLES_WITH_FIGURES}
+
+        self.assertEqual(
+            named,
+            {
+                "opcodeFetch": 5,
+                "memoryRead": 6,
+                "memoryWrite": 6,
+                "inputOrOutput": 7,
+                "interruptAcknowledge": 9,
+            },
+        )
 
 
 class SpentAgainstTheManualTest(unittest.TestCase):
@@ -348,6 +478,198 @@ class SpentAgainstTheManualTest(unittest.TestCase):
         self.assertEqual(spent((0xD3, 0x00)), row(306)["tStates"])
 
 
+class InterruptResponseTest(unittest.TestCase):
+    """What an accepted interrupt costs, against the totals the manual prints.
+
+    Nothing here assembles a figure. The machine is offered a line and the bus
+    reports what it spent, so a model that carried a table of totals would not
+    pass this by construction.
+    """
+
+    def offered(self, offer: Callable[[core.Cpu], object], mode: int = 0) -> tuple[object, int]:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.sp = 0x8000
+        cpu.registers.pc = START
+        cpu.registers.iff1 = True
+        cpu.registers.im = mode
+
+        taken = offer(cpu)
+
+        return taken, len(cpu.bus)
+
+    def test_the_nonmaskable_line_costs_what_a_restart_costs(self) -> None:
+        self.assertEqual(
+            self.offered(lambda cpu: cpu.nonmaskable()),
+            (None, RESPONSE["nonmaskable"]["tStates"]),
+        )
+
+    def test_mode_one_costs_the_two_more_the_manual_adds(self) -> None:
+        self.assertEqual(
+            self.offered(lambda cpu: cpu.interrupt(0xFF), mode=1),
+            (True, RESPONSE["mode1"]["tStates"]),
+        )
+
+    def test_mode_two_costs_the_nineteen_the_manual_prints(self) -> None:
+        self.assertEqual(
+            self.offered(lambda cpu: cpu.interrupt(0xFF), mode=2),
+            (True, RESPONSE["mode2"]["tStates"]),
+        )
+
+    def test_mode_zero_costs_the_supplied_instruction_plus_two(self) -> None:
+        supplied = 0xC7
+
+        _, spent_now = self.offered(lambda cpu: cpu.interrupt(supplied), mode=0)
+
+        self.assertEqual(spent_now - spent((supplied,)), 2)
+
+    def test_and_that_addition_is_the_two_wait_states_the_manual_names(self) -> None:
+        self.assertEqual(SHAPES["interruptAcknowledge"]["automaticWaitStates"], 2)
+
+    def test_mode_one_lands_where_the_manual_says(self) -> None:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 1
+
+        cpu.interrupt(0xFF)
+
+        self.assertEqual(cpu.registers.pc, RESPONSE["mode1"]["restartsAt"])
+
+    def test_the_nonmaskable_line_lands_where_the_manual_says(self) -> None:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.sp = 0x8000
+
+        cpu.nonmaskable()
+
+        self.assertEqual(cpu.registers.pc, RESPONSE["nonmaskable"]["restartsAt"])
+
+    def test_mode_two_ignores_the_bit_the_device_is_not_asked_for(self) -> None:
+        space = memory.SparseMemory()
+        space.write8(0x00FE, 0x34)
+        space.write8(0x00FF, 0x12)
+        cpu = core.Cpu(space, reset=True)
+        cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 2
+
+        cpu.interrupt(0xFF)
+
+        self.assertEqual(cpu.registers.pc, 0x1234)
+
+    def test_a_maskable_interrupt_clears_both_flip_flops(self) -> None:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.sp, cpu.registers.iff1, cpu.registers.iff2 = 0x8000, True, True
+        cpu.registers.im = 1
+
+        cpu.interrupt(0xFF)
+
+        self.assertEqual((cpu.registers.iff1, cpu.registers.iff2), (False, False))
+
+    def test_the_nonmaskable_one_clears_only_the_first(self) -> None:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.sp, cpu.registers.iff1, cpu.registers.iff2 = 0x8000, True, True
+
+        cpu.nonmaskable()
+
+        self.assertEqual((cpu.registers.iff1, cpu.registers.iff2), (False, True))
+
+    def test_a_disabled_part_refuses_the_maskable_line(self) -> None:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.sp, cpu.registers.iff1 = 0x8000, False
+
+        self.assertEqual(cpu.interrupt(0xFF), False)
+
+    def test_and_takes_the_nonmaskable_one_anyway(self) -> None:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+        cpu.registers.sp, cpu.registers.iff1 = 0x8000, False
+
+        cpu.nonmaskable()
+
+        self.assertEqual(cpu.registers.pc, RESPONSE["nonmaskable"]["restartsAt"])
+
+    def test_an_enable_holds_the_line_off_for_one_more_instruction(self) -> None:
+        space = memory.SparseMemory()
+        space.write8(START, 0xFB)
+        cpu = core.Cpu(space, reset=True)
+        cpu.registers.sp, cpu.registers.pc, cpu.registers.im = 0x8000, START, 1
+        cpu.step()
+
+        self.assertEqual(cpu.interrupt(0xFF), False)
+
+    def test_and_lets_it_through_once_that_instruction_has_run(self) -> None:
+        space = memory.SparseMemory()
+        space.write8(START, 0xFB)
+        cpu = core.Cpu(space, reset=True)
+        cpu.registers.sp, cpu.registers.pc, cpu.registers.im = 0x8000, START, 1
+        cpu.step()
+        cpu.step()
+
+        self.assertEqual(cpu.interrupt(0xFF), True)
+
+    def test_reset_leaves_the_part_in_the_mode_the_manual_names(self) -> None:
+        cpu = core.Cpu(memory.SparseMemory(), reset=True)
+
+        self.assertEqual((cpu.registers.im, RESPONSE["mode0"]["afterReset"]), (0, True))
+
+
+class HaltTest(unittest.TestCase):
+    """A halted part keeps fetching, which is the whole reason it is not idle."""
+
+    def halted(self) -> core.Cpu:
+        space = memory.SparseMemory()
+        space.write8(START, 0x76)
+        cpu = core.Cpu(space, reset=True)
+        cpu.registers.pc = START
+        cpu.step()
+        return cpu
+
+    def test_a_halted_step_costs_a_whole_fetch(self) -> None:
+        cpu = self.halted()
+
+        cpu.step()
+
+        self.assertEqual(len(cpu.bus), FACTS["halt"]["tStatesPerCycle"])
+
+    def test_and_that_is_the_length_of_an_ordinary_one(self) -> None:
+        self.assertEqual(FACTS["halt"]["tStatesPerCycle"], bus.FETCH_STATES)
+
+    def test_it_draws_the_pins_of_a_fetch_because_that_is_what_it_is(self) -> None:
+        cpu = self.halted()
+        cpu.bus.recording = True
+
+        cpu.step()
+
+        self.assertEqual([entry[2] for entry in cpu.bus.log], EDGES["opcodeFetch"]["coverage"])
+
+    def test_the_counter_does_not_advance(self) -> None:
+        cpu = self.halted()
+        before = cpu.registers.pc
+
+        cpu.step()
+
+        self.assertEqual(cpu.registers.pc, before)
+
+    def test_the_refresh_counter_does(self) -> None:
+        cpu = self.halted()
+        before = cpu.registers.r
+
+        cpu.step()
+
+        self.assertNotEqual(cpu.registers.r, before)
+
+    def test_an_accepted_interrupt_leaves_the_halt_state(self) -> None:
+        cpu = self.halted()
+        cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 1
+
+        cpu.interrupt(0xFF)
+
+        self.assertEqual(cpu.halted, False)
+
+    def test_and_so_does_the_nonmaskable_line(self) -> None:
+        cpu = self.halted()
+        cpu.registers.sp = 0x8000
+
+        cpu.nonmaskable()
+
+        self.assertEqual(cpu.halted, False)
+
+
 class ConditionalTimingTest(unittest.TestCase):
     """The instructions the manual prints two timings for, checked both ways."""
 
@@ -435,6 +757,49 @@ class FlagRegisterTest(unittest.TestCase):
         self.assertEqual(flags.UNDOCUMENTED, unused)
 
 
+class SuiteRecordTest(unittest.TestCase):
+    """The corpus pin, and the generator that lets it be rebuilt rather than trusted."""
+
+    @override
+    def setUp(self) -> None:
+        self.suite = SUITES["suites"][0]
+        self.generator = self.suite["generator"]
+
+    def test_the_corpus_is_pinned_by_commit(self) -> None:
+        self.assertEqual(len(self.suite["commit"]), 40)
+
+    def test_and_so_is_the_generator_that_produced_it(self) -> None:
+        self.assertEqual(len(self.generator["commit"]), 40)
+
+    def test_the_generator_names_every_file_it_has_to_be_given(self) -> None:
+        self.assertEqual(len(self.generator["requires"]), 3)
+
+    def test_the_flag_that_would_widen_the_strobes_is_recorded_as_off(self) -> None:
+        self.assertEqual(self.generator["flags"]["Z80_DO_FULL_MEMCYCLES"], False)
+
+    def test_which_is_why_the_recorded_shape_strobes_one_state(self) -> None:
+        line = bus.Bus(recording=True, shape=bus.RECORDING)
+
+        line.read(0x2000, 0x42)
+
+        self.assertEqual([entry[2] for entry in line.log].count(bus.MEMORY_READ), 1)
+
+    def test_the_flag_that_puts_refresh_on_the_address_pins_is_recorded_as_on(self) -> None:
+        self.assertEqual(self.generator["flags"]["Z80_DO_MEM_REFRESHES"], True)
+
+    def test_which_is_why_both_shapes_carry_a_refresh_address(self) -> None:
+        shapes = [bus.Bus(recording=True, shape=name) for name in bus.SHAPES]
+        for line in shapes:
+            line.fetch(0x1234, 0x5678, 0xAB)
+
+        found = {line.log[2][0] for line in shapes}
+
+        self.assertEqual(found, {0x5678})
+
+    def test_the_entries_the_generator_emits_and_the_corpus_omits_are_named(self) -> None:
+        self.assertEqual(len(self.generator["excludedFromPublication"]), 2)
+
+
 class DivergenceTest(unittest.TestCase):
     @override
     def setUp(self) -> None:
@@ -486,6 +851,54 @@ class DivergenceTest(unittest.TestCase):
         ]
 
         self.assertEqual(len(admitted), 2)
+
+    def test_every_entry_carries_a_severity_the_record_uses_elsewhere(self) -> None:
+        found = {entry["severity"] for entry in self.entries}
+
+        self.assertLessEqual(
+            found,
+            {
+                "documentContradiction",
+                "convention",
+                "unstated",
+                "unmodelled",
+                "unchecked",
+                "outOfScope",
+            },
+        )
+
+    def test_the_places_the_manual_is_silent_are_each_written_up(self) -> None:
+        named = {entry["id"] for entry in self.entries}
+
+        self.assertLessEqual(
+            {
+                "undocumented-flag-bits",
+                "internal-register-wz",
+                "undocumented-opcodes",
+                "internal-cycle-placement",
+                "acknowledge-internal-state-placement",
+                "halt-fetch-address-unstated",
+            },
+            named,
+        )
+
+    def test_the_generator_moving_away_from_the_pinned_corpus_is_written_up(self) -> None:
+        found = [
+            entry
+            for entry in self.entries
+            if entry["id"] == "generator-head-disagrees-with-the-pinned-corpus"
+        ]
+
+        self.assertEqual(len(found[0]["referenceDoes"]["detail"]), 4)
+
+    def test_and_that_entry_names_what_would_reopen_it_because_a_bump_would(self) -> None:
+        found = [
+            entry
+            for entry in self.entries
+            if entry["id"] == "generator-head-disagrees-with-the-pinned-corpus"
+        ]
+
+        self.assertTrue(found[0]["wouldReopenIt"])
 
 
 if __name__ == "__main__":

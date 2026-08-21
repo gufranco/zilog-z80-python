@@ -113,6 +113,19 @@ two symmetrically disagrees on the middle T state of every store.
 **Internal cycles hold the last address.** They invent nothing. After a fetch
 that is the refresh address, after a read it is the address read.
 
+**There are two pin shapes and the manual's is the default.** A four character
+string per T state cannot express a waveform whose edges land on clock edges, so
+turning a figure into a column is a modelling choice. `bus.MANUAL` draws a pin in
+every state the figure shows it asserted in; `bus.RECORDING` draws one strobe per
+transfer, which is what the corpus contains. Only `conformance/cycles.py` asks
+for the second. Every edge behind the first is in `hardware.json` under
+`figureEdges`, measured off the rendered pages rather than eyeballed.
+
+**A port cycle strobes three of its four states and a memory cycle strobes all
+of its three.** They do not start alike either: memory request falls half a clock
+into T1, and the port request waits for the rising edge of T2. Copying the memory
+shape onto a port cycle gets both ends wrong.
+
 **Where an idle state goes is per instruction and comes from the manual's
 breakdown.** `(4, 4, 3)` for `INC (HL)` means the middle machine cycle is a three
 state read with one state of arithmetic after it. Getting the count right and the
@@ -126,17 +139,23 @@ module here carries `from __future__ import annotations`.
 
 Recorded in `divergences.json` with the reason and what would change it.
 
-- **No interrupt acknowledge cycle.** This core steps instructions and has no pin
-  for an interrupt to arrive on. The suite never raises one, so there is nothing
-  to compare an acknowledge cycle against, and writing one would be writing
-  behaviour nothing checks.
-- **No bus activity while halted.** The manual says a halted part keeps fetching
-  so that dynamic memory keeps being refreshed. The refresh counter advances here,
-  which is the observable half; no cycle is emitted, because the suite never steps
-  a machine that is already halted.
+- **Nothing checks the interrupt response.** `Cpu.interrupt` and
+  `Cpu.nonmaskable` are implemented, and the four totals they spend match the
+  four the manual prints. No recording verifies the pins, because the corpus
+  contains no acknowledge cycles. The generator does emit an entry for the
+  interrupt request and the published corpus leaves it out, and that entry would
+  not help anyway: every case in it is a plain four state opcode fetch.
+- **Nothing checks a halted fetch either.** A halted step spends a whole fetch
+  with the pins of one, which is what the manual describes. Which address it
+  carries is not settled: the note under Figure 11 says the halt instruction is
+  repeated, and this fetches from the counter, which has already passed it.
 - **No requested wait states.** The two automatic ones are modelled, in an I/O
   cycle and in an interrupt acknowledge, because the part inserts them itself. A
   wait a device asks for is a property of the board, and there is no board here.
+- **The seventh state of an acknowledge is placed rather than known.** The cycle
+  is seven T states, which the manual gives twice over and never directly, and
+  Figure 9 draws six of them. The seventh is spent by the response here, which is
+  where a restart already spends the fifth state of its own M1.
 
 ## Conventions
 

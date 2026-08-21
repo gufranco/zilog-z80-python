@@ -48,12 +48,22 @@
         "manualPage": 10
       },
       "interruptAcknowledge": {
-        "tStates": 6,
+        "tStates": 7,
         "automaticWaitStates": 2,
         "quote": "When the signal is accepted, a special M1 cycle is generated. During this special M1 cycle, the IORQ signal becomes active (instead of the normal MREQ) to indicate that the interrupting device can place an 8-bit vector on the data bus. Two wait states are automatically added to this cycle.",
-        "note": "Six T states is the four of a normal opcode fetch plus the two the manual says are added. The manual states the addition rather than printing the total.",
+        "note": "Seven, not six. The manual never prints the length of this cycle directly, but it prints two figures that both give it. Mode 1 is a restart to 0038h and the restart row on manual page 293 is 11 (5, 3, 3), and the manual says mode 1 takes 'two more than normal', which is 13 as (7, 3, 3). Mode 2 is printed as 19 and broken down as 'seven to fetch the lower eight bits from the interrupting device, six to save the program counter, and six to obtain the jump address'. Both put seven on this cycle. Reading it as a four state fetch plus the two added waits gives six, which makes mode 2 eighteen against a printed nineteen. The reading that satisfies both is a five state M1, the kind a restart already has, plus the two waits.",
         "inferred": "tStates",
-        "manualPage": 12
+        "manualPage": 12,
+        "baseM1States": 5,
+        "derivedFrom": [
+          "the quote above, for the two added wait states",
+          "manual page 293, RST p, 11 T states as (5, 3, 3), for the five state M1",
+          "manual page 19, mode 1 'two more than normal', which gives 13",
+          "manual page 20, mode 2 printed as 19 and broken down as seven, six and six"
+        ],
+        "coverage": ["----", "----", "---i", "---i", "--m-", "--m-"],
+        "coverageNote": "Figure 9 draws six of the seven and stops during the refresh. The seventh is the internal state that makes this a five state M1, the figure does not say where within the cycle it falls, and it is spent by the response rather than by this cycle, which is where a restart already spends the fifth state of its own M1. Either grouping gives the same total.",
+        "drawnStates": 6
       },
       "nonmaskableInterrupt": {
         "quote": "The CPU response to a nonmaskable interrupt is similar to a normal memory read operation. The only difference is that the contents of the data bus are ignored while the processor automatically stores the Program Counter in the external stack and jumps to address 0066h.",
@@ -63,6 +73,152 @@
         "quote": "Each cycle in the HALT state is a normal M1 (fetch) cycle except that the data received from the memory is ignored and an NOP instruction is forced internally to the CPU.",
         "why": "A halted part is not idle on the bus. It keeps fetching so that dynamic memory keeps being refreshed, which is why a model that stops issuing cycles while halted is not modelling this part.",
         "manualPage": 14
+      },
+      "figureEdges": {
+        "note": "Where every control pin edge falls, measured off the timing figures of the pinned document. The prose gives a few of these and gives none of them for every cycle kind, so the figures are the only place the rest are stated. A per-T-state pin model has to turn these into columns, and the rule it uses to do that is a modelling choice rather than something the manual states.",
+        "howMeasured": "Each page was rendered from the pinned PDF at 200 dpi and the traces read by locating the two level lines of each signal and the vertical T state rules, then reporting each transition as a fraction of the T state it falls in. The clock in every figure rises at each T state boundary and falls at +0.56, so a transition at +0.6 is the falling clock edge of that state and one at +0.13 is the rising edge, allowing for the slew the drawing gives every edge.",
+        "provenance": "read from the figure rather than from the prose",
+        "readOn": "2026-08-21",
+        "clock": {
+          "rises": "+0.00",
+          "falls": "+0.56"
+        },
+        "opcodeFetch": {
+          "figure": 5,
+          "manualPage": 9,
+          "states": ["T1", "T2", "T3", "T4"],
+          "pins": {
+            "MREQ": [
+              {
+                "activeFrom": "T1+0.65",
+                "activeUntil": "T3+0.13"
+              },
+              {
+                "activeFrom": "T3+0.68",
+                "activeUntil": "T4+0.58"
+              }
+            ],
+            "RD": [
+              {
+                "activeFrom": "T1+0.70",
+                "activeUntil": "T3+0.14"
+              }
+            ],
+            "M1": [
+              {
+                "activeFrom": "T1+0.13",
+                "activeUntil": "T3+0.12"
+              }
+            ],
+            "RFSH": [
+              {
+                "activeFrom": "T3+0.13",
+                "activeUntil": "T1+0.13 of the next cycle"
+              }
+            ]
+          },
+          "coverage": ["r-m-", "r-m-", "--m-", "--m-"]
+        },
+        "memoryRead": {
+          "figure": 6,
+          "manualPage": 10,
+          "states": ["T1", "T2", "T3"],
+          "pins": {
+            "MREQ": [
+              {
+                "activeFrom": "T1+0.62",
+                "activeUntil": "T3+0.62"
+              }
+            ],
+            "RD": [
+              {
+                "activeFrom": "T1+0.64",
+                "activeUntil": "T3+0.64"
+              }
+            ]
+          },
+          "coverage": ["r-m-", "r-m-", "r-m-"],
+          "note": "Both are released on the falling clock edge of T3, half a T state later than in a fetch, where the rising edge of T3 releases them so the refresh address can have the bus. The prose says they are used the same way in both; the figures do not agree, and that is recorded in documentContradictions."
+        },
+        "memoryWrite": {
+          "figure": 6,
+          "manualPage": 10,
+          "states": ["T1", "T2", "T3"],
+          "pins": {
+            "MREQ": [
+              {
+                "activeFrom": "T1+0.58",
+                "activeUntil": "T3+0.58"
+              }
+            ],
+            "WR": [
+              {
+                "activeFrom": "T2+0.57",
+                "activeUntil": "T3+0.61"
+              }
+            ]
+          },
+          "coverage": ["--m-", "-wm-", "-wm-"],
+          "note": "The write strobe falls a full T state after the memory request, which is the prose saying the request goes active once the address is stable and the write only once the data is."
+        },
+        "inputOrOutput": {
+          "figure": 7,
+          "manualPage": 11,
+          "states": ["T1", "T2", "TW", "T3"],
+          "pins": {
+            "IORQ": [
+              {
+                "activeFrom": "T2+0.15",
+                "activeUntil": "T3+0.66"
+              }
+            ],
+            "RD": [
+              {
+                "activeFrom": "T2+0.17",
+                "activeUntil": "T3+0.66"
+              }
+            ],
+            "WR": [
+              {
+                "activeFrom": "T2+0.27",
+                "activeUntil": "T3+0.67"
+              }
+            ]
+          },
+          "coverage": {
+            "read": ["----", "r--i", "r--i", "r--i"],
+            "write": ["----", "-w-i", "-w-i", "-w-i"]
+          },
+          "note": "The strobes go active on the rising edge of T2 rather than half a clock into T1, so a port cycle leaves its first state bare where a memory cycle does not. The automatically inserted wait state sits inside the strobe rather than before it."
+        },
+        "interruptAcknowledge": {
+          "figure": 9,
+          "manualPage": 13,
+          "states": ["T1", "T2", "TW", "TW", "T3", "T4"],
+          "pins": {
+            "M1": [
+              {
+                "activeFrom": "T1+0.21",
+                "activeUntil": "T3+0.14"
+              }
+            ],
+            "IORQ": [
+              {
+                "activeFrom": "the first TW +0.61",
+                "activeUntil": "T3+0.15"
+              }
+            ],
+            "MREQ": [
+              {
+                "activeFrom": "T3+0.67",
+                "activeUntil": "not drawn; the figure ends during T3"
+              }
+            ],
+            "RD": []
+          },
+          "coverage": ["----", "----", "---i", "---i", "--m-", "--m-"],
+          "note": "No read strobe appears at any point in the figure. The figure ends during T3, so the two states that close the cycle are taken from the ordinary fetch, which the manual calls this cycle a special case of. The seventh state the printed totals require is not drawn."
+        }
       }
     },
     "pins": {
@@ -1413,6 +1569,57 @@
           "printedMCycles": 4
         }
       ]
+    },
+    "interruptResponse": {
+      "note": "What the part does once it accepts an interrupt. Every total below is printed or is stated as an addition to a printed one, and the derivation is named in each case.",
+      "nonmaskable": {
+        "tStates": 11,
+        "machineCycles": [5, 3, 3],
+        "restartsAt": 102,
+        "quote": "The CPU always accepts a nonmaskable interrupt. When this nonmaskable interrupt is accepted, the CPU ignores the next instruction that it fetches and instead performs a restart at address 0066h. The CPU functions as if it had recycled a restart instruction, but to a location other than one of the eight software restart locations.",
+        "acknowledgeCycle": false,
+        "why": "Figure 10 draws an ordinary M1 with memory request rather than port request, so this is not an interrupt acknowledge cycle and the two added wait states do not apply. The count is the restart row on manual page 293.",
+        "inferred": "tStates",
+        "iff1": false,
+        "iff2": "unchanged",
+        "iffQuote": "When a nonmaskable interrupt is accepted, IFF1 resets to prevent further interrupts until reenabled by the programmer. Therefore, after a nonmaskable interrupt is accepted, maskable interrupts are disabled but the previous state of IFF1 is saved so that the complete state of the CPU just prior to the nonmaskable interrupt can be restored at any time.",
+        "manualPage": 19
+      },
+      "mode0": {
+        "quote": "With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it. Consequently, the interrupting device provides the next instruction to be executed.",
+        "costQuote": "The number of clock cycles necessary to execute this instruction is two more than the normal number for the instruction. The addition of two clock cycles occurs because the CPU automatically adds two wait states to an Interrupt response cycle to allow sufficient time to implement an external daisy-chain for priority control.",
+        "tStates": "the instruction supplied, plus two",
+        "afterReset": true,
+        "afterResetQuote": "After the application of RESET, the CPU automatically enters interrupt Mode 0.",
+        "manualPage": 19
+      },
+      "mode1": {
+        "tStates": 13,
+        "machineCycles": [7, 3, 3],
+        "restartsAt": 56,
+        "quote": "When Mode 1 is selected by the programmer, the CPU responds to an interrupt by executing a restart at address 0038h. As a result, the response is identical to that of a nonmaskable interrupt except that the call location is 0038h instead of 0066h. The number of cycles required to complete the restart instruction is two more than normal due to the two added wait states.",
+        "why": "Eleven for a restart plus the two the manual adds.",
+        "inferred": "tStates",
+        "manualPage": 19
+      },
+      "mode2": {
+        "tStates": 19,
+        "machineCycles": [7, 3, 3, 3, 3],
+        "quote": "When the interrupting device supplies the lower portion of the pointer, the CPU automatically pushes the program counter onto the stack, obtains the starting address from the table, and performs a jump to this address. This mode of response requires 19 clock periods to complete (seven to fetch the lower eight bits from the interrupting device, six to save the program counter, and six to obtain the jump address).",
+        "vectorQuote": "The upper eight bits of this pointer is formed from the contents of the I Register. The I register must be loaded with the applicable value by the programmer, such as LD I, A. A CPU reset clears the I Register so that it is initialized to 0. The lower eight bits of the pointer must be supplied by the interrupting device. Only seven bits are required from the interrupting device, because the least-significant bit must be a 0.",
+        "manualPage": 20
+      },
+      "maskableIffQuote": "When the CPU accepts a maskable interrupt, both IFF1 and IFF2 are automatically reset, inhibiting further interrupts until the programmer issues a new El instruction.",
+      "enableDelayQuote": "When an EI instruction is executed, any pending interrupt request is not accepted until after the instruction following EI is executed.",
+      "sampledQuote": "The CPU samples the interrupt signal (INT) with the rising edge of the final clock at the end of any instruction. The signal is not accepted if the internal CPU software controlled interrupt enable flip-flop is not set or if the BUSREQ signal is active."
+    },
+    "halt": {
+      "note": "What a halted part does, which is not nothing.",
+      "quote": "The purpose of executing NOP instructions while in the HALT state is to keep the memory refresh signals active. Each cycle in the HALT state is a normal M1 (fetch) cycle except that the data received from the memory is ignored and an NOP instruction is forced internally to the CPU.",
+      "tStatesPerCycle": 4,
+      "sampledQuote": "The two interrupt lines are sampled with the rising clock edge during each T4 state as depicted in Figure 11. If a nonmaskable interrupt is received or a maskable interrupt is received and the interrupt enable flip-flop is set, then the HALT state is exited on the next rising clock edge.",
+      "repeatsQuote": "The HALT instruction is repeated during the memory cycle shown in Figure 11.",
+      "manualPage": 14
     }
   },
   "documentContradictions": [
@@ -1423,7 +1630,8 @@
       "printed": "M Cycles 2, T States 10 (4, 3, 3)",
       "problem": "The breakdown has three groups and sums to ten. Two machine cycles cannot contain three groups of T states.",
       "reading": "Three machine cycles. The breakdown is the column closest to the silicon and it is internally consistent; the M Cycles column is not.",
-      "verifiedOn": "the rendered page image, 2026-08-21, so this is what the document prints rather than an artefact of extracting its text"
+      "verifiedOn": "the rendered page image, 2026-08-21, so this is what the document prints rather than an artefact of extracting its text",
+      "kind": "timingTableMisprint"
     },
     {
       "id": "res-r-m-cycle-count",
@@ -1432,7 +1640,8 @@
       "printed": "M Cycles 4, T States 8 (4, 4)",
       "problem": "Two groups summing to eight cannot be four machine cycles. The other three rows in the same table, RES (HL), RES (IX+d) and RES (IY+d), all have a group count matching their M Cycles column.",
       "reading": "Two machine cycles: the prefix fetch and the opcode fetch.",
-      "verifiedOn": "the rendered page image, 2026-08-21"
+      "verifiedOn": "the rendered page image, 2026-08-21",
+      "kind": "timingTableMisprint"
     },
     {
       "id": "jr-nc-e-m-cycle-count",
@@ -1441,7 +1650,23 @@
       "printed": "If the condition is not met: M Cycles 7, T States 7 (4, 3)",
       "problem": "The M Cycles column repeats the T States value. Two groups summing to seven are two machine cycles.",
       "reading": "Two machine cycles. The condition-met row on the same page prints 3 and 12 (4, 3, 5), which is consistent.",
-      "verifiedOn": "the rendered page image, 2026-08-21"
+      "verifiedOn": "the rendered page image, 2026-08-21",
+      "kind": "timingTableMisprint"
+    },
+    {
+      "id": "read-strobe-release-prose-versus-figure",
+      "manualPage": 9,
+      "instruction": "memory read outside an opcode fetch",
+      "printed": "The MREQ signal and the RD signal are used the same way as in a fetch cycle.",
+      "problem": "Figure 5 releases both on the rising edge of T3, so that the refresh address can take the bus. Figure 6 releases both on the falling edge of T3, half a T state later. The two cycles do not use the signals the same way.",
+      "reading": "The figures. A fetch has a refresh address waiting for the bus at the start of T3 and a plain read does not, which is why only one of them has to let go early. The prose is a summary and the figures are the specification.",
+      "verifiedOn": "the rendered page images of pages 9 and 10, 2026-08-21, with every edge measured rather than eyeballed",
+      "kind": "proseVersusFigure",
+      "corroboration": {
+        "quote": "Memory access time requirements, which are covered in the Memory Read Or Write section on page 9, are most severe during the M1 cycle instruction fetch. All other memory access cycles complete in an additional one half clock cycle.",
+        "manualPage": 23,
+        "why": "Prose elsewhere in the same document says outright that a memory access outside a fetch has half a clock cycle more than a fetch does, which is exactly what the two figures show and the opposite of what the summary on page 9 implies."
+      }
     }
   ],
   "notStated": {
@@ -1449,6 +1674,7 @@
     "internalRegisterWZ": "The manual never mentions the internal register the recording calls WZ, which two instructions copy their undocumented flag bits from. Every claim this project makes about it rests on the recording.",
     "flagsModifiedLatch": "The manual never mentions the latch the recording calls Q, which records whether the instruction just executed wrote the flags. Same footing as WZ.",
     "internalCyclePlacement": "The manual gives how many T states each machine cycle takes and how many machine cycles an instruction has. It does not say, for a machine cycle longer than its bus access needs, where within that cycle the bus is idle. A cycle-by-cycle model needs that ordering and has to take it from the recording.",
-    "undocumentedOpcodes": "The manual describes the documented instruction set. The prefixed forms that reach the halves of the index registers, and the ED opcodes that are not listed, are not in it at all."
+    "undocumentedOpcodes": "The manual describes the documented instruction set. The prefixed forms that reach the halves of the index registers, and the ED opcodes that are not listed, are not in it at all.",
+    "acknowledgeInternalState": "The printed totals for mode 1 and mode 2 both give the interrupt acknowledge cycle seven T states, which is a five state M1 plus the two wait states the manual adds. Figure 9 draws six states and stops. Where the seventh falls within the cycle is not drawn and not stated."
   }
 }

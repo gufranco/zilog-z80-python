@@ -25,7 +25,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import core, memory
+from z80 import bus, core, memory
 
 USAGE = "usage: singlestep.py <suite-directory> [--limit N] [--opcode NAME]"
 
@@ -85,7 +85,12 @@ class ScriptedPorts:
         self.log.append([address, value, "w"])
 
 
-def machine_for(initial: dict[str, Any], ports: ScriptedPorts, recording: bool = False) -> core.Cpu:
+def machine_for(
+    initial: dict[str, Any],
+    ports: ScriptedPorts,
+    recording: bool = False,
+    shape: str = bus.RECORDING,
+) -> core.Cpu:
     """A machine holding exactly what the case says it held, and nothing else.
 
     One builder for both runners. The cycle comparison asks for the bus to be
@@ -96,11 +101,16 @@ def machine_for(initial: dict[str, Any], ports: ScriptedPorts, recording: bool =
     it keeps its own reference to them. Reaching back through the machine for the
     log would mean asking a core that accepts any port space to promise it was
     handed this one.
+
+    The pin shape defaults to the recorded one here, which is the opposite of the
+    core's own default. A machine built to be compared against the corpus has to
+    draw its pins the way the corpus does, and the corpus simplifies the strobes
+    by its generator's own documented choice. Everywhere else the manual wins.
     """
     space = memory.SparseMemory()
     for address, value in initial["ram"]:
         space.write8(address, value)
-    cpu = core.Cpu(space, ports, reset=False, recording=recording)
+    cpu = core.Cpu(space, ports, reset=False, recording=recording, shape=shape)
     for name in REGISTERS:
         if name in initial:
             value = initial[name]

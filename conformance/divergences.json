@@ -21,29 +21,29 @@
     },
     {
       "id": "recording-single-state-strobe",
-      "severity": "contradiction",
+      "severity": "convention",
       "status": "open",
-      "topic": "How long the read and write strobes are asserted.",
+      "topic": "How many T states a strobe occupies, when a T state is the smallest column there is.",
       "documentSays": {
         "rung": 1,
-        "claim": "On a fetch the strobes go active early in T1 and are turned off on the rising edge of T3, so they span more than one T state.",
+        "claim": "Every control pin edge falls on a clock edge, which is half a T state. On a fetch the strobes go active half a clock into T1 and are turned off on the rising edge of T3; on a plain read they are turned off half a clock later still. The edges are recorded under figureEdges in hardware.json, measured off the figures.",
         "quote": "One half clock cycle later, the MREQ signal goes active. At this time, the address to memory has had time to stabilize so that the falling edge of MREQ can be used directly as a chip enable clock to dynamic memories. The RD line also goes active to indicate that the memory read data should be enabled onto the CPU data bus. The CPU samples the data from the memory space on the data bus with the rising edge of the clock of state T3, and this same edge is used by the CPU to turn off the RD and MREQ signals.",
         "source": "Zilog UM008011-0816, manual page 8"
       },
       "referenceDoes": {
         "rung": 3,
-        "claim": "Asserts read and memory request for a single T state.",
+        "claim": "Puts one strobe per transfer, on the T state the transfer happens in.",
         "source": "suites.json",
         "generatorSaysSoItself": "Use simplified memory access T-states. With this ON, MRQ/RD and MRQ/WR will only pulse for 1 T-state, whereas the docs have them pulse for 2. This simplifies emulator development and speeds up execution at no cost to accuracy."
       },
-      "packageFollows": "reference",
-      "consequence": "The pin strings this core produces show a one state strobe. They are therefore a faithful reproduction of the recording and not a faithful reproduction of the pins of a Z80.",
-      "why": "The recording is the only per-cycle evidence that exists for this part, and its generator states the simplification as a deliberate configurable option rather than an error. Producing the manual's two state strobe would make every case disagree and would test nothing, because there is no two state recording to compare against.",
+      "packageFollows": "document by default, reference in the comparison runner",
+      "consequence": "A bus built without arguments draws a pin in every T state the manual's figures show it asserted in. conformance/cycles.py builds its bus in the recorded shape instead, so the corpus still checks this core cycle for cycle without either shape being bent to fit the other.",
+      "why": "A four character string per T state cannot express a waveform whose edges land between states, so any per-state model applies a rule the manual never states. Calling the recording wrong would be treating one such rule as a fact. Calling it right would be treating a documented simplification as a measurement. Both shapes are kept, named, and produced from the same edge table.",
       "wouldSettleIt": [
-        "A logic capture of a real Z80 during a fetch, which would settle the strobe width directly.",
-        "Regenerating the suite with the simplification switched off, which its generator offers, giving a corpus that matches the manual."
+        "A logic capture of a real Z80, which would give the edges directly rather than through a drawing.",
+        "Nothing in the document settles it, because the question is about the model's resolution rather than about the part."
       ],
-      "whatIsClaimed": "This core reproduces the recorded bus activity exactly. That is a weaker claim than reproducing the pins of the silicon, and the difference is this entry."
+      "whatIsClaimed": "This core draws the coverage the manual's figures give, and reproduces the recorded bus activity exactly when asked for the recorded shape. Neither is a measurement of silicon."
     },
     {
       "id": "recording-refresh-on-address-pins",
@@ -62,8 +62,8 @@
         "source": "suites.json",
         "generatorSaysSoItself": "Put REFRESH values on address pins during opcode fetch"
       },
-      "packageFollows": "reference",
-      "consequence": "The address recorded for the last two states of every fetch is the vector register above the refresh counter as it stood before the fetch advanced it.",
+      "packageFollows": "reference, in both shapes",
+      "consequence": "The address on the last two states of every fetch is the vector register above the refresh counter as it stood before the fetch advanced it. Both pin shapes put it there, because the question is what is on the pins rather than how a waveform becomes a column.",
       "why": "The manual guarantees only seven bits, so the rest is not a figure it prints. The recording supplies a whole address and this core reproduces it. A model that put something else in the upper nine bits would disagree on every instruction and would have no document behind it either.",
       "wouldSettleIt": ["A logic capture reading all sixteen address lines during T3 of a fetch."]
     },
@@ -153,40 +153,41 @@
       ]
     },
     {
-      "id": "interrupt-acknowledge-not-modelled",
-      "severity": "unmodelled",
+      "id": "interrupt-acknowledge-unchecked",
+      "severity": "unchecked",
       "status": "open",
-      "topic": "The interrupt and nonmaskable interrupt acknowledge cycles.",
+      "topic": "The interrupt acknowledge cycle, which is modelled and which nothing verifies.",
       "documentSays": {
         "rung": 1,
         "claim": "An accepted interrupt generates a special M1 in which the port request replaces the memory request and two wait states are added, making it six T states.",
         "quote": "When the signal is accepted, a special M1 cycle is generated. During this special M1 cycle, the IORQ signal becomes active (instead of the normal MREQ) to indicate that the interrupting device can place an 8-bit vector on the data bus. Two wait states are automatically added to this cycle.",
         "source": "Zilog UM008011-0816, manual page 12"
       },
-      "packageFollows": "neither",
-      "consequence": "This core steps instructions. It has no pin for an interrupt to arrive on, so no acknowledge cycle is ever generated and none is modelled.",
-      "why": "The conformance suite drives one instruction at a time from a known state and never raises an interrupt, so there is nothing to compare an acknowledge cycle against. Modelling one would be writing behaviour that nothing checks.",
+      "packageFollows": "document",
+      "consequence": "Cpu.interrupt and Cpu.nonmaskable are implemented and cost the thirteen, thirteen, nineteen and eleven T states the manual's own totals give. conformance/hardware.test.py checks those totals. No recording checks the pins, because the corpus contains none.",
+      "why": "The generator does emit an entry for the interrupt request, and the published corpus leaves it out. That entry would not settle anything if it were published: every case in it is a plain four state opcode fetch with the ordinary memory request, so it is not a recording of an acknowledge cycle at all.",
       "wouldSettleIt": [
-        "A caller that raises the line, at which point the shape above is directly implementable from the quote.",
-        "A recording that includes interrupt acknowledge cycles, which this suite does not."
+        "A logic capture of a real Z80 answering an interrupt, which would give the pins and the length together.",
+        "A corpus that contains acknowledge cycles, which this one does not."
       ]
     },
     {
-      "id": "halt-fetches-not-modelled-as-cycles",
-      "severity": "unmodelled",
+      "id": "halt-fetch-address-unstated",
+      "severity": "unstated",
       "status": "open",
-      "topic": "What a halted part does on the bus.",
+      "topic": "Which address a halted part puts on the bus.",
       "documentSays": {
         "rung": 1,
         "claim": "It keeps fetching, so that dynamic memory keeps being refreshed.",
         "quote": "Each cycle in the HALT state is a normal M1 (fetch) cycle except that the data received from the memory is ignored and an NOP instruction is forced internally to the CPU.",
         "source": "Zilog UM008011-0816, manual page 14"
       },
-      "packageFollows": "neither",
-      "consequence": "A halted step here advances the refresh counter, which is the observable half, and emits no bus cycle.",
-      "why": "The suite contains one case per opcode from a known state and never steps a machine that is already halted, so there is no recorded transcript of a halted fetch to compare against.",
+      "packageFollows": "document, for the cycle; neither, for the address",
+      "consequence": "A halted step now spends a whole four state fetch with the pins of one, and advances the refresh counter. The address it fetches from is the program counter, which has already passed the halt instruction.",
+      "why": "The manual says outright that the halted part keeps performing M1 cycles, so emitting none was reporting a machine cycle the part performs as one it does not. It does not say which address those cycles carry: the note under Figure 11 says the halt instruction is repeated, which would put the previous address on the bus, and the counter is where a part that simply stopped advancing would fetch from.",
       "wouldSettleIt": [
-        "A recording that steps a halted machine, or a decision to emit the fetch on the strength of the quote alone and mark it unchecked."
+        "A logic capture of a halted Z80, reading the address lines during any of its M1 cycles.",
+        "A recording that steps a machine which is already halted, which this corpus does not."
       ]
     },
     {
@@ -204,6 +205,56 @@
       "consequence": "Every machine cycle here is its minimum length. The automatic waits, the one in an I/O cycle and the two in an interrupt acknowledge, are modelled because the part inserts them itself; a wait a device asks for is not.",
       "why": "A requested wait is a property of the board, not of the processor. There is no board here and no pin for a device to hold. This is the same distinction as a chip's rated clock against a particular oscillator: two different numbers.",
       "wouldReopenIt": "A caller that supplies a memory whose accesses take time, at which point the sampling rule above says exactly what to do."
+    },
+    {
+      "id": "generator-head-disagrees-with-the-pinned-corpus",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "The corpus generator has changed its mind about behaviour nobody documented.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. Every one of the eleven disagreements lies in territory Zilog never printed: the two undocumented flag bits, the order of the two writes of an exchange with the stack, and where an internal state falls inside a machine cycle.",
+        "source": "Zilog UM008011-0816, by absence"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Running the generator at its current head reproduces 1593 of the 1604 published files byte for byte and differs on eleven.",
+        "source": "suites.json, generator",
+        "detail": [
+          "dd 37, dd 3f, fd 37, fd 3f: the final flag register differs in bits 3 and 5 and nowhere else, which are the two bits Zilog never documented.",
+          "e3, dd e3, fd e3: the two writes of the exchange with the stack are in the opposite order. The manual gives the instruction 19 T states as (4, 3, 4, 3, 5) and does not say which half is written first.",
+          "ed 67, ed 6f: the write falls three T states earlier in the cycle, with the same total.",
+          "dd 36, fd 36: the internal states fall in a different place, with the same total."
+        ]
+      },
+      "packageFollows": "the pinned corpus",
+      "consequence": "This core reproduces the corpus as pinned. A future bump to a corpus regenerated from the current head would change eleven opcodes, and none of the changes could be checked against a document.",
+      "why": "The pin exists so a run is reproducible. Following the head instead would be swapping one undocumented opinion for a newer one with nothing to prefer it by.",
+      "wouldReopenIt": [
+        "A bump of the suite pin, which would need this list re-measured rather than assumed."
+      ],
+      "wouldSettleIt": [
+        "A real part, for any of the eleven. Nothing else can, because no document speaks to any of them."
+      ],
+      "measuredOn": "2026-08-21"
+    },
+    {
+      "id": "acknowledge-internal-state-placement",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Where the seventh T state of an interrupt acknowledge falls.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "That the cycle is seven T states, twice over and never directly. Mode 1 is a restart taking 'two more than normal', and a restart is 11 as (5, 3, 3), which gives 13 as (7, 3, 3). Mode 2 is printed as 19 and broken down as seven, six and six. Figure 9 draws six states and stops.",
+        "quote": "This mode of response requires 19 clock periods to complete (seven to fetch the lower eight bits from the interrupting device, six to save the program counter, and six to obtain the jump address).",
+        "source": "Zilog UM008011-0816, manual page 20"
+      },
+      "packageFollows": "document",
+      "consequence": "The bus draws the six states Figure 9 draws, and the seventh is spent by the response, which is where a restart already spends the fifth state of its own M1. The totals come out at 13, 13, 19 and 11, which is what the manual prints. Where inside the cycle that state actually falls is not modelled because it is not stated.",
+      "why": "Reading the cycle as a four state fetch plus the two added waits gives six, and six makes the printed mode 2 total eighteen against a printed nineteen. The reading that satisfies both printed figures is a five state M1 under the two waits.",
+      "wouldSettleIt": [
+        "A logic capture of a real Z80 answering an interrupt, counting the states of the acknowledge cycle."
+      ]
     }
   ]
 }

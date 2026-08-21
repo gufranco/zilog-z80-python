@@ -229,14 +229,42 @@ documented instructions, steps them, and checks the T states spent against the
 figure printed for that instruction, naming the manual page rather than repeating
 the number. That check needs no suite on the machine.
 
-Two details of the pin encoding are the suite's rather than Zilog's, and its own
-generator documents both: it asserts the strobes for one T state where the manual
-has them span two, and it puts the refresh value on all sixteen address pins
+### Two shapes, because one column cannot hold half a clock
+
+Every control pin edge in the manual falls on a clock edge, which is half a T
+state. A model whose smallest column is a whole T state has to pick a rule for
+turning a waveform into a column, and the manual states no such rule. So there
+are two shapes and both are named.
+
+`bus.MANUAL` is the default and draws a pin in every state the figure shows it
+asserted in. The edges behind it were measured off the pages of the pinned
+document rendered at 200 dpi, and every one of them is in
+[`conformance/hardware.json`](conformance/hardware.json) under `figureEdges`, so
+a reader can apply a different rule without opening the PDF. `bus.RECORDING`
+draws one strobe per transfer, which is what the pinned corpus contains and what
+its own generator describes as a deliberate simplification. Only
+[`conformance/cycles.py`](conformance/cycles.py) asks for it, so the corpus still
+checks this core cycle for cycle without either shape being bent to fit the
+other.
+
+Measuring the figures rather than reading the prose turned up three things the
+prose does not give. A memory read outside a fetch holds its strobes half a clock
+longer than a fetch does, which the summary on manual page 9 flatly denies and
+which prose on page 23 confirms. A port cycle does not start where a memory cycle
+starts: its strobes wait for the rising edge of T2 rather than falling half a
+clock into T1, so it leaves its first state bare and strobes the other three. And
+an interrupt acknowledge is seven T states rather than the six a four state fetch
+plus two waits would give, which is the only reading that makes the manual's own
+printed totals for mode 1 and mode 2 come out right.
+
+One detail of the pin encoding is the suite's rather than Zilog's, and its own
+generator documents it: it puts the refresh value on all sixteen address pins
 where the manual guarantees only seven.
-[`conformance/divergences.json`](conformance/divergences.json) records both,
-quoting the generator admitting each. **This core reproduces the recorded bus
-exactly. That is a weaker claim than reproducing the pins of a Z80, and the
-difference is written down rather than glossed.**
+[`conformance/divergences.json`](conformance/divergences.json) records it,
+quoting the generator admitting it. **This core draws the coverage the manual's
+figures give, and reproduces the recorded bus exactly when asked for the recorded
+shape. Neither is a measurement of silicon, and the difference is written down
+rather than glossed.**
 
 ## Where each answer comes from
 
@@ -246,7 +274,7 @@ difference is written down rather than glossed.**
 | 2 | The pinned suite | What the manual does not: the two undocumented flag bits, the internal `WZ` register, the `Q` latch, every opcode the manual does not list, and where the idle states sit inside a long machine cycle |
 | 3 | Nothing else | Nothing |
 
-### The manual contradicts itself in three places
+### The manual contradicts itself in four places
 
 Its M Cycles column disagrees with its own T states breakdown on pages 99, 260
 and 269. `LD dd,nn` is printed as two machine cycles of `10 (4, 3, 3)`; three
@@ -268,6 +296,54 @@ reviewed least.
 **The tables in that PDF have an unreliable text layer.** The prose extracts
 cleanly and the large opcode maps do not, so anything numeric was read off the
 page image.
+
+The fourth is not a misprint but a summary that its own figures do not support.
+Manual page 9 says the memory request and read signals of a plain read "are used
+the same way as in a fetch cycle". Figure 5 releases them on the rising edge of
+T3, so that the refresh address can take the bus; Figure 6 releases them half a
+clock later, because a plain read has no refresh address waiting. Prose on page
+23 settles it in the figures' favour without mentioning the contradiction:
+"Memory access time requirements ... are most severe during the M1 cycle
+instruction fetch. All other memory access cycles complete in an additional one
+half clock cycle."
+
+### The interrupt lines
+
+Both are offered rather than raised, because the manual samples them between
+instructions: the part "samples the interrupt signal (INT) with the rising edge
+of the final clock at the end of any instruction".
+
+```python
+cpu.interrupt(0xFF)  # the maskable line, with the byte the device puts on the bus
+cpu.nonmaskable()  # the other one, which is always taken
+```
+
+`interrupt` reports whether the part took it, and refuses while the enable flip
+flop is clear or for one instruction after an enable, which is the delay that
+exists so an enable followed by a return is not interrupted between the two.
+`nonmaskable` always reports taken.
+
+The four responses cost 13, 13, 19 and 11 T states, and not one of those numbers
+is written down in this package. The bus spends them and
+[`conformance/hardware.test.py`](conformance/hardware.test.py) compares what was
+spent against what the manual prints. Two of the four the manual prints outright.
+The other two it gives only as arithmetic: mode 1 is a restart taking "two more
+than normal", and the nonmaskable line makes the part function "as if it had
+recycled a restart instruction".
+
+That arithmetic is what makes an interrupt acknowledge seven T states rather than
+six. Reading the manual's "Two wait states are automatically added" as two added
+to an ordinary four state fetch gives six, and six makes the printed mode 2 total
+eighteen against a printed nineteen. The M1 underneath those waits is the five
+state kind a restart already has.
+
+### A halted part is not an idle one
+
+It keeps performing fetch cycles, and the manual says why: "The purpose of
+executing NOP instructions while in the HALT state is to keep the memory refresh
+signals active." A halted step here spends a whole four state fetch with the pins
+of one. Which address it carries is the part the manual does not settle, and that
+is recorded rather than decided quietly.
 
 ## The three registers nobody documents
 

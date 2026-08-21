@@ -54,6 +54,15 @@ INTERRUPT_MODES = (0, 0, 1, 2, 0, 0, 1, 2)
 
 INDEX_PREFIX = {0xDD: "ix", 0xFD: "iy"}
 
+NONMASKABLE_RESTART = 0x0066
+"""Where the nonmaskable line sends the part, which the manual prints outright."""
+
+MODE_ONE_RESTART = 0x0038
+"""Where mode one sends it, which the manual prints the same way."""
+
+VECTOR_MASK = 0xFE
+"""The device supplies seven bits, "because the least-significant bit must be a 0"."""
+
 
 class StepLimit(Exception):
     pass
@@ -72,12 +81,13 @@ class Cpu:
         seed: int = UNSET_SEED,
         reset: bool = True,
         recording: bool = False,
+        shape: str = bus.MANUAL,
     ) -> None:
         self.memory = memory
         self.ports = ports
         self.step_limit = step_limit
         self.registers = Registers(seed)
-        self.bus = bus.Bus(recording=recording)
+        self.bus = bus.Bus(recording=recording, shape=shape)
         self.steps = 0
         self.halted = False
         self.model = "z80"
@@ -313,18 +323,134 @@ class Cpu:
         self.set_flags(f)
         return result
 
-    def step(self) -> None:
+    def begin(self) -> None:
+        """What every step and every interrupt response does before anything else.
+
+        The runaway guard belongs here rather than in the stepper alone, because a
+        caller offering an interrupt in a loop can run away exactly as a caller
+        stepping in one can, and a limit only one of them respected would not be a
+        limit.
+        """
         self.bus.clear()
         self.steps += 1
         if self.steps > self.step_limit:
             raise StepLimit(f"stopped after {self.steps} steps at ${self.registers.pc:04X}")
         self.registers.ei = 0
         self.registers.p = 0
+
+    def step(self) -> None:
+        self.begin()
         if self.halted:
-            self.registers.tick_refresh()
+            self.halt_cycle()
             self.keep_flags()
             return None
         return self.execute(self.opcode_fetch(), None)
+
+    def halt_cycle(self) -> None:
+        """One machine cycle of a halted part, which is a fetch it throws away.
+
+        A halted part is not idle on the bus. The manual is explicit that it keeps
+        performing M1 cycles for the sake of the memory it is refreshing: "Each
+        cycle in the HALT state is a normal M1 (fetch) cycle except that the data
+        received from the memory is ignored and an NOP instruction is forced
+        internally to the CPU." A model that emitted nothing here would advance the
+        refresh counter, which is observable, while reporting no bus activity,
+        which is not what the part does.
+
+        The counter does not advance, so the same address is fetched every cycle.
+        Which address that is the manual does not settle: the note under Figure 11
+        says the halt instruction is repeated, and this fetches from the counter,
+        which by then has already passed it.
+        """
+        counter = self.registers.pc
+        refresh = (self.registers.i << 8) | self.registers.r
+        self.bus.fetch(counter, refresh, self.memory.read8(counter & 0xFFFF))
+        self.registers.tick_refresh()
+
+    def acknowledge(self, vector: int) -> int:
+        """The special M1 that answers an accepted interrupt.
+
+        The port request replaces the memory request, which is how the device
+        knows to answer, and the refresh happens exactly as it would in an
+        ordinary fetch. The byte the device puts on the data bus is returned
+        rather than being read from memory, because no memory cycle occurs.
+        """
+        counter = self.registers.pc
+        refresh = (self.registers.i << 8) | self.registers.r
+        self.bus.acknowledge(counter, refresh, vector & 0xFF)
+        self.registers.tick_refresh()
+        return vector & 0xFF
+
+    def begin_response(self) -> None:
+        """A step, plus leaving the halt state, which either line does."""
+        self.begin()
+        self.halted = False
+
+    def interrupt(self, vector: int = 0xFF) -> bool:
+        """Offer the maskable line, and report whether the part took it.
+
+        Refused while the enable flip-flop is clear, and refused for one further
+        instruction after an enable, because "When an EI instruction is executed,
+        any pending interrupt request is not accepted until after the instruction
+        following EI is executed". A part that accepted immediately would take the
+        interrupt between an enable and the return that follows it, which is the
+        case the delay exists for.
+
+        The three modes cost thirteen, thirteen and nineteen T states. None of
+        those totals is assembled here: the acknowledge cycle and the restart
+        below spend them, and ``conformance/hardware.test.py`` checks the result
+        against the figures the manual prints.
+        """
+        if not self.registers.iff1 or self.registers.ei:
+            return False
+        self.begin_response()
+        self.registers.iff1 = False
+        self.registers.iff2 = False
+        answer = self.acknowledge(vector)
+        if self.registers.im == 1:
+            self.restart(MODE_ONE_RESTART)
+            return True
+        if self.registers.im == 2:
+            self.idle()
+            self.push16(self.registers.pc)
+            pointer = (self.registers.i << 8) | (answer & VECTOR_MASK)
+            self.registers.pc = self.read16(pointer)
+            self.registers.wz = self.registers.pc
+            self.keep_flags()
+            return True
+        self.execute(answer, None)
+        return True
+
+    def nonmaskable(self) -> None:
+        """Raise the nonmaskable line, which the part has no way of refusing.
+
+        Nothing is reported back, because "The CPU always accepts a nonmaskable
+        interrupt" and a value that is the same every time tells a caller nothing.
+
+        This is not an acknowledge cycle. Figure 10 draws an ordinary M1 with the
+        memory request rather than the port request, so the two automatic wait
+        states do not apply and the response costs what a restart costs. The
+        fetch happens and its opcode is thrown away, because "the CPU ignores the
+        next instruction that it fetches and instead performs a restart at address
+        0066h", and the counter is put back so that the address pushed below is
+        the ignored instruction rather than the one after it.
+
+        The enable flip-flop is cleared and its copy is left alone, which is what
+        makes the return from this interrupt able to put it back.
+        """
+        self.begin_response()
+        self.opcode_fetch()
+        self.registers.pc = self.registers.pc - 1
+        self.registers.iff1 = False
+        self.restart(NONMASKABLE_RESTART)
+
+    def restart(self, address: int) -> None:
+        """The one internal state a restart's M1 carries, then the call itself."""
+        self.idle()
+        self.push16(self.registers.pc)
+        self.registers.pc = address
+        self.registers.wz = address
+        self.keep_flags()
 
     def run_until(self, predicate: Callable[[Cpu], bool]) -> Cpu:
         while not predicate(self):

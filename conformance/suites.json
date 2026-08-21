@@ -9,7 +9,30 @@
       "sparse": ["v1"],
       "path": "v1",
       "tests_per_opcode": 1000,
-      "files": 1604
+      "files": 1604,
+      "generator": {
+        "note": "Where the corpus comes from, so it can be regenerated rather than only downloaded. The published files were checked against a run of this generator: 1593 of the 1604 come out byte for byte identical, and the eleven that do not are recorded in divergences.json.",
+        "repository": "https://github.com/raddad772/jsmoo.git",
+        "commit": "b6cc506e7c2f7b2b14cce6e98d0463467eb8c4d6",
+        "commitDate": "2025-08-01",
+        "entryPoint": "misc/code_generation/z80_test_generator.js, generate_Z80_tests",
+        "requires": [
+          "helpers.js",
+          "misc/code_generation/common_test_generation.js",
+          "component/cpu/z80/z80_opcodes.js"
+        ],
+        "flags": {
+          "Z80_DO_FULL_MEMCYCLES": false,
+          "Z80_DO_MEM_REFRESHES": true
+        },
+        "flagsNote": "These are the settings that reproduce the published corpus. Turning the first on widens the read and write strobes to two T states, which is closer to the manual for data cycles and does not touch the opcode fetch, because the fetch is written with its first state hardcoded idle.",
+        "excludedFromPublication": [
+          "opcode 0x100, the interrupt request pseudo entry",
+          "opcode 0x101, the reset pseudo entry"
+        ],
+        "excludedNote": "The generator emits six files the published corpus does not carry, for those two pseudo entries and their two index prefixed forms. Every case in the interrupt one is a plain four state fetch, so it would not serve as an oracle for an acknowledge cycle even if it were published.",
+        "verifiedOn": "2026-08-21"
+      }
     }
   ]
 }
