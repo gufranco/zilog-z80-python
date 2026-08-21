@@ -874,6 +874,16 @@ class SuiteRecordTest(unittest.TestCase):
 
         self.assertEqual(set(allowance), {"what", "why", "counted"})
 
+    def test_the_command_that_rebuilds_the_corpus_exists(self) -> None:
+        named = self.generator["howToRun"].split()[1]
+
+        self.assertTrue((Path(__file__).resolve().parent.parent / named).is_file())
+
+    def test_and_so_does_the_one_that_compares_against_it(self) -> None:
+        named = self.generator["fullMemoryCycleRun"]["howToCompare"].split()[1]
+
+        self.assertTrue((Path(__file__).resolve().parent.parent / named).is_file())
+
 
 class DivergenceTest(unittest.TestCase):
     @override

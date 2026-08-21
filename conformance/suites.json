@@ -11,7 +11,7 @@
       "tests_per_opcode": 1000,
       "files": 1604,
       "generator": {
-        "note": "Where the corpus comes from, so it can be regenerated rather than only downloaded. The published files were checked against a run of this generator: 1593 of the 1604 come out byte for byte identical, and the eleven that do not are recorded in divergences.json.",
+        "note": "Where the corpus comes from, so it can be rebuilt rather than only downloaded. conformance/regenerate.py clones this commit and drives it headless. The published files were checked against such a run: 1593 of the 1604 come out byte for byte identical, and the eleven that do not are recorded in divergences.json.",
         "repository": "https://github.com/raddad772/jsmoo.git",
         "commit": "b6cc506e7c2f7b2b14cce6e98d0463467eb8c4d6",
         "commitDate": "2025-08-01",
@@ -51,8 +51,10 @@
             "what": "The first T state of every opcode fetch and of every memory read, skipped rather than compared.",
             "why": "The generator writes that column idle without consulting the flag that widens every other strobe, and it routes the fourth byte of an indexed bit instruction through the same opcode fetch routine even though that byte does not refresh.",
             "counted": "The runner prints how many states it skipped, so a run that skipped something never reads as a run that checked it."
-          }
-        }
+          },
+          "howToBuild": "python3 conformance/regenerate.py <directory> --full"
+        },
+        "howToRun": "python3 conformance/regenerate.py <directory> [--full]"
       }
     }
   ]

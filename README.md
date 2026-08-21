@@ -256,15 +256,23 @@ during the state is not.
 It is also not only this package's reading. The corpus generator has a flag that
 widens the data strobes to what the figures draw, and a corpus regenerated with
 it on carries exactly these columns for a read, a write, a port read and a port
-write, from an implementation that read the same figures independently. Running
-this core against that corpus reports 7,000 differences across 1,610,000 cases,
-which is every case of seven opcodes and no case of any other, and all seven are
-opcodes where the generator's current commit already disagrees with the pinned
-corpus about behaviour Zilog never printed:
+write, from an implementation that read the same figures independently:
 
 ```bash
-python3 conformance/cycles.py <regenerated-directory> --shape manual
+python3 conformance/regenerate.py ~/.cache/z80-full --full
+python3 conformance/cycles.py ~/.cache/z80-full --shape manual
 ```
+
+That reports 7,000 differences across 1,610,000 cases, which is every case of
+seven opcodes and no case of any other, and all seven are opcodes where the
+generator's current commit already disagrees with the pinned corpus about
+behaviour Zilog never printed.
+
+Running the generator without `--full` rebuilds the published corpus instead.
+1,593 of its 1,604 files come out byte for byte identical; the eleven that do
+not are the same seven plus four where only the two undocumented flag bits
+differ. That is how those eleven were found, and it is why the generator is
+pinned by commit next to the corpus rather than merely credited.
 
 That run skips one state per fetch and per read, because the generator writes
 that column idle without consulting the flag that widens every other strobe. The
@@ -458,6 +466,7 @@ the top half, and this will let it fail the way hardware would.
 | [`conformance/singlestep.py`](conformance/singlestep.py) | The runner that holds the final state to the suite |
 | [`conformance/cycles.py`](conformance/cycles.py) | The runner that holds every T state to it |
 | [`conformance/fetch.py`](conformance/fetch.py) | Brings the suite down, pinned by commit |
+| [`conformance/regenerate.py`](conformance/regenerate.py) | Rebuilds the suite from the generator that made it, pinned the same way |
 | [`specs/current/`](specs/current/) | What the part does, as requirements somebody could test against |
 | [`AGENTS.md`](AGENTS.md) | The working instructions, including the things that will bite you |
 

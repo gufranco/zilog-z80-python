@@ -120,11 +120,13 @@ that into pins by reading them at the clock edge that ends each state. Changing 
 column means changing a measurement, and `conformance/hardware.test.py` checks
 the record holds the same edges.
 
-**There is a second oracle for the manual shape.** Regenerate the corpus with the
-generator's `Z80_DO_FULL_MEMCYCLES` on, per `suites.json`, and run
-`conformance/cycles.py <directory> --shape manual`. Expect 7,000 differences over
-1,610,000 cases, all of them in the seven opcodes already recorded as places the
-generator's head has moved away from the pinned corpus.
+**There is a second oracle for the manual shape.** `conformance/regenerate.py
+<directory> --full` rebuilds the corpus with the generator's wide strobes, and
+`conformance/cycles.py <directory> --shape manual` compares against it. Expect
+7,000 differences over 1,610,000 cases, all of them in the seven opcodes already
+recorded as places the generator's head has moved away from the pinned corpus.
+Without `--full` the same command rebuilds the published corpus, which is how
+those eleven opcodes were found in the first place.
 
 **There are two pin shapes and the manual's is the default.** A four character
 string per T state cannot express a waveform whose edges land on clock edges, so
