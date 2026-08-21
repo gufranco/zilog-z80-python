@@ -398,6 +398,54 @@
       "wouldSettleIt": [
         "Nothing settles it, which is the point of the entry. What would narrow it is a survey of how many parts on how many boards are stable, which the test program named in that document exists to collect."
       ]
+    },
+    {
+      "id": "mode-two-vector-low-bit",
+      "severity": "documentContradiction",
+      "status": "open",
+      "topic": "Whether the lowest bit of the byte a device supplies reaches the pointer.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "It does not, because the byte carries only seven bits of information.",
+        "quote": "The lower eight bits of the pointer must be supplied by the interrupting device. Only seven bits are required from the interrupting device, because the least-significant bit must be a 0. This process is required, because the pointer must receive two adjacent bytes to form a complete 16-bit service routine starting address; addresses must always start in even locations.",
+        "source": "Zilog UM008011-0816, manual page 20"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "It does. The part reads from wherever the whole byte points.",
+        "quote": "Zilog's user manual states (very convincingly) that the least significant bit of the address is always 0, so they calculate the address that is read from as: (I register) x 256 + (value on bus & 0xFE). I have tested this and it not correct.",
+        "source": "docs/independent/young-undocumented-z80-documented-v0.91.pdf, section 5.2"
+      },
+      "packageFollows": "reference",
+      "consequence": "All eight bits reach the pointer here. A system that supplies an odd vector reads two bytes straddling two table entries, which is what the manual is warning against.",
+      "why": "The manual's sentence is sound advice to whoever builds the table and is not a description of what the silicon does with the byte. The only party to have tested it reports the opposite, and nothing in the corpus covers it because the corpus contains no interrupt cases.",
+      "wouldSettleIt": [
+        "A program on a real part: point the table at an odd address, raise the line, supply an odd vector, and see where it lands."
+      ]
+    },
+    {
+      "id": "mode-zero-prefix-fetches-an-ordinary-cycle",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "What a mode zero response does when the byte the device supplies is a prefix.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing beyond that the device supplies the instruction.",
+        "quote": "With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it.",
+        "source": "Zilog UM008011-0816, manual page 19"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Another acknowledge cycle is produced for each further prefix, and only the operand bytes after the final opcode are ordinary memory reads.",
+        "quote": "Its first byte is read during the INTA M-cycle and, if it is an opcode prefix, additional M-cycles of this kind are produced until the final opcode of the instruction is fetched.",
+        "source": "https://github.com/redcode/Z80/wiki/Interrupts"
+      },
+      "packageFollows": "document, which is to say neither",
+      "consequence": "A prefix supplied here is followed by an ordinary opcode fetch rather than by a second acknowledge cycle, so the cycle after a prefixed mode zero response asserts the memory request where the part asserts the port request.",
+      "why": "The interface takes one byte. Producing a second acknowledge cycle would mean asking the caller for a second byte, which is the same interface change the multi byte case needs, and doing half of it would leave the counts right and the pins wrong in a different place.",
+      "wouldSettleIt": [
+        "An interface that lets a caller answer each cycle of a response rather than only the first."
+      ]
     }
   ]
 }

@@ -60,8 +60,15 @@ NONMASKABLE_RESTART = 0x0066
 MODE_ONE_RESTART = 0x0038
 """Where mode one sends it, which the manual prints the same way."""
 
-VECTOR_MASK = 0xFE
-"""The device supplies seven bits, "because the least-significant bit must be a 0"."""
+VECTOR_MASK = 0xFF
+"""How much of the device's byte reaches the pointer, which is all of it.
+
+Zilog says otherwise: "Only seven bits are required from the interrupting device,
+because the least-significant bit must be a 0." Sean Young tested the part and
+reports the opposite, and ``conformance/divergences.json`` carries both. Zilog's
+sentence is sound advice to whoever builds the table, because an odd pointer makes
+the two bytes straddle two entries. It is not what the silicon does with the byte.
+"""
 
 
 class StepLimit(Exception):
@@ -76,6 +83,10 @@ class Cpu:
     carry_rule: str
 
     interrupt_clears_parity: bool
+
+    holding_counter: bool
+
+    deferring_interrupt: bool
 
     def __init__(
         self,
@@ -98,6 +109,8 @@ class Cpu:
         self.floating_output = 0x00
         self.carry_rule = models.ZILOG_CARRY
         self.interrupt_clears_parity = True
+        self.holding_counter = False
+        self.deferring_interrupt = False
         if reset:
             self.reset()
 
@@ -152,7 +165,8 @@ class Cpu:
 
     def fetch8(self) -> int:
         value = self.read8(self.registers.pc)
-        self.registers.pc = self.registers.pc + 1
+        if not self.holding_counter:
+            self.registers.pc = self.registers.pc + 1
         return value
 
     def fetch16(self) -> int:
@@ -343,6 +357,7 @@ class Cpu:
             raise StepLimit(f"stopped after {self.steps} steps at ${self.registers.pc:04X}")
         self.registers.ei = 0
         self.registers.p = 0
+        self.deferring_interrupt = False
 
     def step(self) -> None:
         self.begin()
@@ -402,10 +417,24 @@ class Cpu:
         interrupt between an enable and the return that follows it, which is the
         case the delay exists for.
 
+        Refused for one instruction after a return from interrupt too, when the
+        two flip-flops disagreed on the way in. That refusal has a latch of its
+        own rather than sharing the one an enable sets, because the recorded
+        corpus carries the enable latch as observable state and does not set it
+        for a return. Reusing it would have made this core disagree with the
+        recording on all eight return opcodes, which is how the separation was
+        found.
+
         The three modes cost thirteen, thirteen and nineteen T states. None of
         those totals is assembled here: the acknowledge cycle and the restart
         below spend them, and ``conformance/hardware.test.py`` checks the result
         against the figures the manual prints.
+
+        In mode zero the counter is held while the supplied instruction runs, so
+        that the operand bytes it reads come from the address the counter already
+        held rather than from successive ones. The part does not advance it for a
+        fetch it never made: the device supplies those bytes, and the counter goes
+        back to the interrupted program.
 
         An interrupt taken while one of the two instructions that copy the
         interrupt latch into the parity flag was executing clears that flag on the
@@ -415,7 +444,7 @@ class Cpu:
         flip-flop (IFF2) is cleared before it is actually transferred to the P/V
         flag."
         """
-        if not self.registers.iff1 or self.registers.ei:
+        if not self.registers.iff1 or self.registers.ei or self.deferring_interrupt:
             return False
         reading_the_latch = self.registers.p
         self.begin_response()
@@ -435,7 +464,11 @@ class Cpu:
             self.registers.wz = self.registers.pc
             self.keep_flags()
             return True
-        self.execute(answer, None)
+        self.holding_counter = True
+        try:
+            self.execute(answer, None)
+        finally:
+            self.holding_counter = False
         return True
 
     def nonmaskable(self) -> None:
@@ -1116,10 +1149,18 @@ class Cpu:
         as restoring the interrupt flag. The part restores it for both, and the
         difference between them is a signal on a pin that never reaches the
         registers.
+
+        When the two flip-flops disagreed on the way in, the next instruction
+        boundary does not accept a maskable interrupt. They can only disagree
+        because a nonmaskable interrupt was taken and not yet returned from, so
+        this is what stops a maskable one from arriving in the gap between
+        restoring the copy and resuming the interrupted program.
         """
+        held = self.registers.iff1 != self.registers.iff2
         self.registers.pc = self.pop16()
         self.registers.wz = self.registers.pc
         self.registers.iff1 = self.registers.iff2
+        self.deferring_interrupt = held
         self.keep_flags()
 
     def extended_accumulator(self, y: int) -> None:

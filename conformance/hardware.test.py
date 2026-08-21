@@ -656,17 +656,16 @@ class InterruptResponseTest(unittest.TestCase):
 
         self.assertEqual(set(added.values()), {2})
 
-    def test_a_response_of_more_than_one_byte_reads_the_rest_from_memory(self) -> None:
+    def test_a_response_of_more_than_one_byte_reads_the_rest_without_advancing(self) -> None:
         space = memory.SparseMemory()
         space.write8(START, 0x34)
-        space.write8(START + 1, 0x12)
         cpu = core.Cpu(space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
 
         cpu.interrupt(0xC3)
 
-        self.assertEqual(cpu.registers.pc, 0x1234)
+        self.assertEqual(cpu.registers.pc, 0x3434)
 
     def test_which_is_written_up_because_a_device_supplies_them_on_the_part(self) -> None:
         named = {entry["id"] for entry in DIVERGENCES["divergences"]}
@@ -697,16 +696,20 @@ class InterruptResponseTest(unittest.TestCase):
 
         self.assertEqual(cpu.registers.pc, RESPONSE["nonmaskable"]["restartsAt"])
 
-    def test_mode_two_ignores_the_bit_the_device_is_not_asked_for(self) -> None:
+    def test_mode_two_uses_every_bit_the_device_supplies(self) -> None:
         space = memory.SparseMemory()
         space.write8(0x00FE, 0x34)
         space.write8(0x00FF, 0x12)
+        space.write8(0x0100, 0x56)
         cpu = core.Cpu(space, reset=True)
         cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 2
 
         cpu.interrupt(0xFF)
 
-        self.assertEqual(cpu.registers.pc, 0x1234)
+        self.assertEqual(cpu.registers.pc, 0x5612)
+
+    def test_which_is_the_one_place_a_measurement_beat_the_manual(self) -> None:
+        self.assertEqual(core.VECTOR_MASK, 0xFF)
 
     def test_a_maskable_interrupt_clears_both_flip_flops(self) -> None:
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
