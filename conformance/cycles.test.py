@@ -288,8 +288,16 @@ class SweepTest(unittest.TestCase):
 
 
 @unittest.skipUnless(HAS_SUITE, "the conformance suite is not on this machine")
-class AgainstSuiteTest(unittest.TestCase):
-    """The gate proper, on a sample. The full sweep is a workflow job, not a test."""
+class AgainstSuiteTest(unittest.TestCase):  # pragma: no cover
+    """The gate proper, on a sample. The full sweep is a workflow job, not a test.
+
+    Outside the coverage gate, and the only thing in this file that is. A skipped
+    test contributes no coverage, so on a machine or a job without the corpus this
+    would read as uncovered for a reason that has nothing to do with the code. The
+    sweep it runs is a named function tested above against a suite built here, so
+    what is outside the gate is the corpus this machine happens to hold rather
+    than any logic.
+    """
 
     def test_every_opcode_reproduces_its_recorded_bus_activity(self) -> None:
         self.assertEqual(opcodes_that_disagree(SUITE, 2), [])
