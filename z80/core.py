@@ -31,9 +31,17 @@ Nothing starts clean, and the refresh counter advances on every fetch including
 the extra fetch a prefix costs.
 """
 
-from . import blocks, flags
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
+from . import blocks, bus, flags
 from .memory import UNSET_SEED
 from .registers import Registers
+
+if TYPE_CHECKING:
+    from .memory import PortBus, SparseMemory
 
 STEP_LIMIT = 2_000_000
 
@@ -54,11 +62,22 @@ class StepLimit(Exception):
 class Cpu:
     """One Z80, holding whatever it held until something writes to it."""
 
-    def __init__(self, memory, ports=None, step_limit=STEP_LIMIT, seed=UNSET_SEED, reset=True):
+    model: str
+
+    def __init__(
+        self,
+        memory: SparseMemory,
+        ports: PortBus | None = None,
+        step_limit: int = STEP_LIMIT,
+        seed: int = UNSET_SEED,
+        reset: bool = True,
+        recording: bool = False,
+    ) -> None:
         self.memory = memory
         self.ports = ports
         self.step_limit = step_limit
         self.registers = Registers(seed)
+        self.bus = bus.Bus(recording=recording)
         self.steps = 0
         self.halted = False
         self.model = "z80"
@@ -66,54 +85,106 @@ class Cpu:
         if reset:
             self.reset()
 
-    def reset(self):
+    def reset(self) -> Cpu:
         self.registers.reset()
         self.halted = False
         self.steps = 0
         return self
 
-    def read8(self, address):
-        return self.memory.read8(address & 0xFFFF)
+    def read8(self, address: int) -> int:
+        address &= 0xFFFF
+        value = self.memory.read8(address)
+        self.bus.read(address, value)
+        return value
 
-    def write8(self, address, value):
-        self.memory.write8(address & 0xFFFF, value)
+    def write8(self, address: int, value: int) -> None:
+        address &= 0xFFFF
+        value &= 0xFF
+        self.memory.write8(address, value)
+        self.bus.write(address, value)
 
-    def read16(self, address):
+    def idle(self, count: int = 1) -> None:
+        """Internal cycles, which the manual counts and never gives an address."""
+        self.bus.idle(count)
+
+    def port_read(self, address: int) -> int:
+        """One input cycle, which the part performs whether anything answers or not.
+
+        A port with nothing attached still costs the four T states the manual
+        gives an I/O cycle, and the part still latches whatever the data pins
+        were holding. Reporting no cycle there would be reporting a machine
+        cycle the part performed as one it did not.
+        """
+        address &= 0xFFFF
+        value = self.ports.read(address) if self.ports is not None else self.floating_output
+        self.bus.port_read(address, value)
+        return value & 0xFF
+
+    def port_write(self, address: int, value: int) -> None:
+        address &= 0xFFFF
+        value &= 0xFF
+        if self.ports is not None:
+            self.ports.write(address, value)
+        self.bus.port_write(address, value)
+
+    def read16(self, address: int) -> int:
         return self.read8(address) | (self.read8(address + 1) << 8)
 
-    def write16(self, address, value):
+    def write16(self, address: int, value: int) -> None:
         self.write8(address, value & 0xFF)
         self.write8(address + 1, value >> 8)
 
-    def fetch8(self):
+    def fetch8(self) -> int:
         value = self.read8(self.registers.pc)
         self.registers.pc = self.registers.pc + 1
         return value
 
-    def fetch16(self):
+    def fetch16(self) -> int:
         low = self.fetch8()
         return low | (self.fetch8() << 8)
 
-    def fetch_signed(self):
+    def fetch_signed(self) -> int:
         value = self.fetch8()
         return value - 0x100 if value & 0x80 else value
 
-    def push16(self, value):
-        self.registers.sp = self.registers.sp - 2
-        self.write16(self.registers.sp, value)
+    def push16(self, value: int) -> None:
+        """Two writes, high half first, each preceded by its own decrement.
 
-    def pop16(self):
+        The order is not a detail. A push that writes the low half first touches
+        the same two addresses in the opposite sequence, which no comparison of
+        final state can see and which a bus recording shows immediately.
+        """
+        self.registers.sp = self.registers.sp - 1
+        self.write8(self.registers.sp, (value >> 8) & 0xFF)
+        self.registers.sp = self.registers.sp - 1
+        self.write8(self.registers.sp, value & 0xFF)
+
+    def pop16(self) -> int:
         value = self.read16(self.registers.sp)
         self.registers.sp = self.registers.sp + 2
         return value
 
-    def opcode_fetch(self):
-        """One opcode, with the refresh counter advanced as the fetch advances it."""
-        opcode = self.fetch8()
+    def opcode_fetch(self) -> int:
+        """One opcode: a four T state machine cycle, not a three T state read.
+
+        The manual gives the fetch its own shape. The counter is on the address
+        bus while the opcode is read, and the refresh address replaces it for the
+        last two states, so this cannot go through the ordinary memory read path
+        without reporting a machine cycle the part does not perform.
+
+        The refresh address carries the counter as it stood before this fetch
+        advanced it. Advancing first and then reading is wrong by one on every
+        instruction.
+        """
+        counter = self.registers.pc
+        refresh = (self.registers.i << 8) | self.registers.r
+        opcode = self.memory.read8(counter & 0xFFFF)
+        self.registers.pc = counter + 1
+        self.bus.fetch(counter, refresh, opcode)
         self.registers.tick_refresh()
         return opcode
 
-    def condition(self, index):
+    def condition(self, index: int) -> bool:
         f = self.registers.f
         if index == 0:
             return not f & flags.Z
@@ -131,17 +202,17 @@ class Cpu:
             return not f & flags.S
         return bool(f & flags.S)
 
-    def set_flags(self, value):
+    def set_flags(self, value: int) -> None:
         self.registers.f = value
         self.registers.q = value
 
-    def keep_flags(self):
+    def keep_flags(self) -> None:
         self.registers.q = 0
 
-    def index_pair(self, prefix):
+    def index_pair(self, prefix: str | None) -> str:
         return "hl" if prefix is None else prefix
 
-    def register_name(self, index, prefix):
+    def register_name(self, index: int, prefix: str | None) -> str:
         name = REGISTER_NAMES[index]
         if prefix is None:
             return name
@@ -151,25 +222,27 @@ class Cpu:
             return f"{prefix}l"
         return name
 
-    def register_read(self, index, prefix=None, displacement=0):
+    def register_read(self, index: int, prefix: str | None = None, displacement: int = 0) -> int:
         if index == 6:
             return self.read8(self.address_for(prefix, displacement))
-        return getattr(self.registers, self.register_name(index, prefix))
+        return int(getattr(self.registers, self.register_name(index, prefix)))
 
-    def register_write(self, index, value, prefix=None, displacement=0):
+    def register_write(
+        self, index: int, value: int, prefix: str | None = None, displacement: int = 0
+    ) -> None:
         if index == 6:
             self.write8(self.address_for(prefix, displacement), value)
             return
         setattr(self.registers, self.register_name(index, prefix), value)
 
-    def address_for(self, prefix, displacement):
+    def address_for(self, prefix: str | None, displacement: int) -> int:
         if prefix is None:
             return self.registers.hl
-        address = (getattr(self.registers, prefix) + displacement) & 0xFFFF
+        address = (int(getattr(self.registers, prefix)) + displacement) & 0xFFFF
         self.registers.wz = address
         return address
 
-    def add8(self, value, carry=0):
+    def add8(self, value: int, carry: int = 0) -> None:
         a = self.registers.a
         total = a + value + carry
         result = total & 0xFF
@@ -180,7 +253,7 @@ class Cpu:
         self.registers.a = result
         self.set_flags(f)
 
-    def sub8(self, value, carry=0, store=True):
+    def sub8(self, value: int, carry: int = 0, store: bool = True) -> None:
         a = self.registers.a
         total = a - value - carry
         result = total & 0xFF
@@ -195,22 +268,22 @@ class Cpu:
             self.registers.a = result
         self.set_flags(f)
 
-    def and8(self, value):
+    def and8(self, value: int) -> None:
         result = self.registers.a & value
         self.registers.a = result
         self.set_flags(flags.sign_zero(result) | flags.H | flags.parity(result))
 
-    def or8(self, value):
+    def or8(self, value: int) -> None:
         result = self.registers.a | value
         self.registers.a = result
         self.set_flags(flags.sign_zero(result) | flags.parity(result))
 
-    def xor8(self, value):
+    def xor8(self, value: int) -> None:
         result = self.registers.a ^ value
         self.registers.a = result
         self.set_flags(flags.sign_zero(result) | flags.parity(result))
 
-    def inc8(self, value):
+    def inc8(self, value: int) -> int:
         result = (value + 1) & 0xFF
         f = self.registers.f & flags.C
         f |= flags.sign_zero(result)
@@ -219,7 +292,7 @@ class Cpu:
         self.set_flags(f)
         return result
 
-    def dec8(self, value):
+    def dec8(self, value: int) -> int:
         result = (value - 1) & 0xFF
         f = self.registers.f & flags.C
         f |= flags.N
@@ -229,7 +302,7 @@ class Cpu:
         self.set_flags(f)
         return result
 
-    def add16(self, left, right):
+    def add16(self, left: int, right: int) -> int:
         total = left + right
         result = total & 0xFFFF
         f = self.registers.f & (flags.S | flags.Z | flags.PV)
@@ -240,7 +313,8 @@ class Cpu:
         self.set_flags(f)
         return result
 
-    def step(self):
+    def step(self) -> None:
+        self.bus.clear()
         self.steps += 1
         if self.steps > self.step_limit:
             raise StepLimit(f"stopped after {self.steps} steps at ${self.registers.pc:04X}")
@@ -252,16 +326,15 @@ class Cpu:
             return None
         return self.execute(self.opcode_fetch(), None)
 
-    def run_until(self, predicate):
+    def run_until(self, predicate: Callable[[Cpu], bool]) -> Cpu:
         while not predicate(self):
             self.step()
         return self
 
-    def execute(self, opcode, prefix):
+    def execute(self, opcode: int, prefix: str | None) -> None:
         if opcode in INDEX_PREFIX:
-            self.registers.tick_refresh()
             self.keep_flags()
-            return self.execute(self.fetch8(), INDEX_PREFIX[opcode])
+            return self.execute(self.opcode_fetch(), INDEX_PREFIX[opcode])
         if opcode == 0xCB:
             return self.execute_bit(prefix)
         if opcode == 0xED:
@@ -281,22 +354,32 @@ class Cpu:
             return self.execute_arithmetic(y, self.operand(z, prefix))
         return self.execute_group3(y, z, p, q, prefix)
 
-    def operand(self, z, prefix):
+    def operand(self, z: int, prefix: str | None) -> int:
+        """One source operand, with the five states an indexed one costs to reach.
+
+        The manual gives every indexed form nineteen T states over five machine
+        cycles, (4, 4, 3, 5, 3). The fourth is the sum of the index register and
+        the displacement, and it drives no bus cycle.
+        """
         displacement = self.fetch_signed() if z == 6 and prefix is not None else 0
+        if z == 6 and prefix is not None:
+            self.idle(5)
         return self.register_read(z, prefix, displacement)
 
-    def execute_load(self, y, z, prefix):
+    def execute_load(self, y: int, z: int, prefix: str | None) -> None:
         if y == 6 and z == 6:
             self.halted = True
             self.keep_flags()
             return None
         displacement = self.fetch_signed() if (y == 6 or z == 6) and prefix is not None else 0
+        if (y == 6 or z == 6) and prefix is not None:
+            self.idle(5)
         value = self.register_read(z, None if y == 6 else prefix, displacement)
         self.register_write(y, value, None if z == 6 else prefix, displacement)
         self.keep_flags()
         return None
 
-    def execute_arithmetic(self, y, value):
+    def execute_arithmetic(self, y: int, value: int) -> None:
         if y == 0:
             return self.add8(value)
         if y == 1:
@@ -313,7 +396,7 @@ class Cpu:
             return self.or8(value)
         return self.sub8(value, store=False)
 
-    def execute_group0(self, y, z, p, q, prefix):
+    def execute_group0(self, y: int, z: int, p: int, q: int, prefix: str | None) -> None:
         if z == 0:
             return self.group0_control(y)
         if z == 1:
@@ -330,7 +413,7 @@ class Cpu:
             return self.group0_immediate(y, prefix)
         return self.group0_accumulator(y)
 
-    def group0_control(self, y):
+    def group0_control(self, y: int) -> None:
         if y == 0:
             self.keep_flags()
             return None
@@ -339,6 +422,7 @@ class Cpu:
             self.keep_flags()
             return None
         if y == 2:
+            self.idle()
             offset = self.fetch_signed()
             self.registers.b = (self.registers.b - 1) & 0xFF
             return self.take_branch(offset, bool(self.registers.b))
@@ -347,23 +431,30 @@ class Cpu:
         offset = self.fetch_signed()
         return self.take_branch(offset, self.condition(y - 4))
 
-    def take_branch(self, offset, taken):
+    def take_branch(self, offset: int, taken: bool) -> None:
+        """The five states a taken relative jump spends adding its displacement.
+
+        A jump not taken costs nothing beyond reading the displacement, which is
+        why the manual prints two timings for every conditional relative jump.
+        """
         if taken:
+            self.idle(5)
             self.registers.pc = self.registers.pc + offset
             self.registers.wz = self.registers.pc
         self.keep_flags()
 
-    def wide_name(self, p, prefix):
+    def wide_name(self, p: int, prefix: str | None) -> str:
         name = PAIRS_SP[p]
         return self.index_pair(prefix) if name == "hl" else name
 
-    def group0_wide(self, p, q, prefix):
+    def group0_wide(self, p: int, q: int, prefix: str | None) -> None:
         name = self.wide_name(p, prefix)
         if q == 0:
             setattr(self.registers, name, self.fetch16())
             self.keep_flags()
             return None
         target = self.index_pair(prefix)
+        self.idle(7)
         setattr(
             self.registers,
             target,
@@ -371,7 +462,7 @@ class Cpu:
         )
         return None
 
-    def group0_indirect(self, p, q, prefix):
+    def group0_indirect(self, p: int, q: int, prefix: str | None) -> None:
         if p == 0:
             return self.indirect_accumulator(self.registers.bc, q)
         if p == 1:
@@ -388,7 +479,7 @@ class Cpu:
         self.keep_flags()
         return None
 
-    def indirect_accumulator(self, address, q):
+    def indirect_accumulator(self, address: int, q: int) -> None:
         """A load or store through an address, and the half-updated `WZ` it leaves.
 
         A store leaves the high half holding the accumulator and the low half
@@ -404,22 +495,48 @@ class Cpu:
             self.registers.wz = address + 1
         self.keep_flags()
 
-    def group0_count(self, p, q, prefix):
+    def group0_count(self, p: int, q: int, prefix: str | None) -> None:
+        """INC ss and DEC ss, which the manual gives six T states and one machine cycle.
+
+        A sixteen bit increment performs no bus cycle of its own. The two extra
+        states are the part carrying the low half into the high half.
+        """
+        self.idle(2)
         name = self.wide_name(p, prefix)
         setattr(self.registers, name, getattr(self.registers, name) + (1 if q == 0 else -1))
         self.keep_flags()
 
-    def group0_step(self, y, prefix, operation):
+    def group0_step(self, y: int, prefix: str | None, operation: Callable[[int], int]) -> None:
+        """INC and DEC on any operand, which cost a state when the operand is memory.
+
+        The manual gives INC (HL) eleven T states over three machine cycles,
+        (4, 4, 3). The middle four are a three state read with one state of
+        arithmetic after it, before the three state write.
+        """
         displacement = self.fetch_signed() if y == 6 and prefix is not None else 0
+        if y == 6 and prefix is not None:
+            self.idle(5)
         value = self.register_read(y, prefix, displacement)
+        if y == 6:
+            self.idle()
         self.register_write(y, operation(value), prefix, displacement)
 
-    def group0_immediate(self, y, prefix):
+    def group0_immediate(self, y: int, prefix: str | None) -> None:
+        """LD r,n, and the indexed store whose address arithmetic costs two states.
+
+        The manual gives LD (IX+d),n nineteen T states, (4, 4, 3, 5, 3), where an
+        indexed load is also nineteen but spends five on the arithmetic and three
+        on the immediate. Here the immediate cycle is the long one, because the
+        part overlaps the sum with reading the byte it is about to store.
+        """
         displacement = self.fetch_signed() if y == 6 and prefix is not None else 0
-        self.register_write(y, self.fetch8(), prefix, displacement)
+        value = self.fetch8()
+        if y == 6 and prefix is not None:
+            self.idle(2)
+        self.register_write(y, value, prefix, displacement)
         self.keep_flags()
 
-    def group0_accumulator(self, y):
+    def group0_accumulator(self, y: int) -> None:
         if y == 0:
             return self.rotate_accumulator(circular=True, left=True)
         if y == 1:
@@ -436,7 +553,7 @@ class Cpu:
             return self.set_carry()
         return self.complement_carry()
 
-    def rotate_accumulator(self, circular, left):
+    def rotate_accumulator(self, circular: bool, left: bool) -> None:
         a = self.registers.a
         if left:
             carry = a & 0x80
@@ -453,7 +570,7 @@ class Cpu:
             | flags.undocumented(result)
         )
 
-    def decimal_adjust(self):
+    def decimal_adjust(self) -> None:
         a = self.registers.a
         f = self.registers.f
         correction = 0
@@ -475,7 +592,7 @@ class Cpu:
             | (flags.C if carry else 0)
         )
 
-    def complement(self):
+    def complement(self) -> None:
         result = self.registers.a ^ 0xFF
         self.registers.a = result
         self.set_flags(
@@ -485,14 +602,14 @@ class Cpu:
             | flags.undocumented(result)
         )
 
-    def set_carry(self):
+    def set_carry(self) -> None:
         self.set_flags(
             (self.registers.f & (flags.S | flags.Z | flags.PV))
             | flags.C
             | self.carry_undocumented()
         )
 
-    def complement_carry(self):
+    def complement_carry(self) -> None:
         carry = self.registers.f & flags.C
         self.set_flags(
             (self.registers.f & (flags.S | flags.Z | flags.PV))
@@ -501,7 +618,7 @@ class Cpu:
             | self.carry_undocumented()
         )
 
-    def carry_undocumented(self):
+    def carry_undocumented(self) -> int:
         """Where the two hidden bits come from for the two carry instructions.
 
         This is the pair that reads `Q`. When the instruction before this one wrote
@@ -513,8 +630,9 @@ class Cpu:
             return flags.undocumented(self.registers.a)
         return flags.undocumented(self.registers.a | self.registers.f)
 
-    def execute_group3(self, y, z, p, q, prefix):
+    def execute_group3(self, y: int, z: int, p: int, q: int, prefix: str | None) -> None:
         if z == 0:
+            self.idle()
             if self.condition(y):
                 self.registers.pc = self.pop16()
                 self.registers.wz = self.registers.pc
@@ -535,6 +653,7 @@ class Cpu:
             address = self.fetch16()
             self.registers.wz = address
             if self.condition(y):
+                self.idle()
                 self.push16(self.registers.pc)
                 self.registers.pc = address
             self.keep_flags()
@@ -543,17 +662,18 @@ class Cpu:
             return self.group3_push(p, q, prefix)
         if z == 6:
             return self.execute_arithmetic(y, self.fetch8())
+        self.idle()
         self.push16(self.registers.pc)
         self.registers.pc = y * 8
         self.registers.wz = self.registers.pc
         self.keep_flags()
         return None
 
-    def stack_name(self, p, prefix):
+    def stack_name(self, p: int, prefix: str | None) -> str:
         name = PAIRS_AF[p]
         return self.index_pair(prefix) if name == "hl" else name
 
-    def group3_pop(self, p, q, prefix):
+    def group3_pop(self, p: int, q: int, prefix: str | None) -> None:
         if q == 0:
             setattr(self.registers, self.stack_name(p, prefix), self.pop16())
             self.registers.q = 0
@@ -566,23 +686,26 @@ class Cpu:
         elif p == 2:
             self.registers.pc = getattr(self.registers, self.index_pair(prefix))
         else:
+            self.idle(2)
             self.registers.sp = getattr(self.registers, self.index_pair(prefix))
         self.keep_flags()
         return None
 
-    def group3_push(self, p, q, prefix):
+    def group3_push(self, p: int, q: int, prefix: str | None) -> None:
         if q == 0:
+            self.idle()
             self.push16(getattr(self.registers, self.stack_name(p, prefix)))
             self.keep_flags()
             return None
         address = self.fetch16()
         self.registers.wz = address
+        self.idle()
         self.push16(self.registers.pc)
         self.registers.pc = address
         self.keep_flags()
         return None
 
-    def group3_misc(self, y, prefix):
+    def group3_misc(self, y: int, prefix: str | None) -> None:
         if y == 0:
             address = self.fetch16()
             self.registers.wz = address
@@ -590,9 +713,9 @@ class Cpu:
             self.keep_flags()
             return None
         if y == 2:
-            return self.port_write()
+            return self.out_to_immediate()
         if y == 3:
-            return self.port_read()
+            return self.in_from_immediate()
         if y == 4:
             return self.exchange_stack(prefix)
         if y == 5:
@@ -610,35 +733,53 @@ class Cpu:
         self.keep_flags()
         return None
 
-    def port_write(self):
+    def out_to_immediate(self) -> None:
+        """OUT (n),A, whose port address carries the accumulator in its high half."""
         low = self.fetch8()
         address = (self.registers.a << 8) | low
-        if self.ports is not None:
-            self.ports.write(address, self.registers.a)
+        self.port_write(address, self.registers.a)
         self.registers.wz = ((self.registers.a << 8) | ((low + 1) & 0xFF)) & 0xFFFF
         self.keep_flags()
 
-    def port_read(self):
+    def in_from_immediate(self) -> None:
+        """IN A,(n), which latches the data bus whether or not anything drove it."""
         low = self.fetch8()
         address = (self.registers.a << 8) | low
-        if self.ports is not None:
-            self.registers.a = self.ports.read(address)
+        self.registers.a = self.port_read(address)
         self.registers.wz = address + 1
         self.keep_flags()
 
-    def exchange_stack(self, prefix):
+    def exchange_stack(self, prefix: str | None) -> None:
+        """EX (SP),HL, nineteen T states over five machine cycles, (4, 3, 4, 3, 5).
+
+        The two long cycles are the second read and the second write. The part is
+        holding one half of the exchange while it moves the other.
+        """
         name = self.index_pair(prefix)
-        held = self.read16(self.registers.sp)
-        self.write16(self.registers.sp, getattr(self.registers, name))
+        low = self.read8(self.registers.sp)
+        high = self.read8(self.registers.sp + 1)
+        self.idle()
+        held = low | (high << 8)
+        value = getattr(self.registers, name)
+        self.write8(self.registers.sp + 1, (value >> 8) & 0xFF)
+        self.write8(self.registers.sp, value & 0xFF)
+        self.idle(2)
         setattr(self.registers, name, held)
         self.registers.wz = held
         self.keep_flags()
 
-    def execute_bit(self, prefix):
+    def execute_bit(self, prefix: str | None) -> None:
+        """The bit and shift group, whose indexed forms put the displacement first.
+
+        With an index register the last byte is not an opcode fetch. It arrives as
+        an ordinary three state read and the refresh counter does not advance for
+        it, which is why an indexed bit instruction leaves the counter two on
+        rather than three.
+        """
         displacement = self.fetch_signed() if prefix is not None else 0
-        opcode = self.fetch8()
-        if prefix is None:
-            self.registers.tick_refresh()
+        opcode = self.opcode_fetch() if prefix is None else self.fetch8()
+        if prefix is not None:
+            self.idle(2)
 
         x = opcode >> 6
         y = (opcode >> 3) & 0x07
@@ -650,6 +791,8 @@ class Cpu:
             address = (getattr(self.registers, prefix) + displacement) & 0xFFFF
             self.registers.wz = address
             value = self.read8(address)
+        if prefix is not None or z == 6:
+            self.idle()
 
         if x == 1:
             return self.test_bit(y, value, prefix is not None or z == 6)
@@ -661,7 +804,7 @@ class Cpu:
         self.store_bit_result(z, result, prefix, displacement)
         return None
 
-    def store_bit_result(self, z, result, prefix, displacement):
+    def store_bit_result(self, z: int, result: int, prefix: str | None, displacement: int) -> None:
         """Where a prefixed bit instruction puts its answer, which is two places.
 
         Without an index register it writes the register the opcode names. With one
@@ -676,7 +819,7 @@ class Cpu:
         if z != 6:
             self.register_write(z, result)
 
-    def shift(self, y, value):
+    def shift(self, y: int, value: int) -> int:
         if y == 0:
             carry = value & 0x80
             result = ((value << 1) | (value >> 7)) & 0xFF
@@ -704,7 +847,7 @@ class Cpu:
         self.set_flags(flags.sign_zero(result) | flags.parity(result) | (flags.C if carry else 0))
         return result
 
-    def test_bit(self, bit, value, from_memory):
+    def test_bit(self, bit: int, value: int, from_memory: bool) -> None:
         """The one test whose hidden bits come from somewhere other than its operand.
 
         Against a register they come from the byte being tested. Against memory
@@ -722,9 +865,8 @@ class Cpu:
         f |= flags.undocumented(self.registers.wz >> 8 if from_memory else value)
         self.set_flags(f)
 
-    def execute_extended(self):
-        opcode = self.fetch8()
-        self.registers.tick_refresh()
+    def execute_extended(self) -> None:
+        opcode = self.opcode_fetch()
         x = opcode >> 6
         y = (opcode >> 3) & 0x07
         z = opcode & 0x07
@@ -732,7 +874,8 @@ class Cpu:
         q = y & 1
 
         if x == 2:
-            return blocks.execute(self, y, z)
+            blocks.execute(self, y, z)
+            return None
         if x != 1:
             self.keep_flags()
             return None
@@ -754,23 +897,29 @@ class Cpu:
             return None
         return self.extended_accumulator(y)
 
-    def extended_in(self, y):
+    def extended_in(self, y: int) -> None:
         address = self.registers.bc
-        value = self.ports.read(address) if self.ports is not None else 0
+        value = self.port_read(address)
         self.registers.wz = address + 1
         if y != 6:
             self.register_write(y, value)
         self.set_flags((self.registers.f & flags.C) | flags.sign_zero(value) | flags.parity(value))
 
-    def extended_out(self, y):
+    def extended_out(self, y: int) -> None:
         address = self.registers.bc
         value = self.floating_output if y == 6 else self.register_read(y)
         if self.ports is not None:
-            self.ports.write(address, value)
+            self.port_write(address, value)
         self.registers.wz = address + 1
         self.keep_flags()
 
-    def extended_wide(self, p, q):
+    def extended_wide(self, p: int, q: int) -> None:
+        """ADC HL,ss and SBC HL,ss, fifteen T states over four machine cycles.
+
+        (4, 4, 4, 3) after the two fetches leaves seven states with no bus cycle,
+        which is the sixteen bit addition carried a byte at a time.
+        """
+        self.idle(7)
         value = getattr(self.registers, PAIRS_SP[p])
         left = self.registers.hl
         carry = 1 if self.registers.f & flags.C else 0
@@ -793,7 +942,7 @@ class Cpu:
         self.registers.hl = result
         self.set_flags(f)
 
-    def extended_move(self, p, q):
+    def extended_move(self, p: int, q: int) -> None:
         address = self.fetch16()
         name = PAIRS_SP[p]
         if q == 0:
@@ -803,12 +952,12 @@ class Cpu:
         self.registers.wz = address + 1
         self.keep_flags()
 
-    def negate(self):
+    def negate(self) -> None:
         value = self.registers.a
         self.registers.a = 0
         self.sub8(value)
 
-    def extended_return(self, y):
+    def extended_return(self, y: int) -> None:
         """Either return from an interrupt, both of which restore the enable state.
 
         The two are documented as distinct instructions and only one is described
@@ -821,7 +970,15 @@ class Cpu:
         self.registers.iff1 = self.registers.iff2
         self.keep_flags()
 
-    def extended_accumulator(self, y):
+    def extended_accumulator(self, y: int) -> None:
+        """The extended group that reaches I, R and the two nibble rotates.
+
+        Moving the accumulator to or from either interrupt register is nine T
+        states over two machine cycles, (4, 5). The second fetch carries the extra
+        state; there is no bus cycle to attach it to.
+        """
+        if y < 4:
+            self.idle()
         if y == 0:
             self.registers.i = self.registers.a
             self.keep_flags()
@@ -841,7 +998,7 @@ class Cpu:
         self.keep_flags()
         return None
 
-    def load_from_interrupt(self, value):
+    def load_from_interrupt(self, value: int) -> None:
         """Reading either interrupt register, which reports the interrupt state.
 
         The parity flag does not report parity here. It reports whether interrupts
@@ -855,9 +1012,15 @@ class Cpu:
             | (flags.PV if self.registers.iff2 else 0)
         )
 
-    def rotate_digit(self, left):
+    def rotate_digit(self, left: bool) -> None:
+        """RLD and RRD, eighteen T states over five machine cycles, (4, 4, 3, 4, 3).
+
+        The fourth cycle is four states rather than three because the part is
+        shuffling nibbles between the accumulator and the byte it just read.
+        """
         address = self.registers.hl
         held = self.read8(address)
+        self.idle(4)
         a = self.registers.a
         if left:
             self.write8(address, ((held << 4) | (a & 0x0F)) & 0xFF)

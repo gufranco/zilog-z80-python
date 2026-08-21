@@ -16,6 +16,8 @@ operation, and counting the bits of a byte two hundred and fifty six different
 ways is the sort of arithmetic worth doing once.
 """
 
+from __future__ import annotations
+
 C = 0x01
 N = 0x02
 PV = 0x04
@@ -30,23 +32,23 @@ UNDOCUMENTED = X | Y
 PARITY = tuple(PV if bin(value).count("1") % 2 == 0 else 0 for value in range(256))
 
 
-def undocumented(value):
+def undocumented(value: int) -> int:
     """Bits three and five of a result, which is where the hidden flags come from."""
     return value & UNDOCUMENTED
 
 
-def parity(value):
+def parity(value: int) -> int:
     """The parity flag for a byte, even parity setting it."""
     return PARITY[value & 0xFF]
 
 
-def sign_zero(value):
+def sign_zero(value: int) -> int:
     """Sign, zero and the two hidden bits, all taken from one byte."""
     value &= 0xFF
     return (S if value & 0x80 else 0) | (Z if value == 0 else 0) | undocumented(value)
 
 
-def sign_zero16(value):
+def sign_zero16(value: int) -> int:
     """The same for a sixteen bit result, whose hidden bits come from its top half."""
     value &= 0xFFFF
     high = value >> 8

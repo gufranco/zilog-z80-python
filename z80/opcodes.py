@@ -11,6 +11,11 @@ to the address they reach rather than left as the offset the byte holds, because
 an offset is not something a reader can follow.
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import override
+
 REGISTERS = ("b", "c", "d", "e", "h", "l", "(hl)", "a")
 
 PAIRS_SP = ("bc", "de", "hl", "sp")
@@ -43,58 +48,59 @@ class Truncated(Exception):
 class Instruction:
     """One decoded instruction: where it sat, how long it was, and what it says."""
 
-    def __init__(self, address, size, text, raw):
+    def __init__(self, address: int, size: int, text: str, raw: Sequence[int]) -> None:
         self.address = address
         self.size = size
         self.text = text
         self.raw = raw
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         return f"<{self.address:04X} {self.text}>"
 
 
 class Reader:
     """A cursor over the bytes, which refuses to read past the end rather than guess."""
 
-    def __init__(self, data, offset):
+    def __init__(self, data: Sequence[int], offset: int) -> None:
         self.data = data
         self.start = offset
         self.offset = offset
 
-    def byte(self):
+    def byte(self) -> int:
         if self.offset >= len(self.data):
             raise Truncated(f"instruction at {self.start} runs past the end of the data")
         value = self.data[self.offset]
         self.offset += 1
         return value
 
-    def word(self):
+    def word(self) -> int:
         low = self.byte()
         return low | (self.byte() << 8)
 
-    def signed(self):
+    def signed(self) -> int:
         value = self.byte()
         return value - 0x100 if value & 0x80 else value
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self.offset - self.start
 
 
-def byte_text(value):
+def byte_text(value: int) -> str:
     return f"${value:02X}"
 
 
-def word_text(value):
+def word_text(value: int) -> str:
     return f"${value:04X}"
 
 
-def displacement_text(value):
+def displacement_text(value: int) -> str:
     sign = "-" if value < 0 else "+"
     return f"{sign}${abs(value):02X}"
 
 
-def register_text(index, prefix, displacement):
+def register_text(index: int, prefix: str | None, displacement: int) -> str:
     """One register operand, which an index prefix can change into a memory reference."""
     name = REGISTERS[index]
     if prefix is None:
@@ -108,11 +114,11 @@ def register_text(index, prefix, displacement):
     return name
 
 
-def pair_text(name, prefix):
+def pair_text(name: str, prefix: str | None) -> str:
     return prefix if name == "hl" and prefix is not None else name
 
 
-def decode(data, offset=0, address=0):
+def decode(data: Sequence[int], offset: int = 0, address: int = 0) -> Instruction:
     """The instruction at that offset, named as an assembler would name it."""
     reader = Reader(data, offset)
     prefix = None
@@ -132,7 +138,7 @@ def decode(data, offset=0, address=0):
     return Instruction(address, size, text, bytes(data[offset : offset + size]))
 
 
-def decode_plain(reader, opcode, prefix, address):
+def decode_plain(reader: Reader, opcode: int, prefix: str | None, address: int) -> str:
     x = opcode >> 6
     y = (opcode >> 3) & 0x07
     z = opcode & 0x07
@@ -156,7 +162,9 @@ def decode_plain(reader, opcode, prefix, address):
     return decode_group3(reader, y, z, p, q, prefix)
 
 
-def decode_group0(reader, y, z, p, q, prefix, address):
+def decode_group0(
+    reader: Reader, y: int, z: int, p: int, q: int, prefix: str | None, address: int
+) -> str:
     if z == 0:
         return decode_group0_control(reader, y, address)
     if z == 1:
@@ -178,7 +186,7 @@ def decode_group0(reader, y, z, p, q, prefix, address):
     return ACCUMULATOR[y]
 
 
-def decode_group0_control(reader, y, address):
+def decode_group0_control(reader: Reader, y: int, address: int) -> str:
     if y == 0:
         return "nop"
     if y == 1:
@@ -192,7 +200,7 @@ def decode_group0_control(reader, y, address):
     return f"jr {CONDITIONS[y - 4]},{target}"
 
 
-def decode_group0_indirect(reader, p, q, prefix):
+def decode_group0_indirect(reader: Reader, p: int, q: int, prefix: str | None) -> str:
     if p == 0:
         return "ld a,(bc)" if q else "ld (bc),a"
     if p == 1:
@@ -204,7 +212,7 @@ def decode_group0_indirect(reader, p, q, prefix):
     return f"ld {name},{where}" if q else f"ld {where},{name}"
 
 
-def decode_group3(reader, y, z, p, q, prefix):
+def decode_group3(reader: Reader, y: int, z: int, p: int, q: int, prefix: str | None) -> str:
     if z == 0:
         return f"ret {CONDITIONS[y]}"
     if z == 1:
@@ -231,7 +239,7 @@ def decode_group3(reader, y, z, p, q, prefix):
     return f"rst ${y * 8:02X}"
 
 
-def decode_group3_misc(reader, y, prefix):
+def decode_group3_misc(reader: Reader, y: int, prefix: str | None) -> str:
     if y == 0:
         return f"jp {word_text(reader.word())}"
     if y == 2:
@@ -245,7 +253,7 @@ def decode_group3_misc(reader, y, prefix):
     return "di" if y == 6 else "ei"
 
 
-def decode_bit(reader, prefix):
+def decode_bit(reader: Reader, prefix: str | None) -> str:
     displacement = reader.signed() if prefix is not None else 0
     opcode = reader.byte()
     x = opcode >> 6
@@ -262,7 +270,7 @@ def decode_bit(reader, prefix):
     return f"{name} {operand}"
 
 
-def decode_extended(reader):
+def decode_extended(reader: Reader) -> str:
     opcode = reader.byte()
     x = opcode >> 6
     y = (opcode >> 3) & 0x07
@@ -294,9 +302,9 @@ def decode_extended(reader):
     return ("ld i,a", "ld r,a", "ld a,i", "ld a,r", "rrd", "rld", "nop", "nop")[y]
 
 
-def disassemble(data, address=0):
+def disassemble(data: Sequence[int], address: int = 0) -> list[Instruction]:
     """Every instruction in a run of bytes, with a trailing fragment shown as data."""
-    listing = []
+    listing: list[Instruction] = []
     offset = 0
     while offset < len(data):
         try:

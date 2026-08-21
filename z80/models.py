@@ -19,6 +19,15 @@ model with no suite behind it does not belong in this table, because then its
 fidelity would be a claim rather than a measurement.
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, override
+
+if TYPE_CHECKING:
+    from .core import Cpu
+    from .memory import SparseMemory
+
 
 class UnknownModelError(Exception):
     pass
@@ -27,13 +36,19 @@ class UnknownModelError(Exception):
 class Model:
     """One part of the family: what it is, and how to build one."""
 
-    def __init__(self, name, summary, floating_output, aliases=()):
+    def __init__(
+        self,
+        name: str,
+        summary: str,
+        floating_output: int,
+        aliases: Sequence[str] = (),
+    ) -> None:
         self.name = name
         self.summary = summary
         self.floating_output = floating_output
         self.aliases = tuple(aliases)
 
-    def build(self, memory, **options):
+    def build(self, memory: SparseMemory, **options: Any) -> Cpu:
         from .core import Cpu
 
         cpu = Cpu(memory, **options)
@@ -41,7 +56,8 @@ class Model:
         cpu.floating_output = self.floating_output
         return cpu
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         return f"<Model {self.name}, output with no source sends {self.floating_output:#04x}>"
 
 
@@ -71,18 +87,18 @@ _CATALOGUE = (
 
 MODELS = {model.name: model for model in _CATALOGUE}
 
-_BY_ALIAS = {}
+_BY_ALIAS: dict[str, Model] = {}
 for _model in _CATALOGUE:
     _BY_ALIAS[_model.name] = _model
     for _alias in _model.aliases:
         _BY_ALIAS[_alias] = _model
 
 
-def _normalise(name):
+def _normalise(name: str) -> str:
     return str(name).strip().lower().replace("-", "").replace("_", "")
 
 
-def describe(name):
+def describe(name: str) -> Model:
     """The model of that name, however it happens to be written."""
     found = _BY_ALIAS.get(_normalise(name))
     if found is None:

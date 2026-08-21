@@ -26,7 +26,10 @@ Nothing starts clean. Everything except what a reset defines holds arbitrary but
 reproducible values, because that is what a real part holds.
 """
 
+from __future__ import annotations
+
 import random
+from typing import Any, override
 
 UNSET_SEED = 0x5A5A5A5A
 
@@ -64,11 +67,11 @@ SHADOWS = ("af_", "bc_", "de_", "hl_")
 REFRESH_MASK = 0x7F
 
 
-def _pair_property(high, low):
-    def read(self):
-        return (getattr(self, high) << 8) | getattr(self, low)
+def _pair_property(high: str, low: str) -> property:
+    def read(self: Any) -> int:
+        return int((getattr(self, high) << 8) | getattr(self, low))
 
-    def write(self, value):
+    def write(self: Any, value: int) -> None:
         value &= 0xFFFF
         setattr(self, high, value >> 8)
         setattr(self, low, value & 0xFF)
@@ -76,25 +79,25 @@ def _pair_property(high, low):
     return property(read, write)
 
 
-def _byte_property(name):
+def _byte_property(name: str) -> property:
     store = f"_{name}"
 
-    def read(self):
-        return getattr(self, store)
+    def read(self: Any) -> int:
+        return int(getattr(self, store))
 
-    def write(self, value):
+    def write(self: Any, value: int) -> None:
         setattr(self, store, value & 0xFF)
 
     return property(read, write)
 
 
-def _word_property(name):
+def _word_property(name: str) -> property:
     store = f"_{name}"
 
-    def read(self):
-        return getattr(self, store)
+    def read(self: Any) -> int:
+        return int(getattr(self, store))
 
-    def write(self, value):
+    def write(self: Any, value: int) -> None:
         setattr(self, store, value & 0xFFFF)
 
     return property(read, write)
@@ -103,7 +106,51 @@ def _word_property(name):
 class Registers:
     """One Z80's registers, the hidden ones included."""
 
-    def __init__(self, seed=UNSET_SEED):
+    im: int
+    iff1: bool
+    iff2: bool
+    q: int
+    p: int
+    ei: int
+    a: int
+    f: int
+    b: int
+    c: int
+    d: int
+    e: int
+    h: int
+    l: int  # noqa: E741 -- the part has a register called L
+    w: int
+    z: int
+    ixh: int
+    ixl: int
+    iyh: int
+    iyl: int
+    i: int
+    r: int
+    af_: int
+    bc_: int
+    de_: int
+    hl_: int
+    pc: int
+    sp: int
+    af: int
+    bc: int
+    de: int
+    hl: int
+    wz: int
+    ix: int
+    iy: int
+    """Every register, declared for the checker and attached below as a property.
+
+    The eight bit registers, the shadows and the pairs are all built by the same
+    three factories rather than written out, because writing twenty-nine nearly
+    identical properties by hand is how one of them ends up masking to the wrong
+    width. A bare annotation creates no class attribute at runtime, so these say
+    what the type is without getting in the way of the properties that follow.
+    """
+
+    def __init__(self, seed: int = UNSET_SEED) -> None:
         generator = random.Random(seed)
         for name in EIGHT_BIT:
             setattr(self, f"_{name}", generator.randrange(0x100))
@@ -118,7 +165,7 @@ class Registers:
         self.p = 0
         self.ei = 0
 
-    def reset(self):
+    def reset(self) -> Registers:
         """What a reset defines, and nothing else.
 
         The program counter, the interrupt vector and refresh registers, the
@@ -135,17 +182,17 @@ class Registers:
         self.ei = 0
         return self
 
-    def exchange_set(self):
+    def exchange_set(self) -> None:
         """Swap the main three pairs with their shadows, leaving the accumulator."""
         self.bc, self.bc_ = self.bc_, self.bc
         self.de, self.de_ = self.de_, self.de
         self.hl, self.hl_ = self.hl_, self.hl
 
-    def exchange_accumulator(self):
+    def exchange_accumulator(self) -> None:
         """Swap the accumulator and flags with their shadow, and nothing else."""
         self.af, self.af_ = self.af_, self.af
 
-    def tick_refresh(self):
+    def tick_refresh(self) -> None:
         """Advance the refresh counter the way the processor does.
 
         Only the low seven bits count. The top bit is whatever was last written
@@ -154,7 +201,8 @@ class Registers:
         """
         self.r = (self.r & 0x80) | ((self.r + 1) & REFRESH_MASK)
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         return f"<Registers pc={self.pc:04X} af={self.af:04X} hl={self.hl:04X}>"
 
 

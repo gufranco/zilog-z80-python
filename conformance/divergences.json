@@ -1,0 +1,209 @@
+{
+  "note": "Every place Zilog's user manual and the recorded conformance suite disagree, every place the manual disagrees with itself, and every place this core models something neither settles. Each entry names what the document says, what the recording does, which one this core follows, and what evidence would close the question. Nothing here is resolved by preference.",
+  "authority": "hardware.json holds the ladder. Rung 1 is Zilog's manual, rung 2 is the part itself, rung 3 is a recording from an independent implementation, rung 4 is nothing. Where rung 1 speaks, it wins.",
+  "readOn": "2026-08-21",
+  "divergences": [
+    {
+      "id": "manual-m-cycle-column-misprints",
+      "severity": "documentContradiction",
+      "status": "closed",
+      "topic": "Three rows where the manual's own M Cycles column contradicts its own T states breakdown.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "LD dd,nn is two machine cycles of 10 T states (4, 3, 3). RES r is four machine cycles of 8 T states (4, 4). JR NC,e with the condition not met is seven machine cycles of 7 T states (4, 3).",
+        "source": "Zilog UM008011-0816, manual pages 99, 260 and 269"
+      },
+      "problem": "In each case the parenthesised breakdown has a different number of groups than the M Cycles column claims, while summing correctly to the stated total. A count of machine cycles cannot disagree with the number of T state groups those machine cycles are made of.",
+      "packageFollows": "the breakdown",
+      "why": "The breakdown is the column closest to the silicon and it is internally consistent on all 184 rows in the document. The M Cycles column is a summary, and on the JR row it has plainly been copied from the T States column beside it. Prose and summary columns are written last and reviewed least.",
+      "howItWasFound": "Mechanically. Every row was checked twice, once that its breakdown sums to its total and once that the number of groups equals the M Cycles column. The first check passes on every row; the second fails on exactly these three. Each was then read off the rendered page image to confirm the document really prints it, rather than the extraction having damaged it.",
+      "wouldReopenIt": "A Zilog erratum, or a later revision of the manual printing different figures."
+    },
+    {
+      "id": "recording-single-state-strobe",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "How long the read and write strobes are asserted.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "On a fetch the strobes go active early in T1 and are turned off on the rising edge of T3, so they span more than one T state.",
+        "quote": "One half clock cycle later, the MREQ signal goes active. At this time, the address to memory has had time to stabilize so that the falling edge of MREQ can be used directly as a chip enable clock to dynamic memories. The RD line also goes active to indicate that the memory read data should be enabled onto the CPU data bus. The CPU samples the data from the memory space on the data bus with the rising edge of the clock of state T3, and this same edge is used by the CPU to turn off the RD and MREQ signals.",
+        "source": "Zilog UM008011-0816, manual page 8"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Asserts read and memory request for a single T state.",
+        "source": "suites.json",
+        "generatorSaysSoItself": "Use simplified memory access T-states. With this ON, MRQ/RD and MRQ/WR will only pulse for 1 T-state, whereas the docs have them pulse for 2. This simplifies emulator development and speeds up execution at no cost to accuracy."
+      },
+      "packageFollows": "reference",
+      "consequence": "The pin strings this core produces show a one state strobe. They are therefore a faithful reproduction of the recording and not a faithful reproduction of the pins of a Z80.",
+      "why": "The recording is the only per-cycle evidence that exists for this part, and its generator states the simplification as a deliberate configurable option rather than an error. Producing the manual's two state strobe would make every case disagree and would test nothing, because there is no two state recording to compare against.",
+      "wouldSettleIt": [
+        "A logic capture of a real Z80 during a fetch, which would settle the strobe width directly.",
+        "Regenerating the suite with the simplification switched off, which its generator offers, giving a corpus that matches the manual."
+      ],
+      "whatIsClaimed": "This core reproduces the recorded bus activity exactly. That is a weaker claim than reproducing the pins of the silicon, and the difference is this entry."
+    },
+    {
+      "id": "recording-refresh-on-address-pins",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "What the address pins hold during the second half of an opcode fetch.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "The lower seven bits carry a refresh address. The manual does not say what the upper nine carry.",
+        "quote": "During T3 and T4, the lower seven bits of the address bus contain a memory refresh address and the RFSH signal becomes active, indicating that a refresh read of all dynamic memories must be performed.",
+        "source": "Zilog UM008011-0816, manual page 8"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Puts the interrupt vector register above the whole refresh counter on all sixteen address pins.",
+        "source": "suites.json",
+        "generatorSaysSoItself": "Put REFRESH values on address pins during opcode fetch"
+      },
+      "packageFollows": "reference",
+      "consequence": "The address recorded for the last two states of every fetch is the vector register above the refresh counter as it stood before the fetch advanced it.",
+      "why": "The manual guarantees only seven bits, so the rest is not a figure it prints. The recording supplies a whole address and this core reproduces it. A model that put something else in the upper nine bits would disagree on every instruction and would have no document behind it either.",
+      "wouldSettleIt": ["A logic capture reading all sixteen address lines during T3 of a fetch."]
+    },
+    {
+      "id": "internal-cycle-placement",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Where within a long machine cycle the bus falls idle.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "How many T states each machine cycle takes, and how many machine cycles an instruction has. Nothing about the order of the idle states within one.",
+        "source": "Zilog UM008011-0816, the per-instruction timing tables"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Fixes the order exactly, because a recording is a sequence.",
+        "source": "suites.json"
+      },
+      "packageFollows": "reference",
+      "consequence": "Every idle state this core emits sits where the recording puts it. The count of them, and the total for each instruction, come from the manual and agree with the recording on all 1604 opcode forms.",
+      "why": "The two sources are answering different questions rather than contradicting each other. Recorded here so that a reader does not take the whole cycle claim as resting on the manual when half of it rests on the recording.",
+      "wouldSettleIt": [
+        "A logic capture of an instruction with more than one idle state, showing which machine cycle carries them."
+      ]
+    },
+    {
+      "id": "undocumented-flag-bits",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Bits 3 and 5 of the flag register.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "They are not used and have no behaviour.",
+        "quote": "Each of these two Flag registers contains 6 bits of status information that are set or cleared by CPU operations; bits 3 and 5 are not used.",
+        "source": "Zilog UM008011-0816, manual page 66"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "The part drives them on almost every instruction, usually from bits 3 and 5 of the result, from the operand on a compare, from an internal register on two instructions, and from bits 3 and 1 on the block instructions.",
+        "source": "suites.json"
+      },
+      "packageFollows": "reference",
+      "consequence": "This core reproduces all of it, and none of it has a document behind it.",
+      "why": "Saying a bit is not used is a statement about what the designer intended a programmer to read, not a claim that the bit reads as zero. The manual declines to specify rather than specifying something else, so this is an absence rather than a contradiction.",
+      "wouldSettleIt": [
+        "Nothing short of Zilog documenting it, which no revision of this manual has done in eleven revisions over forty years."
+      ]
+    },
+    {
+      "id": "internal-register-wz",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "The internal register the recording calls WZ, and the flags latch it calls Q.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. Neither appears anywhere in the manual, including in the register diagram.",
+        "source": "Zilog UM008011-0816, Architectural Overview"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Names both, gives their value before and after every case, and makes two instructions read their undocumented flag bits out of them.",
+        "source": "suites.json"
+      },
+      "packageFollows": "reference",
+      "consequence": "A programmer cannot name either register and a program can observe both.",
+      "wouldSettleIt": ["A die analysis, or Zilog documenting the internal register file."]
+    },
+    {
+      "id": "undocumented-opcodes",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "The opcodes the manual does not list.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. The manual describes the documented instruction set, which is roughly a third of what the decoder accepts.",
+        "source": "Zilog UM008011-0816"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Covers every accepted encoding, including the prefixed forms that reach the halves of the index registers and the unlisted extended opcodes.",
+        "source": "suites.json"
+      },
+      "packageFollows": "reference",
+      "consequence": "Most of the 1604 opcode forms this core is held to appear in no Zilog document. The timing table in hardware.json covers the documented set only, which is why the cycle gate is the recording and the manual is the check on its shape.",
+      "wouldSettleIt": [
+        "Nothing available. These encodings were never specified; they are what the decoder happens to do."
+      ]
+    },
+    {
+      "id": "interrupt-acknowledge-not-modelled",
+      "severity": "unmodelled",
+      "status": "open",
+      "topic": "The interrupt and nonmaskable interrupt acknowledge cycles.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "An accepted interrupt generates a special M1 in which the port request replaces the memory request and two wait states are added, making it six T states.",
+        "quote": "When the signal is accepted, a special M1 cycle is generated. During this special M1 cycle, the IORQ signal becomes active (instead of the normal MREQ) to indicate that the interrupting device can place an 8-bit vector on the data bus. Two wait states are automatically added to this cycle.",
+        "source": "Zilog UM008011-0816, manual page 12"
+      },
+      "packageFollows": "neither",
+      "consequence": "This core steps instructions. It has no pin for an interrupt to arrive on, so no acknowledge cycle is ever generated and none is modelled.",
+      "why": "The conformance suite drives one instruction at a time from a known state and never raises an interrupt, so there is nothing to compare an acknowledge cycle against. Modelling one would be writing behaviour that nothing checks.",
+      "wouldSettleIt": [
+        "A caller that raises the line, at which point the shape above is directly implementable from the quote.",
+        "A recording that includes interrupt acknowledge cycles, which this suite does not."
+      ]
+    },
+    {
+      "id": "halt-fetches-not-modelled-as-cycles",
+      "severity": "unmodelled",
+      "status": "open",
+      "topic": "What a halted part does on the bus.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "It keeps fetching, so that dynamic memory keeps being refreshed.",
+        "quote": "Each cycle in the HALT state is a normal M1 (fetch) cycle except that the data received from the memory is ignored and an NOP instruction is forced internally to the CPU.",
+        "source": "Zilog UM008011-0816, manual page 14"
+      },
+      "packageFollows": "neither",
+      "consequence": "A halted step here advances the refresh counter, which is the observable half, and emits no bus cycle.",
+      "why": "The suite contains one case per opcode from a known state and never steps a machine that is already halted, so there is no recorded transcript of a halted fetch to compare against.",
+      "wouldSettleIt": [
+        "A recording that steps a halted machine, or a decision to emit the fetch on the strength of the quote alone and mark it unchecked."
+      ]
+    },
+    {
+      "id": "wait-states-not-modelled",
+      "severity": "outOfScope",
+      "status": "closed",
+      "topic": "Wait states requested by memory.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Any machine cycle can be lengthened indefinitely by an external device holding the wait line.",
+        "quote": "During T2 and every subsequent automatic WAIT state (TW), the CPU samples the WAIT line with the falling edge of the clock. If the WAIT line is active at this time, another WAIT state is entered during the following cycle.",
+        "source": "Zilog UM008011-0816, manual page 7"
+      },
+      "packageFollows": "neither",
+      "consequence": "Every machine cycle here is its minimum length. The automatic waits, the one in an I/O cycle and the two in an interrupt acknowledge, are modelled because the part inserts them itself; a wait a device asks for is not.",
+      "why": "A requested wait is a property of the board, not of the processor. There is no board here and no pin for a device to hold. This is the same distinction as a chip's rated clock against a particular oscillator: two different numbers.",
+      "wouldReopenIt": "A caller that supplies a memory whose accesses take time, at which point the sampling rule above says exactly what to do."
+    }
+  ]
+}

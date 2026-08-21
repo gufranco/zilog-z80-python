@@ -17,13 +17,20 @@ the programmer never wrote, involving the port address rather than the data.
 None of that is in the datasheet. All of it is what the part does.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from . import flags
+
+if TYPE_CHECKING:
+    from .core import Cpu
 
 FORWARD = 1
 BACKWARD = -1
 
 
-def undocumented_pair(value):
+def undocumented_pair(value: int) -> int:
     """Bits three and one of a value, the second moved up to where the flag sits.
 
     The block instructions do not copy bits three and five the way everything else
@@ -35,7 +42,7 @@ def undocumented_pair(value):
     return (value & 0x08) | ((value & 0x02) << 4)
 
 
-def repeat_undocumented(address):
+def repeat_undocumented(address: int) -> int:
     """The two hidden bits of a repeating instruction that has not finished.
 
     A repeating form that still has work to do does not report the bits its single
@@ -46,10 +53,17 @@ def repeat_undocumented(address):
     return ((address >> 8) & 0xFF) & (flags.X | flags.Y)
 
 
-def move(cpu, step, repeating):
-    """One byte from one pointer to the other, and the count that decides the rest."""
+def move(cpu: Cpu, step: int, repeating: bool) -> None:
+    """One byte from one pointer to the other, and the count that decides the rest.
+
+    Sixteen T states over four machine cycles, (4, 4, 3, 5). The write is the
+    long one: two states after it the part spends advancing both pointers and the
+    counter. A form that has not finished spends five more putting the program
+    counter back.
+    """
     value = cpu.read8(cpu.registers.hl)
     cpu.write8(cpu.registers.de, value)
+    cpu.idle(2)
     cpu.registers.hl = cpu.registers.hl + step
     cpu.registers.de = cpu.registers.de + step
     cpu.registers.bc = cpu.registers.bc - 1
@@ -60,6 +74,7 @@ def move(cpu, step, repeating):
     f |= undocumented_pair(carried)
 
     if repeating and cpu.registers.bc:
+        cpu.idle(5)
         cpu.registers.pc = cpu.registers.pc - 2
         f &= ~(flags.X | flags.Y)
         f |= repeat_undocumented(cpu.registers.pc)
@@ -67,9 +82,10 @@ def move(cpu, step, repeating):
     cpu.set_flags(f)
 
 
-def compare(cpu, step, repeating):
+def compare(cpu: Cpu, step: int, repeating: bool) -> None:
     """The accumulator against one byte, without keeping the answer."""
     value = cpu.read8(cpu.registers.hl)
+    cpu.idle(5)
     result = (cpu.registers.a - value) & 0xFF
     half = ((cpu.registers.a & 0x0F) - (value & 0x0F)) < 0
     cpu.registers.hl = cpu.registers.hl + step
@@ -85,6 +101,7 @@ def compare(cpu, step, repeating):
     f |= undocumented_pair((result - 1) & 0xFF if half else result)
 
     if repeating and cpu.registers.bc and result:
+        cpu.idle(5)
         cpu.registers.pc = cpu.registers.pc - 2
         f &= ~(flags.X | flags.Y)
         f |= repeat_undocumented(cpu.registers.pc)
@@ -92,10 +109,16 @@ def compare(cpu, step, repeating):
     cpu.set_flags(f)
 
 
-def read_port(cpu, step, repeating):
-    """One byte in from the port the pair names, stored where the pointer points."""
+def read_port(cpu: Cpu, step: int, repeating: bool) -> None:
+    """One byte in from the port the pair names, stored where the pointer points.
+
+    Sixteen T states over four machine cycles, (4, 5, 3, 4). The second fetch is
+    the long one, which is why the extra state falls before the port cycle rather
+    than after it.
+    """
+    cpu.idle()
     address = cpu.registers.bc
-    value = cpu.ports.read(address) if cpu.ports is not None else 0
+    value = cpu.port_read(address)
     cpu.registers.wz = address + step
     cpu.write8(cpu.registers.hl, value)
     cpu.registers.b = (cpu.registers.b - 1) & 0xFF
@@ -105,13 +128,13 @@ def read_port(cpu, step, repeating):
     cpu.set_flags(port_flags(cpu, value, carried, repeating))
 
 
-def write_port(cpu, step, repeating):
+def write_port(cpu: Cpu, step: int, repeating: bool) -> None:
     """One byte out to the port the pair names, taken from where the pointer points."""
+    cpu.idle()
     value = cpu.read8(cpu.registers.hl)
     cpu.registers.b = (cpu.registers.b - 1) & 0xFF
     address = cpu.registers.bc
-    if cpu.ports is not None:
-        cpu.ports.write(address, value)
+    cpu.port_write(address, value)
     cpu.registers.wz = address + step
     cpu.registers.hl = cpu.registers.hl + step
 
@@ -119,7 +142,7 @@ def write_port(cpu, step, repeating):
     cpu.set_flags(port_flags(cpu, value, carried, repeating))
 
 
-def port_flags(cpu, value, carried, repeating):
+def port_flags(cpu: Cpu, value: int, carried: int, repeating: bool) -> int:
     """The flags of a block transfer, which are computed from an addition nobody wrote.
 
     The carry and half carry do not come from the data alone. They come from the
@@ -135,6 +158,7 @@ def port_flags(cpu, value, carried, repeating):
     f |= flags.parity(((carried & 0x07) ^ counter) & 0xFF)
 
     if repeating and counter:
+        cpu.idle(5)
         cpu.registers.pc = cpu.registers.pc - 2
         cpu.registers.wz = cpu.registers.pc + 1
         f &= ~(flags.X | flags.Y)
@@ -143,7 +167,7 @@ def port_flags(cpu, value, carried, repeating):
     return f
 
 
-def repeat_adjustment(f, counter, value, carry):
+def repeat_adjustment(f: int, counter: int, value: int, carry: bool) -> int:
     """The correction a repeating transfer applies to two flags it already computed.
 
     The single step forms settle the half carry and the parity from the counter and
@@ -165,7 +189,7 @@ def repeat_adjustment(f, counter, value, carry):
 OPERATIONS = (move, compare, read_port, write_port)
 
 
-def execute(cpu, y, z):
+def execute(cpu: Cpu, y: int, z: int) -> None:
     """One block instruction, or nothing when the opcode names none.
 
     The sixteen opcodes that mean something sit in the top half of the group. The

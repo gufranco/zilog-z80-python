@@ -15,9 +15,13 @@ Usage:
     python3 conformance/singlestep.py <suite-directory> [--limit N] [--opcode NAME]
 """
 
+from __future__ import annotations
+
 import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -67,26 +71,36 @@ class Usage(Exception):
 class ScriptedPorts:
     """Answers reads with what the case says the port gave, in the order it gave it."""
 
-    def __init__(self, expected):
+    def __init__(self, expected: Sequence[Sequence[Any]]) -> None:
         self.answers = [entry for entry in expected if entry[2] == "r"]
-        self.log = []
+        self.log: list[list[Any]] = []
 
-    def read(self, address):
+    def read(self, address: int) -> int:
         answered = len([entry for entry in self.log if entry[2] == "r"])
         value = self.answers[answered][1] if answered < len(self.answers) else 0
         self.log.append([address, value, "r"])
         return value
 
-    def write(self, address, value):
+    def write(self, address: int, value: int) -> None:
         self.log.append([address, value, "w"])
 
 
-def machine_for(initial, expected_ports):
-    """A machine holding exactly what the case says it held, and nothing else."""
+def machine_for(initial: dict[str, Any], ports: ScriptedPorts, recording: bool = False) -> core.Cpu:
+    """A machine holding exactly what the case says it held, and nothing else.
+
+    One builder for both runners. The cycle comparison asks for the bus to be
+    recorded; the state comparison does not, because holding a tuple per T state
+    across a million and a half cases costs more than the comparison it feeds.
+
+    The caller supplies the ports rather than the expected transactions, so that
+    it keeps its own reference to them. Reaching back through the machine for the
+    log would mean asking a core that accepts any port space to promise it was
+    handed this one.
+    """
     space = memory.SparseMemory()
     for address, value in initial["ram"]:
         space.write8(address, value)
-    cpu = core.Cpu(space, ScriptedPorts(expected_ports), reset=False)
+    cpu = core.Cpu(space, ports, reset=False, recording=recording)
     for name in REGISTERS:
         if name in initial:
             value = initial[name]
@@ -94,8 +108,8 @@ def machine_for(initial, expected_ports):
     return cpu
 
 
-def differences(cpu, final):
-    found = []
+def differences(cpu: core.Cpu, final: dict[str, Any]) -> list[tuple[str, Any, Any]]:
+    found: list[tuple[str, Any, Any]] = []
     for name in REGISTERS:
         if name not in final:
             continue
@@ -112,24 +126,25 @@ def differences(cpu, final):
     return found
 
 
-def check(case):
+def check(case: dict[str, Any]) -> list[tuple[str, Any, Any]]:
     expected_ports = case.get("ports", [])
-    cpu = machine_for(case["initial"], expected_ports)
+    ports = ScriptedPorts(expected_ports)
+    cpu = machine_for(case["initial"], ports)
     cpu.step()
     found = differences(cpu, case["final"])
-    seen = [list(entry) for entry in cpu.ports.log]
+    seen = [list(entry) for entry in ports.log]
     if seen != [list(entry) for entry in expected_ports]:
         found.append(("ports", expected_ports, seen))
     return found
 
 
-def report(name, case, found):
+def report(name: str, case: dict[str, Any], found: Sequence[tuple[str, Any, Any]]) -> None:
     print(f"FAIL {name} {case['name']}")
     for field, expected, actual in found[:FIELD_LIMIT]:
         print(f"  {field}: expected {expected}, got {actual}")
 
 
-def options(argv):
+def options(argv: Sequence[str]) -> tuple[Path, int | None, str | None]:
     if not argv:
         raise Usage(USAGE)
     directory = None
@@ -155,7 +170,7 @@ def options(argv):
     return Path(directory), limit, opcode
 
 
-def run(argv):
+def run(argv: Sequence[str]) -> int:
     directory, limit, opcode = options(argv)
     files = sorted(directory.glob("*.json"))
     if opcode is not None:
@@ -166,7 +181,7 @@ def run(argv):
 
     checked = 0
     failed = 0
-    broken = []
+    broken: list[str] = []
     for path in files:
         cases = json.loads(path.read_text())
         if limit is not None:
@@ -188,7 +203,7 @@ def run(argv):
     return 1 if failed else 0
 
 
-def main(argv):
+def main(argv: Sequence[str]) -> int:
     try:
         return run(argv)
     except Usage as error:

@@ -2,14 +2,17 @@
 
 <h1>Zilog Z80</h1>
 
-<strong>A Z80 interpreter, every instruction and every undocumented flag, held to a per-opcode conformance suite.</strong>
+<strong>A cycle-accurate Z80, held to Zilog's own user manual for the shape of every machine cycle and to a per-opcode suite for every T state of every opcode.</strong>
 
 <br>
 <br>
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
 [![Conformance](https://img.shields.io/badge/conformance-1%2C604%2C000%20%2F%201%2C604%2C000-brightgreen)](#conformance)
+[![Cycles](https://img.shields.io/badge/T%20states-22%2C005%2C372%20compared-brightgreen)](#cycle-by-cycle)
+[![Manual](https://img.shields.io/badge/Zilog-UM008011--0816-brightgreen)](#where-each-answer-comes-from)
 [![Coverage](https://img.shields.io/badge/coverage-100%25%20statement%20%2B%20branch-brightgreen)](#tests)
+[![Types](https://img.shields.io/badge/mypy-strict-blue)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -18,12 +21,14 @@
 <p align="center">
   <a href="#quick-start">Quick start</a> &nbsp;|&nbsp;
   <a href="#conformance">Conformance</a> &nbsp;|&nbsp;
+  <a href="#cycle-by-cycle">Cycle by cycle</a> &nbsp;|&nbsp;
+  <a href="#where-each-answer-comes-from">Where answers come from</a> &nbsp;|&nbsp;
   <a href="#the-three-registers-nobody-documents">Hidden state</a> &nbsp;|&nbsp;
   <a href="#models">Models</a> &nbsp;|&nbsp;
   <a href="https://github.com/gufranco/zilog-z80-python/issues">Issues</a>
 </p>
 
-**2** parts · **1,604,000** conformance cases, **0** failures · **1,604** opcode sequences · **218** tests · **100%** statement and branch coverage
+**2** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **370** tests · **100%** statement and branch coverage
 
 ```python
 from z80 import Ports, SparseMemory, describe
@@ -177,6 +182,93 @@ that is not what the part does.
 The last one appeared in two cases out of four thousand. Both sat on a page
 boundary, which is the only place the two candidate rules differ.
 
+## Cycle by cycle
+
+The state comparison above asks what an instruction left behind. This asks what
+the part did while producing it: the address, the value, and which of the four
+control pins were asserted, for every T state.
+
+The two are not interchangeable. A core can spend the right number of cycles
+doing the wrong thing, and no comparison of registers and memory will show it.
+
+| Measure | Value |
+|:--------|:------|
+| Cases | 1,604,000 |
+| T states compared | 22,005,372 |
+| Failures | 0 |
+| Opcode forms cycle-exact | 1,604 of 1,604 |
+
+```bash
+python conformance/cycles.py ~/.cache/conformance-suites/z80/v1
+```
+
+```
+1604000 cases, 22005372 T states compared, 0 failed, 0 opcodes affected
+```
+
+### What the bus caught that the state could not
+
+**A push wrote the low half of the pair first.** The part writes the high half
+first, at one below the stack pointer, then the low half at two below. Both
+orders touch the same two addresses and leave identical final state, so the state
+comparison passed it for as long as it existed. The bus comparison found it on
+the first run.
+
+That is the whole argument for this gate in one defect.
+
+### What a cycle claim here does and does not mean
+
+The shape of each machine cycle is Zilog's. A fetch is four T states with the
+refresh address replacing the counter for the last two, a memory access is three,
+an input or output is four because "During I/O operations, a single wait state is
+automatically inserted". Those figures are pinned in
+[`conformance/hardware.json`](conformance/hardware.json) with the sentence each
+came from, and
+[`conformance/hardware.test.py`](conformance/hardware.test.py) assembles fifty-four
+documented instructions, steps them, and checks the T states spent against the
+figure printed for that instruction, naming the manual page rather than repeating
+the number. That check needs no suite on the machine.
+
+Two details of the pin encoding are the suite's rather than Zilog's, and its own
+generator documents both: it asserts the strobes for one T state where the manual
+has them span two, and it puts the refresh value on all sixteen address pins
+where the manual guarantees only seven.
+[`conformance/divergences.json`](conformance/divergences.json) records both,
+quoting the generator admitting each. **This core reproduces the recorded bus
+exactly. That is a weaker claim than reproducing the pins of a Z80, and the
+difference is written down rather than glossed.**
+
+## Where each answer comes from
+
+| Rung | Source | Settles |
+|:-----|:-------|:--------|
+| 1 | [Zilog, *Z80 CPU User Manual* UM008011-0816](conformance/hardware.json) | Anything Zilog printed: pin function, machine cycle shape, T states per instruction, what reset does, which bit of the flag register is which |
+| 2 | The pinned suite | What the manual does not: the two undocumented flag bits, the internal `WZ` register, the `Q` latch, every opcode the manual does not list, and where the idle states sit inside a long machine cycle |
+| 3 | Nothing else | Nothing |
+
+### The manual contradicts itself in three places
+
+Its M Cycles column disagrees with its own T states breakdown on pages 99, 260
+and 269. `LD dd,nn` is printed as two machine cycles of `10 (4, 3, 3)`; three
+groups cannot be two machine cycles. `RES r` is printed as four of `8 (4, 4)`.
+`JR NC,e` not taken is printed as seven of `7 (4, 3)`, where the M Cycles column
+has plainly been copied from the T States column beside it.
+
+All three were found mechanically, by checking every one of the 184 timing rows
+twice: that its breakdown sums to its total, and that the number of groups equals
+the M Cycles column. The first check passes everywhere. The second fails on
+exactly those three, and each was then read off the rendered page image to
+confirm the document really prints it rather than the extraction having damaged
+it.
+
+The breakdown wins, and the reason is recorded rather than assumed: it is
+internally consistent on all 184 rows, and a summary column is written last and
+reviewed least.
+
+**The tables in that PDF have an unreliable text layer.** The prose extracts
+cleanly and the large opcode maps do not, so anything numeric was read off the
+page image.
+
 ## The three registers nobody documents
 
 A Z80 that runs software correctly and a Z80 that is right differ in three
@@ -259,8 +351,15 @@ the top half, and this will let it fail the way hardware would.
 | [`z80/memory.py`](z80/memory.py) | Sixteen bit memory and the separate sixteen bit port space |
 | [`z80/opcodes.py`](z80/opcodes.py) | The disassembler, built from the same decomposition the core uses |
 | [`z80/models.py`](z80/models.py) | Which parts this covers and what separates them |
-| [`conformance/singlestep.py`](conformance/singlestep.py) | The runner that holds all of it to the suite |
+| [`z80/bus.py`](z80/bus.py) | The shape of every machine cycle, and the only place that knows it |
+| [`conformance/hardware.json`](conformance/hardware.json) | What Zilog printed, fact by fact, with the sentence each came from |
+| [`conformance/divergences.json`](conformance/divergences.json) | Every place the manual and the suite disagree, and what would settle each |
+| [`conformance/hardware.test.py`](conformance/hardware.test.py) | The gate that holds the model's timing to the manual, with no suite needed |
+| [`conformance/singlestep.py`](conformance/singlestep.py) | The runner that holds the final state to the suite |
+| [`conformance/cycles.py`](conformance/cycles.py) | The runner that holds every T state to it |
 | [`conformance/fetch.py`](conformance/fetch.py) | Brings the suite down, pinned by commit |
+| [`specs/current/`](specs/current/) | What the part does, as requirements somebody could test against |
+| [`AGENTS.md`](AGENTS.md) | The working instructions, including the things that will bite you |
 
 ## For contributors and reviewers
 
@@ -277,7 +376,8 @@ python -m coverage report
 ```
 
 Coverage is a gate, not a report: the build fails below 100% of statements and
-branches.
+branches. Types are a gate too, `mypy` in strict mode with every optional error
+class the checker offers.
 
 ### Reproducing a conformance failure
 
