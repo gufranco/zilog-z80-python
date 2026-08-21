@@ -270,7 +270,7 @@ class LimitTest(unittest.TestCase):
         cpu.step_limit = 0
 
         with self.assertRaises(core.StepLimit):
-            cpu.interrupt(0xFF)
+            cpu.irq(0xFF)
 
     def test_and_so_does_the_nonmaskable_line(self) -> None:
         cpu, _ = machine([0x00])
@@ -278,7 +278,7 @@ class LimitTest(unittest.TestCase):
         cpu.step_limit = 0
 
         with self.assertRaises(core.StepLimit):
-            cpu.nonmaskable()
+            cpu.nmi()
 
 
 if __name__ == "__main__":

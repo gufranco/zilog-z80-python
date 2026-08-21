@@ -8,7 +8,7 @@ from typing import Any, override
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from z80 import flags, memory, models  # noqa: E402
+from z80 import Cpu, flags, memory  # noqa: E402
 
 HELD = json.loads((Path(__file__).resolve().parent / "independent.json").read_text())
 
@@ -20,7 +20,7 @@ def run(program: Sequence[int], **setup: int) -> Any:
     space = memory.SparseMemory()
     for offset, byte in enumerate(program):
         space.write8(START + offset, byte)
-    cpu = models.describe("z80").build(space, reset=True)
+    cpu = Cpu("z80", space, reset=True)
     cpu.registers.pc = START
     for name, value in setup.items():
         setattr(cpu.registers, name, value)
@@ -119,7 +119,7 @@ class AddressRegisterTest(unittest.TestCase):
 class InterruptAcceptanceTest(unittest.TestCase):
     def taken(self, program: Sequence[int], **setup: int) -> bool:
         cpu = run(program, **setup)
-        return bool(cpu.interrupt(0xFF))
+        return bool(cpu.irq(0xFF))
 
     def test_an_enable_holds_the_next_boundary(self) -> None:
         self.assertFalse(self.taken((0xFB,), sp=0x8000, im=1))
@@ -128,23 +128,23 @@ class InterruptAcceptanceTest(unittest.TestCase):
         space = memory.SparseMemory()
         space.write8(START, 0xED)
         space.write8(START + 1, 0x45)
-        cpu = models.describe("z80").build(space, reset=True)
+        cpu = Cpu("z80", space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.iff2, cpu.registers.im = False, True, 1
         cpu.step()
 
-        self.assertFalse(cpu.interrupt(0xFF))
+        self.assertFalse(cpu.irq(0xFF))
 
     def test_and_does_not_when_they_agreed(self) -> None:
         space = memory.SparseMemory()
         space.write8(START, 0xED)
         space.write8(START + 1, 0x45)
-        cpu = models.describe("z80").build(space, reset=True)
+        cpu = Cpu("z80", space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.iff2, cpu.registers.im = True, True, 1
         cpu.step()
 
-        self.assertTrue(cpu.interrupt(0xFF))
+        self.assertTrue(cpu.irq(0xFF))
 
     def test_the_record_names_the_rule_the_manual_does_not_carry(self) -> None:
         rules = HELD["interruptAcceptance"]["rules"]
@@ -156,7 +156,7 @@ class ModeZeroTest(unittest.TestCase):
     def machine(self, model: str = "z80") -> Any:
         space = memory.SparseMemory()
         space.write8(START, 0x00)
-        cpu = models.describe(model).build(space, reset=True)
+        cpu = Cpu(model, space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
         return cpu
@@ -164,7 +164,7 @@ class ModeZeroTest(unittest.TestCase):
     def test_an_operand_byte_leaves_the_counter_where_it_was(self) -> None:
         cpu = self.machine()
 
-        cpu.interrupt(0x3E)
+        cpu.irq(0x3E)
 
         self.assertEqual(cpu.registers.pc, START)
 
@@ -173,18 +173,18 @@ class ModeZeroTest(unittest.TestCase):
         space.write8(START, 0x00)
         space.write8(START + 1, 0x34)
         space.write8(START + 2, 0x12)
-        cpu = models.describe("z80").build(space, reset=True)
+        cpu = Cpu("z80", space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
 
-        cpu.interrupt(0xC3)
+        cpu.irq(0xC3)
 
         self.assertNotEqual(cpu.registers.pc, START)
 
     def test_a_single_byte_response_leaves_the_counter_alone_too(self) -> None:
         cpu = self.machine()
 
-        cpu.interrupt(0x00)
+        cpu.irq(0x00)
 
         self.assertEqual(cpu.registers.pc, START)
 
@@ -198,10 +198,10 @@ class ModeTwoVectorTest(unittest.TestCase):
         space.write8(START, 0x00)
         for address, value in ((0x00FE, 0x11), (0x00FF, 0x22), (0x0100, 0x33)):
             space.write8(address, value)
-        cpu = models.describe("z80").build(space, reset=True)
+        cpu = Cpu("z80", space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.i, cpu.registers.iff1, cpu.registers.im = 0x00, True, 2
-        cpu.interrupt(vector)
+        cpu.irq(vector)
         return int(cpu.registers.pc)
 
     def test_an_odd_vector_is_used_whole(self) -> None:
@@ -221,13 +221,13 @@ class ResponseCostTest(unittest.TestCase):
     """What each response spends, against a source that is not the manual's arithmetic."""
 
     def spent(self, mode: int, vector: int = 0xFF, nonmaskable: bool = False) -> int:
-        cpu = models.describe("z80").build(memory.SparseMemory(), reset=True)
+        cpu = Cpu("z80", memory.SparseMemory(), reset=True)
         cpu.registers.sp, cpu.registers.pc = 0x8000, START
         cpu.registers.iff1, cpu.registers.im = True, mode
         if nonmaskable:
-            cpu.nonmaskable()
+            cpu.nmi()
         else:
-            cpu.interrupt(vector)
+            cpu.irq(vector)
         return len(cpu.bus)
 
     def test_the_nonmaskable_line_costs_what_young_reports(self) -> None:
@@ -254,7 +254,7 @@ class CarryRuleTest(unittest.TestCase):
     def carried(self, model: str, latch: int, f: int, a: int) -> int:
         space = memory.SparseMemory()
         space.write8(START, 0x37)
-        cpu = models.describe(model).build(space, reset=True)
+        cpu = Cpu(model, space, reset=True)
         cpu.registers.pc, cpu.registers.a, cpu.registers.f = START, a, f
         cpu.registers.q = latch
         cpu.step()

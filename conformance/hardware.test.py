@@ -21,7 +21,7 @@ from typing import Any, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import bus, core, flags, memory, models
+from z80 import Cpu, bus, core, flags, memory
 
 HELD = json.loads((Path(__file__).resolve().parent / "hardware.json").read_text())
 
@@ -223,7 +223,7 @@ class MachineCycleShapeTest(unittest.TestCase):
         cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 1
         undrawn = SHAPES["interruptAcknowledge"]["tStates"] - bus.ACKNOWLEDGE_STATES
 
-        cpu.interrupt(0xFF)
+        cpu.irq(0xFF)
 
         beyond = len(cpu.bus) - bus.ACKNOWLEDGE_STATES - 2 * bus.MEMORY_STATES
         self.assertEqual(beyond, undrawn)
@@ -620,26 +620,26 @@ class InterruptResponseTest(unittest.TestCase):
 
     def test_the_nonmaskable_line_costs_what_a_restart_costs(self) -> None:
         self.assertEqual(
-            self.offered(lambda cpu: cpu.nonmaskable()),
+            self.offered(lambda cpu: cpu.nmi()),
             (None, RESPONSE["nonmaskable"]["tStates"]),
         )
 
     def test_mode_one_costs_the_two_more_the_manual_adds(self) -> None:
         self.assertEqual(
-            self.offered(lambda cpu: cpu.interrupt(0xFF), mode=1),
+            self.offered(lambda cpu: cpu.irq(0xFF), mode=1),
             (True, RESPONSE["mode1"]["tStates"]),
         )
 
     def test_mode_two_costs_the_nineteen_the_manual_prints(self) -> None:
         self.assertEqual(
-            self.offered(lambda cpu: cpu.interrupt(0xFF), mode=2),
+            self.offered(lambda cpu: cpu.irq(0xFF), mode=2),
             (True, RESPONSE["mode2"]["tStates"]),
         )
 
     def test_mode_zero_costs_the_supplied_instruction_plus_two(self) -> None:
         supplied = 0xC7
 
-        _, spent_now = self.offered(lambda cpu: cpu.interrupt(supplied), mode=0)
+        _, spent_now = self.offered(lambda cpu: cpu.irq(supplied), mode=0)
 
         self.assertEqual(spent_now - spent((supplied,)), 2)
 
@@ -648,7 +648,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
-        cpu.interrupt(program[0])
+        cpu.irq(program[0])
         return len(cpu.bus) - spent(program)
 
     def test_whatever_the_supplied_instruction_is(self) -> None:
@@ -669,7 +669,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
 
-        cpu.interrupt(0xC3)
+        cpu.irq(0xC3)
 
         self.assertEqual(cpu.registers.pc, 0x3434)
 
@@ -690,7 +690,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
         cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 1
 
-        cpu.interrupt(0xFF)
+        cpu.irq(0xFF)
 
         self.assertEqual(cpu.registers.pc, RESPONSE["mode1"]["restartsAt"])
 
@@ -698,7 +698,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
         cpu.registers.sp = 0x8000
 
-        cpu.nonmaskable()
+        cpu.nmi()
 
         self.assertEqual(cpu.registers.pc, RESPONSE["nonmaskable"]["restartsAt"])
 
@@ -710,7 +710,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu = core.Cpu(space, reset=True)
         cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 2
 
-        cpu.interrupt(0xFF)
+        cpu.irq(0xFF)
 
         self.assertEqual(cpu.registers.pc, 0x5612)
 
@@ -722,7 +722,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu.registers.sp, cpu.registers.iff1, cpu.registers.iff2 = 0x8000, True, True
         cpu.registers.im = 1
 
-        cpu.interrupt(0xFF)
+        cpu.irq(0xFF)
 
         self.assertEqual((cpu.registers.iff1, cpu.registers.iff2), (False, False))
 
@@ -730,7 +730,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
         cpu.registers.sp, cpu.registers.iff1, cpu.registers.iff2 = 0x8000, True, True
 
-        cpu.nonmaskable()
+        cpu.nmi()
 
         self.assertEqual((cpu.registers.iff1, cpu.registers.iff2), (False, True))
 
@@ -738,13 +738,13 @@ class InterruptResponseTest(unittest.TestCase):
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
         cpu.registers.sp, cpu.registers.iff1 = 0x8000, False
 
-        self.assertEqual(cpu.interrupt(0xFF), False)
+        self.assertEqual(cpu.irq(0xFF), False)
 
     def test_and_takes_the_nonmaskable_one_anyway(self) -> None:
         cpu = core.Cpu(memory.SparseMemory(), reset=True)
         cpu.registers.sp, cpu.registers.iff1 = 0x8000, False
 
-        cpu.nonmaskable()
+        cpu.nmi()
 
         self.assertEqual(cpu.registers.pc, RESPONSE["nonmaskable"]["restartsAt"])
 
@@ -755,7 +755,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu.registers.sp, cpu.registers.pc, cpu.registers.im = 0x8000, START, 1
         cpu.step()
 
-        self.assertEqual(cpu.interrupt(0xFF), False)
+        self.assertEqual(cpu.irq(0xFF), False)
 
     def test_and_lets_it_through_once_that_instruction_has_run(self) -> None:
         space = memory.SparseMemory()
@@ -765,7 +765,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu.step()
         cpu.step()
 
-        self.assertEqual(cpu.interrupt(0xFF), True)
+        self.assertEqual(cpu.irq(0xFF), True)
 
     def test_a_repeating_instruction_is_resumed_rather_than_abandoned(self) -> None:
         space = memory.SparseMemory()
@@ -777,7 +777,7 @@ class InterruptResponseTest(unittest.TestCase):
         cpu.registers.iff1, cpu.registers.im = True, 1
         cpu.step()
 
-        cpu.interrupt(0xFF)
+        cpu.irq(0xFF)
 
         self.assertEqual(
             cpu.memory.read8(cpu.registers.sp) | (cpu.memory.read8(0x7FFF) << 8), START
@@ -808,13 +808,13 @@ class ParityDefectTest(unittest.TestCase):
         space = memory.SparseMemory()
         space.write8(START, 0xED)
         space.write8(START + 1, opcode)
-        cpu = models.describe(name).build(space, reset=True)
+        cpu = Cpu(name, space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1 = cpu.registers.iff2 = True
         cpu.registers.im = 1
         cpu.step()
         before = cpu.registers.f & flags.PV
-        cpu.interrupt(0xFF)
+        cpu.irq(0xFF)
         return before, cpu.registers.f & flags.PV
 
     def test_the_instruction_reports_the_latch_before_the_interrupt(self) -> None:
@@ -848,13 +848,13 @@ class ParityDefectTest(unittest.TestCase):
     def test_an_interrupt_after_any_other_instruction_leaves_the_flag_alone(self) -> None:
         space = memory.SparseMemory()
         space.write8(START, 0x00)
-        cpu = models.describe("z80").build(space, reset=True)
+        cpu = Cpu("z80", space, reset=True)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 1
         cpu.registers.f = flags.PV
         cpu.step()
 
-        cpu.interrupt(0xFF)
+        cpu.irq(0xFF)
 
         self.assertEqual(cpu.registers.f & flags.PV, flags.PV)
 
@@ -908,7 +908,7 @@ class HaltTest(unittest.TestCase):
         cpu = self.halted()
         cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 1
 
-        cpu.interrupt(0xFF)
+        cpu.irq(0xFF)
 
         self.assertEqual(cpu.halted, False)
 
@@ -916,7 +916,7 @@ class HaltTest(unittest.TestCase):
         cpu = self.halted()
         cpu.registers.sp = 0x8000
 
-        cpu.nonmaskable()
+        cpu.nmi()
 
         self.assertEqual(cpu.halted, False)
 

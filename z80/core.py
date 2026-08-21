@@ -407,7 +407,7 @@ class Cpu:
         self.begin()
         self.halted = False
 
-    def interrupt(self, vector: int = 0xFF) -> bool:
+    def irq(self, vector: int = 0xFF) -> bool:
         """Offer the maskable line, and report whether the part took it.
 
         Refused while the enable flip-flop is clear, and refused for one further
@@ -471,7 +471,7 @@ class Cpu:
             self.holding_counter = False
         return True
 
-    def nonmaskable(self) -> None:
+    def nmi(self) -> None:
         """Raise the nonmaskable line, which the part has no way of refusing.
 
         Nothing is reported back, because "The CPU always accepts a nonmaskable

@@ -4,8 +4,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import Ports, SparseMemory, bus, models
-from z80.core import Cpu
+from z80 import Cpu, Ports, SparseMemory, bus, models
+from z80.core import Cpu as Part
 
 
 class CatalogueTest(unittest.TestCase):
@@ -90,24 +90,22 @@ class NameTest(unittest.TestCase):
 
 class BuildTest(unittest.TestCase):
     def test_a_model_builds_a_machine_that_knows_which_one_it_is(self) -> None:
-        cpu = models.describe("z80").build(SparseMemory(), ports=Ports())
+        cpu = Cpu("z80", SparseMemory(), ports=Ports())
 
         self.assertEqual(cpu.model, "z80")
 
     def test_a_machine_it_builds_draws_the_pins_the_manual_draws(self) -> None:
-        cpu = models.describe("z80").build(SparseMemory(), ports=Ports())
+        cpu = Cpu("z80", SparseMemory(), ports=Ports())
 
         self.assertTrue(cpu.bus.follows_the_manual)
 
     def test_and_the_other_shape_reaches_it_like_any_other_option(self) -> None:
-        cpu = models.describe("z80").build(SparseMemory(), shape=bus.RECORDING)
+        cpu = Cpu("z80", SparseMemory(), shape=bus.RECORDING)
 
         self.assertFalse(cpu.bus.follows_the_manual)
 
     def test_a_machine_carries_the_carry_rule_its_model_names(self) -> None:
-        held = {
-            name: models.describe(name).build(SparseMemory()).carry_rule for name in models.MODELS
-        }
+        held = {name: Cpu(name, SparseMemory()).carry_rule for name in models.MODELS}
 
         self.assertEqual(held, {"z80": "zilog", "z84c00": "zilog", "upd780c": "nec"})
 
@@ -116,7 +114,7 @@ class BuildTest(unittest.TestCase):
         for name in ("z80", "upd780c"):
             space = SparseMemory()
             space.write8(0x0100, 0x37)
-            cpu = models.describe(name).build(space, reset=True)
+            cpu = Cpu(name, space, reset=True)
             cpu.registers.pc, cpu.registers.a, cpu.registers.f = 0x0100, 0x00, 0x28
             cpu.registers.q = 0
             cpu.step()
@@ -138,12 +136,12 @@ class BuildTest(unittest.TestCase):
 
         self.assertEqual(ports.log[-1][1], 0xFF)
 
-    def machine(self, name: str) -> tuple[Cpu, Ports]:
+    def machine(self, name: str) -> tuple[Part, Ports]:
         space = SparseMemory(seed=1)
         space.write8(0x8000, 0xED)
         space.write8(0x8001, 0x71)
         ports = Ports(seed=1)
-        cpu = models.describe(name).build(space, ports=ports, reset=False)
+        cpu = Cpu(name, space, ports=ports, reset=False)
         cpu.registers.pc = 0x8000
         cpu.registers.bc = 0x1234
         return cpu, ports

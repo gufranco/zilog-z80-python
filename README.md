@@ -31,9 +31,9 @@
 **3** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **585** tests · **100%** statement and branch coverage
 
 ```python
-from z80 import Ports, SparseMemory, describe
+from z80 import Cpu
 
-cpu = describe("z80").build(SparseMemory(), ports=Ports())
+cpu = Cpu("z80")
 cpu.step()
 ```
 
@@ -60,7 +60,7 @@ space = SparseMemory()
 for offset, value in enumerate([0x3E, 0x42, 0x47]):
     space.write8(0x8000 + offset, value)
 
-cpu = Cpu(space, reset=False)
+cpu = Cpu("z80", space, reset=False)
 cpu.registers.pc = 0x8000
 cpu.step()
 cpu.step()
@@ -373,8 +373,8 @@ instructions: the part "samples the interrupt signal (INT) with the rising edge
 of the final clock at the end of any instruction".
 
 ```python
-cpu.interrupt(0xFF)  # the maskable line, with the byte the device puts on the bus
-cpu.nonmaskable()  # the other one, which is always taken
+cpu.irq(0xFF)  # the maskable line, with the byte the device puts on the bus
+cpu.nmi()  # the other one, which is always taken
 ```
 
 `interrupt` reports whether the part took it, and refuses while the enable flip
@@ -467,8 +467,8 @@ NMOS and is not one of the others.
 ```python
 from z80 import describe
 
-nmos = describe("z80").build(space, ports=ports)
-cmos = describe("Z84-C00").build(space, ports=ports)
+nmos = Cpu("z80", space, ports=ports)
+cmos = Cpu("Z84-C00", space, ports=ports)
 ```
 
 Names are matched however they are written: case and separators do not matter,
