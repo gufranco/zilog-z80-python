@@ -156,6 +156,9 @@ ACKNOWLEDGE_STATES = EDGES[ACKNOWLEDGE][0]
 
 ADDRESS_MASK = 0xFFFF
 
+SAMPLE_WAIT_AFTER = 1
+"""The state index after which WAIT is read, which is T2 of every machine cycle."""
+
 MANUAL = "manual"
 """The manual's measured edges, read at the clock edge ending each T state."""
 
@@ -178,16 +181,33 @@ class Bus:
     only the count.
     """
 
-    __slots__ = ("address", "cycles", "log", "on_state", "recording", "shape", "states")
+    __slots__ = (
+        "address",
+        "cycles",
+        "log",
+        "on_state",
+        "recording",
+        "shape",
+        "states",
+        "waiting",
+    )
 
     def __init__(
         self,
         recording: bool = False,
         shape: str = MANUAL,
         on_state: Callable[[], None] | None = None,
+        waiting: Callable[[], bool] | None = None,
     ) -> None:
         if shape not in SHAPES:
             raise UnknownShape(f"{shape} is not a pin shape; there are {', '.join(SHAPES)}")
+        self.waiting = waiting
+        """Asked once per machine cycle, after T2, whether a wait state is wanted.
+
+        The part that owns this bus answers from its own WAIT line. Nothing else
+        may write to it.
+        """
+
         self.on_state = on_state
         """Called once per T state, after that state's activity is recorded.
 
@@ -243,12 +263,26 @@ class Bus:
         it was, so that a reader of the transcript does not have to infer the
         boundaries from the pins. Inferring them works until two cycle kinds draw
         the same first columns, and then it stops working silently.
+
+        A machine cycle can be longer than its figure. Zilog's data book says
+        where the part asks and who may ask: "The CPU samples the WAIT input with
+        the falling edge of clock state T2", and machine cycles "can be extended
+        either by the CPU automatically inserting one or more Wait states or by
+        the insertion of one or more Wait states by the user". So the question is
+        put once, after T2, and every state it adds repeats T2: the same address,
+        no value yet, and the strobes still down. That last part is not a guess.
+        The wait this part inserts on its own during an I/O cycle was measured
+        sitting inside the strobe, and the data book puts both kinds of wait in
+        one sentence as one mechanism with two requesters.
         """
         if self.recording:
             self.cycles.append((self.states, cycle))
         pins = COLUMNS[cycle] if self.follows_the_manual else recorded
-        for address, value, held in zip(addresses, values, pins, strict=True):
+        for index, (address, value, held) in enumerate(zip(addresses, values, pins, strict=True)):
             self.mark(address, value, held)
+            if index == SAMPLE_WAIT_AFTER and self.waiting is not None:
+                while self.waiting():
+                    self.mark(address, None, held)
 
     def idle(self, count: int = 1) -> None:
         """Internal cycles, holding the address the last access left on the bus."""

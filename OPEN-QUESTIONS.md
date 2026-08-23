@@ -274,17 +274,6 @@ So the boundary is visible rather than implied:
 
 Absent rather than unknown, and absent on purpose:
 
-- **The WAIT line.** The waits the part inserts on its own are modelled: an I/O
-  cycle carries the one the manual says is "automatically inserted" and an
-  interrupt acknowledge carries the two it says are "automatically added". What
-  is absent is a line a memory can pull to ask for more. The timing would be
-  easy; the pins are not. Every column this bus draws is derived from edges
-  measured off the pinned document's figures, and no edges have been measured for
-  a requested wait state. Repeating the column of the state it extends would be
-  an assumption dressed as a measurement, so the line waits on that reading
-  rather than on anything a bench would supply. The 65xx package models its
-  equivalent because those manuals describe the behaviour in prose rather than
-  only in a waveform.
 - **Bus request and bus acknowledge.** No second bus master to arbitrate with.
 - **Power-down modes.** Nothing here has a power rail.
 - **The one thing left about the interrupt lines.** They are lines now:

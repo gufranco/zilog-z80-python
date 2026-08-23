@@ -113,6 +113,9 @@ class Cpu:
         self.memory = memory
         self.ports = ports
         self.registers = Registers(seed)
+        self.wait_line = False
+        """The WAIT line, active when true. Held, it lengthens the machine cycle in progress."""
+
         self.irq_line = False
         """The request line, active when true. Level sensitive: held, not pulsed."""
 
@@ -135,7 +138,9 @@ class Cpu:
         self.on_cycle: Callable[[], None] | None = None
         """Called once per T state, after that state's bus activity."""
 
-        self.bus = bus.Bus(recording=recording, shape=shape, on_state=self.spend)
+        self.bus = bus.Bus(
+            recording=recording, shape=shape, on_state=self.spend, waiting=self.wants_a_wait
+        )
         self.steps = 0
         self.cycles = 0
         self.halted = False
@@ -162,6 +167,21 @@ class Cpu:
         self.sampled_irq = self.irq_line
         if self.on_cycle is not None:
             self.on_cycle()
+
+    def wants_a_wait(self) -> bool:
+        """Whether memory is asking for another state, read where the part reads it.
+
+        Zilog's data book names the moment: "The CPU samples the WAIT input with
+        the falling edge of clock state T2." The bus asks once per machine cycle,
+        after that state, and goes on asking for as long as the answer is yes,
+        which is what "one or more Wait states" means.
+
+        A caller who holds the line and never releases it does not get out, which
+        is what a board that does the same gets. The cycle hook fires on every
+        added state, so a host driving the part by hand can release it there, and
+        a clock can release it between two states.
+        """
+        return self.wait_line
 
     def sample_pins(self) -> bool:
         """Act on whatever the interrupt lines were showing when the part looked.

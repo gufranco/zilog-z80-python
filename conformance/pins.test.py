@@ -112,5 +112,64 @@ class NonMaskableLineTest(unittest.TestCase):
         self.assertEqual(cpu.registers.pc, 0x0066)
 
 
+class WaitLineTest(unittest.TestCase):
+    """That memory can ask for more time, and that the part asks where it asks.
+
+    "The CPU samples the WAIT input with the falling edge of clock state T2", so
+    the question is put once per machine cycle and every state it adds repeats
+    T2: same address, no value yet, strobes still down.
+    """
+
+    def running(self) -> Any:
+        space = z80.Memory(image=bytes([0x00] * 8))
+        cpu = z80.Cpu("z80", space, recording=True)
+        cpu.reset()
+        cpu.registers.pc = 0x0000
+        return cpu
+
+    def test_a_cycle_is_its_own_length_when_nothing_asks(self) -> None:
+        cpu = self.running()
+
+        self.assertEqual(cpu.step(), 4)
+
+    def test_a_held_line_lengthens_the_cycle(self) -> None:
+        cpu = self.running()
+        seen = [0]
+
+        def hook() -> None:
+            seen[0] += 1
+            cpu.wait_line = seen[0] < 5
+
+        cpu.on_cycle = hook
+
+        self.assertEqual(cpu.step(), 7)
+
+    def test_an_added_state_repeats_the_one_before_it(self) -> None:
+        cpu = self.running()
+        seen = [0]
+
+        def hook() -> None:
+            seen[0] += 1
+            cpu.wait_line = seen[0] < 3
+
+        cpu.on_cycle = hook
+        cpu.step()
+
+        self.assertEqual(cpu.bus.log[1][2], cpu.bus.log[2][2])
+
+    def test_a_line_released_between_two_states_stops_the_waiting(self) -> None:
+        cpu = self.running()
+
+        with z80.Clock(cpu) as clock:
+            clock.tick()
+            clock.tick()
+            cpu.wait_line = True
+            clock.run_for(3)
+            cpu.wait_line = False
+            clock.run_for(4)
+
+        self.assertEqual(clock.cycles, 9)
+
+
 if __name__ == "__main__":
     unittest.main()
