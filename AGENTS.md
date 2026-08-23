@@ -11,6 +11,29 @@ corpus of 1,604,000 cases and, separately, to every timing and flag table the
 manufacturer printed. It is a model of a processor, not an emulator that is
 pleasant to use, and where those two pull apart the processor wins.
 
+## The interface a caller drives
+
+The part is powered and not reset when it is built. `reset()` is the caller's to
+call, because no board hands over a processor that has reset itself.
+
+Three ways to run it, sharing one place where a T state is spent:
+
+- `step()` runs one instruction and returns the T states it cost.
+- `run_for(cycles)` spends a budget of them and overshoots, because an
+  instruction cannot be cut in half.
+- `Clock(cpu).tick()` advances exactly one T state and stops, on a thread,
+  because Python cannot suspend a call stack. Fifty times slower and the only
+  way to change what a read answers mid-instruction.
+
+Three inputs are lines rather than events, each read where a document says the
+part reads it: `irq_line` at the final T state, `nmi_line` on its transition,
+`wait_line` after T2 of every machine cycle. `on_cycle` is called once per T
+state, after that state's activity.
+
+Every cycle passes through `spend()` and nowhere else. A counter kept in one
+method and a hook called from another drift the first time somebody adds a cycle
+to only one of them, and nothing catches it. Keep it that way.
+
 ## The authority ladder
 
 Every factual question is answered by the highest rung that has an answer, and a
