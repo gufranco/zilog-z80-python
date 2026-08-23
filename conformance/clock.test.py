@@ -55,6 +55,17 @@ class ClockTest(unittest.TestCase):
 
         self.assertIn(0x99, [value for _, value, _ in cpu.bus.log])
 
+    def test_a_halted_part_keeps_costing_cycles_under_a_clock(self) -> None:
+        space = z80.Memory(image=bytes([0x76]))
+        cpu = z80.Cpu("z80", space)
+        cpu.reset()
+        cpu.registers.pc = 0x0000
+
+        with z80.Clock(cpu) as clock:
+            clock.run_for(12)
+
+        self.assertEqual((clock.cycles, cpu.held()), (12, True))
+
     def test_a_clock_can_be_iterated(self) -> None:
         cpu = self.part()
 

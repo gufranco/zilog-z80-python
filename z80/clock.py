@@ -54,7 +54,18 @@ class Clock:
         self._worker.start()
 
     def _run(self) -> None:
-        """Run instructions forever, blocking inside every cycle they spend."""
+        """Run the part forever, blocking inside every cycle it spends.
+
+        A part that has stopped advancing the program still costs its host every
+        cycle, and on this part `step` is all that takes: a halted Z80 goes on
+        executing, forcing a no-operation internally and refreshing memory, so it
+        keeps returning the four T states each pass costs and never refuses.
+
+        The 65xx package needs a second call here, because a jammed or stopped
+        part there completes no further instruction at all. That difference is
+        the hardware's rather than the design's, which is why this loop is
+        shorter than that one instead of carrying a branch it could never take.
+        """
         self._resume.acquire()
         try:
             while not self.closed:
