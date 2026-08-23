@@ -418,6 +418,17 @@ class Cpu:
                 raise RunLimit(f"gave up after {taken} instructions at ${self.registers.pc:04X}")
         return self
 
+    def held(self) -> bool:
+        """Whether the part has stopped advancing the program on its own.
+
+        One question the whole family answers, differently per part. This one has
+        a single such state: HALT, which an interrupt or a reset ends. It differs
+        from the 65xx halt states in that the part still executes something, so
+        `step()` keeps working and returns the four T states each pass costs.
+        There is no `held_cycle()` here because none is needed.
+        """
+        return self.halted
+
     def halt_cycle(self) -> None:
         """One machine cycle of a halted part, which is a fetch it throws away.
 
