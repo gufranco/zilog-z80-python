@@ -72,7 +72,7 @@ class RecordTest(unittest.TestCase):
     def test_and_the_closed_ones_are_kept_rather_than_deleted(self) -> None:
         closed = [one for one in divergences() if one["status"] == "closed"]
 
-        self.assertEqual(len(closed), 6)
+        self.assertEqual(len(closed), 7)
 
     def test_every_severity_the_record_uses_has_a_place_in_the_document(self) -> None:
         severities = {one["severity"] for one in opened()}

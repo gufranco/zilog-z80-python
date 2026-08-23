@@ -21,7 +21,7 @@ from typing import Any, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import Cpu, bus, core, flags, memory
+from z80 import Cpu, bus, core, flags, memory, opcodes
 
 HELD = json.loads((Path(__file__).resolve().parent / "hardware.json").read_text())
 
@@ -76,6 +76,39 @@ def spent(program: tuple[int, ...], setup: dict[str, int] | None = None) -> int:
         setattr(cpu.registers, name, value)
     cpu.step()
     return len(cpu.bus)
+
+
+def named_by_the_core() -> set[str]:
+    """Every mnemonic the disassembler emits, walked the way the part walks an opcode.
+
+    The timing table is a reading of a document, so nothing in it is checked by
+    running the core. This is the one handle on it: a row naming an instruction
+    this package cannot name is a row that was read off the wrong part of a page,
+    which is how forty three of them once came to be labelled Description.
+    """
+    found: set[str] = set()
+    for byte in range(256):
+        for encoding in (
+            [byte, 0, 0, 0],
+            [0xCB, byte, 0, 0],
+            [0xED, byte, 0, 0],
+            [0xDD, byte, 0, 0],
+            [0xFD, byte, 0, 0],
+            [0xDD, 0xCB, 0, byte],
+            [0xFD, 0xCB, 0, byte],
+        ):
+            found.add(opcodes.decode(encoding).text.split()[0].lower())
+    return found
+
+
+def mnemonic_of(entry: dict[str, Any]) -> str:
+    """The leading word of a manual heading, which is where the mnemonic sits.
+
+    Punctuation is dropped rather than tolerated, because the manual heads one
+    page DJNZ, e and every other jump without the comma.
+    """
+    head = entry["instruction"].split(maxsplit=1)[0]
+    return "".join(letter for letter in head if letter.isalpha()).lower()
 
 
 def row(page: int) -> dict[str, Any]:
@@ -183,6 +216,30 @@ class TimingTableTest(unittest.TestCase):
         ]
 
         self.assertEqual(found[0]["printed"].count("H is"), 2)
+
+    def test_every_row_names_an_instruction_this_core_can_name(self) -> None:
+        core_names = named_by_the_core()
+        stray = sorted({mnemonic_of(entry) for entry in ROWS} - core_names)
+
+        self.assertEqual(stray, [])
+
+    def test_and_the_only_ones_it_names_that_the_table_omits_are_not_documented(self) -> None:
+        absent = sorted(named_by_the_core() - {mnemonic_of(entry) for entry in ROWS})
+
+        self.assertEqual(absent, ["db", "sll"])
+
+    def test_the_notation_example_is_kept_apart_from_the_instructions(self) -> None:
+        example = FACTS["instructionTiming"]["notationExample"]
+
+        self.assertEqual(
+            (example["manualPage"], example["tStates"], example["machineCycles"]),
+            (69, 7, [4, 3]),
+        )
+
+    def test_and_no_row_claims_the_page_that_example_sits_on(self) -> None:
+        claimed = [entry["instruction"] for entry in ROWS if entry["manualPage"] == 69]
+
+        self.assertEqual(claimed, [])
 
     def test_no_other_row_disagrees_with_its_own_breakdown(self) -> None:
         wrong = [

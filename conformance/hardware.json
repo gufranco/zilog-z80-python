@@ -297,15 +297,8 @@
     },
     "instructionTiming": {
       "note": "Every per-instruction timing table in the manual, one row per printed row, each carrying the page it was read from. machineCycles is the manual's own parenthesised breakdown, which sums to tStates on every one of these rows. printedMCycles is the manual's M Cycles column, kept because it is what the page says even where it is wrong.",
-      "selfCheck": "Every row's breakdown sums to its stated total. Three rows print an M Cycles count that disagrees with the number of groups in their own breakdown; each is flagged and listed under documentContradictions.",
+      "selfCheck": "Every row's breakdown sums to its stated total, and every instruction names a mnemonic the package implements. Three rows print an M Cycles count that disagrees with the number of groups in their own breakdown; each is flagged and listed under documentContradictions.",
       "rows": [
-        {
-          "instruction": "Sign Flag",
-          "manualPage": 69,
-          "tStates": 7,
-          "machineCycles": [4, 3],
-          "printedMCycles": 2
-        },
         {
           "instruction": "LD r, r'",
           "manualPage": 71,
@@ -602,7 +595,7 @@
           "printedMCycles": 1
         },
         {
-          "instruction": "EX AF, AF\u2032",
+          "instruction": "EX AF, AF′",
           "manualPage": 125,
           "tStates": 4,
           "machineCycles": [4],
@@ -646,16 +639,16 @@
         {
           "instruction": "LDIR",
           "manualPage": 132,
-          "tStates": 21,
-          "machineCycles": [4, 4, 3, 5, 5],
-          "printedMCycles": 5
+          "tStates": 16,
+          "machineCycles": [4, 4, 3, 5],
+          "printedMCycles": 4
         },
         {
           "instruction": "LDIR",
           "manualPage": 132,
-          "tStates": 16,
-          "machineCycles": [4, 4, 3, 5],
-          "printedMCycles": 4
+          "tStates": 21,
+          "machineCycles": [4, 4, 3, 5, 5],
+          "printedMCycles": 5
         },
         {
           "instruction": "LDD",
@@ -667,16 +660,16 @@
         {
           "instruction": "LDDR",
           "manualPage": 136,
-          "tStates": 21,
-          "machineCycles": [4, 4, 3, 5, 5],
-          "printedMCycles": 5
+          "tStates": 16,
+          "machineCycles": [4, 4, 3, 5],
+          "printedMCycles": 4
         },
         {
           "instruction": "LDDR",
           "manualPage": 136,
-          "tStates": 16,
-          "machineCycles": [4, 4, 3, 5],
-          "printedMCycles": 4
+          "tStates": 21,
+          "machineCycles": [4, 4, 3, 5, 5],
+          "printedMCycles": 5
         },
         {
           "instruction": "CPI",
@@ -688,16 +681,16 @@
         {
           "instruction": "CPIR",
           "manualPage": 139,
-          "tStates": 21,
-          "machineCycles": [4, 4, 3, 5, 5],
-          "printedMCycles": 5
+          "tStates": 16,
+          "machineCycles": [4, 4, 3, 5],
+          "printedMCycles": 4
         },
         {
           "instruction": "CPIR",
           "manualPage": 139,
-          "tStates": 16,
-          "machineCycles": [4, 4, 3, 5],
-          "printedMCycles": 4
+          "tStates": 21,
+          "machineCycles": [4, 4, 3, 5, 5],
+          "printedMCycles": 5
         },
         {
           "instruction": "CPD",
@@ -709,16 +702,16 @@
         {
           "instruction": "CPDR",
           "manualPage": 142,
-          "tStates": 21,
-          "machineCycles": [4, 4, 3, 5, 5],
-          "printedMCycles": 5
+          "tStates": 16,
+          "machineCycles": [4, 4, 3, 5],
+          "printedMCycles": 4
         },
         {
           "instruction": "CPDR",
           "manualPage": 142,
-          "tStates": 16,
-          "machineCycles": [4, 4, 3, 5],
-          "printedMCycles": 4
+          "tStates": 21,
+          "machineCycles": [4, 4, 3, 5, 5],
+          "printedMCycles": 5
         },
         {
           "instruction": "ADD A, r",
@@ -756,70 +749,245 @@
           "printedMCycles": 5
         },
         {
-          "instruction": "Register                r",
+          "instruction": "ADC A, r",
+          "manualPage": 152,
+          "tStates": 4,
+          "machineCycles": [4],
+          "printedMCycles": 1
+        },
+        {
+          "instruction": "ADC A, (HL)",
+          "manualPage": 152,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "ADC A, n",
+          "manualPage": 152,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "ADC A, (IX+d)",
+          "manualPage": 152,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "ADC A, (IY+d)",
+          "manualPage": 152,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "SUB r",
+          "manualPage": 154,
+          "tStates": 4,
+          "machineCycles": [4],
+          "printedMCycles": 1
+        },
+        {
+          "instruction": "SUB (HL)",
+          "manualPage": 154,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "SUB n",
+          "manualPage": 154,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "SUB (IX+d)",
+          "manualPage": 154,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "SUB (IY+d)",
+          "manualPage": 154,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "SBC A, r",
+          "manualPage": 156,
+          "tStates": 4,
+          "machineCycles": [4],
+          "printedMCycles": 1
+        },
+        {
+          "instruction": "SBC A, (HL)",
           "manualPage": 156,
           "tStates": 7,
           "machineCycles": [4, 3],
           "printedMCycles": 2
         },
         {
-          "instruction": "Register                r",
+          "instruction": "SBC A, n",
+          "manualPage": 156,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "SBC A, (IX+d)",
           "manualPage": 156,
           "tStates": 19,
           "machineCycles": [4, 4, 3, 5, 3],
           "printedMCycles": 5
         },
         {
-          "instruction": "Register                r",
+          "instruction": "SBC A, (IY+d)",
+          "manualPage": 156,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "AND r",
+          "manualPage": 158,
+          "tStates": 4,
+          "machineCycles": [4],
+          "printedMCycles": 1
+        },
+        {
+          "instruction": "AND (HL)",
           "manualPage": 158,
           "tStates": 7,
           "machineCycles": [4, 3],
           "printedMCycles": 2
         },
         {
-          "instruction": "Register                r",
+          "instruction": "AND n",
+          "manualPage": 158,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "AND (IX+d)",
           "manualPage": 158,
           "tStates": 19,
           "machineCycles": [4, 4, 3, 5, 3],
           "printedMCycles": 5
         },
         {
-          "instruction": "Register                r",
+          "instruction": "AND (IY+d)",
+          "manualPage": 158,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "OR r",
+          "manualPage": 160,
+          "tStates": 4,
+          "machineCycles": [4],
+          "printedMCycles": 1
+        },
+        {
+          "instruction": "OR (HL)",
           "manualPage": 160,
           "tStates": 7,
           "machineCycles": [4, 3],
           "printedMCycles": 2
         },
         {
-          "instruction": "Register                r",
+          "instruction": "OR n",
+          "manualPage": 160,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "OR (IX+d)",
           "manualPage": 160,
           "tStates": 19,
           "machineCycles": [4, 4, 3, 5, 3],
           "printedMCycles": 5
         },
         {
-          "instruction": "Register                 r",
+          "instruction": "OR (IY+d)",
+          "manualPage": 160,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "XOR r",
+          "manualPage": 162,
+          "tStates": 4,
+          "machineCycles": [4],
+          "printedMCycles": 1
+        },
+        {
+          "instruction": "XOR (HL)",
           "manualPage": 162,
           "tStates": 7,
           "machineCycles": [4, 3],
           "printedMCycles": 2
         },
         {
-          "instruction": "Register                 r",
+          "instruction": "XOR n",
+          "manualPage": 162,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "XOR (IX+d)",
           "manualPage": 162,
           "tStates": 19,
           "machineCycles": [4, 4, 3, 5, 3],
           "printedMCycles": 5
         },
         {
-          "instruction": "Register                r",
+          "instruction": "XOR (IY+d)",
+          "manualPage": 162,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "CP r",
+          "manualPage": 164,
+          "tStates": 4,
+          "machineCycles": [4],
+          "printedMCycles": 1
+        },
+        {
+          "instruction": "CP (HL)",
           "manualPage": 164,
           "tStates": 7,
           "machineCycles": [4, 3],
           "printedMCycles": 2
         },
         {
-          "instruction": "Register                r",
+          "instruction": "CP n",
+          "manualPage": 164,
+          "tStates": 7,
+          "machineCycles": [4, 3],
+          "printedMCycles": 2
+        },
+        {
+          "instruction": "CP (IX+d)",
+          "manualPage": 164,
+          "tStates": 19,
+          "machineCycles": [4, 4, 3, 5, 3],
+          "printedMCycles": 5
+        },
+        {
+          "instruction": "CP (IY+d)",
           "manualPage": 164,
           "tStates": 19,
           "machineCycles": [4, 4, 3, 5, 3],
@@ -854,21 +1022,35 @@
           "printedMCycles": 6
         },
         {
-          "instruction": "Description",
+          "instruction": "DEC r",
+          "manualPage": 171,
+          "tStates": 4,
+          "machineCycles": [4],
+          "printedMCycles": 1
+        },
+        {
+          "instruction": "DEC (HL)",
           "manualPage": 171,
           "tStates": 11,
           "machineCycles": [4, 4, 3],
           "printedMCycles": 3
         },
         {
-          "instruction": "Description",
+          "instruction": "DEC (IX+d)",
           "manualPage": 171,
           "tStates": 23,
           "machineCycles": [4, 4, 3, 5, 4, 3],
           "printedMCycles": 6
         },
         {
-          "instruction": "Condition Bits Affected",
+          "instruction": "DEC (IY+d)",
+          "manualPage": 171,
+          "tStates": 23,
+          "machineCycles": [4, 4, 3, 5, 4, 3],
+          "printedMCycles": 6
+        },
+        {
+          "instruction": "DAA",
           "manualPage": 174,
           "tStates": 4,
           "machineCycles": [4],
@@ -1085,126 +1267,168 @@
           "printedMCycles": 6
         },
         {
-          "instruction": "Register                r",
+          "instruction": "RL r",
           "manualPage": 222,
           "tStates": 8,
           "machineCycles": [4, 4],
           "printedMCycles": 2
         },
         {
-          "instruction": "Register                r",
+          "instruction": "RL (HL)",
           "manualPage": 222,
           "tStates": 15,
           "machineCycles": [4, 4, 4, 3],
           "printedMCycles": 4
         },
         {
-          "instruction": "Register                r",
+          "instruction": "RL (IX+d)",
           "manualPage": 222,
           "tStates": 23,
           "machineCycles": [4, 4, 3, 5, 4, 3],
           "printedMCycles": 6
         },
         {
-          "instruction": "see page",
+          "instruction": "RL (IY+d)",
+          "manualPage": 222,
+          "tStates": 23,
+          "machineCycles": [4, 4, 3, 5, 4, 3],
+          "printedMCycles": 6
+        },
+        {
+          "instruction": "RRC r",
           "manualPage": 226,
           "tStates": 8,
           "machineCycles": [4, 4],
           "printedMCycles": 2
         },
         {
-          "instruction": "see page",
+          "instruction": "RRC (HL)",
           "manualPage": 226,
           "tStates": 15,
           "machineCycles": [4, 4, 4, 3],
           "printedMCycles": 4
         },
         {
-          "instruction": "see page",
+          "instruction": "RRC (IX+d)",
           "manualPage": 226,
           "tStates": 23,
           "machineCycles": [4, 4, 3, 5, 4, 3],
           "printedMCycles": 6
         },
         {
-          "instruction": "see page",
+          "instruction": "RRC (IY+d)",
+          "manualPage": 226,
+          "tStates": 23,
+          "machineCycles": [4, 4, 3, 5, 4, 3],
+          "printedMCycles": 6
+        },
+        {
+          "instruction": "RR r",
           "manualPage": 229,
           "tStates": 8,
           "machineCycles": [4, 4],
           "printedMCycles": 2
         },
         {
-          "instruction": "see page",
+          "instruction": "RR (HL)",
           "manualPage": 229,
           "tStates": 15,
           "machineCycles": [4, 4, 4, 3],
           "printedMCycles": 4
         },
         {
-          "instruction": "see page",
+          "instruction": "RR (IX+d)",
           "manualPage": 229,
           "tStates": 23,
           "machineCycles": [4, 4, 3, 5, 4, 3],
           "printedMCycles": 6
         },
         {
-          "instruction": "Register               r",
+          "instruction": "RR (IY+d)",
+          "manualPage": 229,
+          "tStates": 23,
+          "machineCycles": [4, 4, 3, 5, 4, 3],
+          "printedMCycles": 6
+        },
+        {
+          "instruction": "SLA r",
           "manualPage": 231,
           "tStates": 8,
           "machineCycles": [4, 4],
           "printedMCycles": 2
         },
         {
-          "instruction": "Register               r",
+          "instruction": "SLA (HL)",
           "manualPage": 231,
           "tStates": 15,
           "machineCycles": [4, 4, 4, 3],
           "printedMCycles": 4
         },
         {
-          "instruction": "Register               r",
+          "instruction": "SLA (IX+d)",
           "manualPage": 231,
           "tStates": 23,
           "machineCycles": [4, 4, 3, 5, 4, 3],
           "printedMCycles": 6
         },
         {
-          "instruction": "Register               r",
+          "instruction": "SLA (IY+d)",
+          "manualPage": 231,
+          "tStates": 23,
+          "machineCycles": [4, 4, 3, 5, 4, 3],
+          "printedMCycles": 6
+        },
+        {
+          "instruction": "SRA r",
           "manualPage": 234,
           "tStates": 8,
           "machineCycles": [4, 4],
           "printedMCycles": 2
         },
         {
-          "instruction": "Register               r",
+          "instruction": "SRA (HL)",
           "manualPage": 234,
           "tStates": 15,
           "machineCycles": [4, 4, 4, 3],
           "printedMCycles": 4
         },
         {
-          "instruction": "Register               r",
+          "instruction": "SRA (IX+d)",
           "manualPage": 234,
           "tStates": 23,
           "machineCycles": [4, 4, 3, 5, 4, 3],
           "printedMCycles": 6
         },
         {
-          "instruction": "Description",
+          "instruction": "SRA (IY+d)",
+          "manualPage": 234,
+          "tStates": 23,
+          "machineCycles": [4, 4, 3, 5, 4, 3],
+          "printedMCycles": 6
+        },
+        {
+          "instruction": "SRL r",
           "manualPage": 237,
           "tStates": 8,
           "machineCycles": [4, 4],
           "printedMCycles": 2
         },
         {
-          "instruction": "Description",
+          "instruction": "SRL (HL)",
           "manualPage": 237,
           "tStates": 15,
           "machineCycles": [4, 4, 4, 3],
           "printedMCycles": 4
         },
         {
-          "instruction": "Description",
+          "instruction": "SRL (IX+d)",
+          "manualPage": 237,
+          "tStates": 23,
+          "machineCycles": [4, 4, 3, 5, 4, 3],
+          "printedMCycles": 6
+        },
+        {
+          "instruction": "SRL (IY+d)",
           "manualPage": 237,
           "tStates": 23,
           "machineCycles": [4, 4, 3, 5, 4, 3],
@@ -1281,7 +1505,7 @@
           "printedMCycles": 6
         },
         {
-          "instruction": "see page",
+          "instruction": "RES r",
           "manualPage": 260,
           "tStates": 8,
           "machineCycles": [4, 4],
@@ -1289,14 +1513,21 @@
           "printedMCyclesIsAMisprint": true
         },
         {
-          "instruction": "see page",
+          "instruction": "RES (HL)",
           "manualPage": 260,
           "tStates": 15,
           "machineCycles": [4, 4, 4, 3],
           "printedMCycles": 4
         },
         {
-          "instruction": "see page",
+          "instruction": "RES (IX+d)",
+          "manualPage": 260,
+          "tStates": 23,
+          "machineCycles": [4, 4, 3, 5, 4, 3],
+          "printedMCycles": 6
+        },
+        {
+          "instruction": "RES (IY+d)",
           "manualPage": 260,
           "tStates": 23,
           "machineCycles": [4, 4, 3, 5, 4, 3],
@@ -1310,7 +1541,7 @@
           "printedMCycles": 3
         },
         {
-          "instruction": "Condition Bits Affected",
+          "instruction": "JP cc, nn",
           "manualPage": 264,
           "tStates": 10,
           "machineCycles": [4, 3, 3],
@@ -1326,20 +1557,13 @@
         {
           "instruction": "JR C, e",
           "manualPage": 267,
-          "tStates": 12,
-          "machineCycles": [4, 3, 5],
-          "printedMCycles": 3
-        },
-        {
-          "instruction": "JR C, e",
-          "manualPage": 267,
           "tStates": 7,
           "machineCycles": [4, 3],
           "printedMCycles": 2
         },
         {
-          "instruction": "JR NC, e",
-          "manualPage": 269,
+          "instruction": "JR C, e",
+          "manualPage": 267,
           "tStates": 12,
           "machineCycles": [4, 3, 5],
           "printedMCycles": 3
@@ -1353,8 +1577,8 @@
           "printedMCyclesIsAMisprint": true
         },
         {
-          "instruction": "JR Z, e",
-          "manualPage": 271,
+          "instruction": "JR NC, e",
+          "manualPage": 269,
           "tStates": 12,
           "machineCycles": [4, 3, 5],
           "printedMCycles": 3
@@ -1367,8 +1591,8 @@
           "printedMCycles": 2
         },
         {
-          "instruction": "JR NZ, e",
-          "manualPage": 273,
+          "instruction": "JR Z, e",
+          "manualPage": 271,
           "tStates": 12,
           "machineCycles": [4, 3, 5],
           "printedMCycles": 3
@@ -1379,6 +1603,13 @@
           "tStates": 7,
           "machineCycles": [4, 3],
           "printedMCycles": 2
+        },
+        {
+          "instruction": "JR NZ, e",
+          "manualPage": 273,
+          "tStates": 12,
+          "machineCycles": [4, 3, 5],
+          "printedMCycles": 3
         },
         {
           "instruction": "JP (HL)",
@@ -1404,16 +1635,16 @@
         {
           "instruction": "DJNZ, e",
           "manualPage": 278,
-          "tStates": 13,
-          "machineCycles": [5, 3, 5],
-          "printedMCycles": 3
+          "tStates": 8,
+          "machineCycles": [5, 3],
+          "printedMCycles": 2
         },
         {
           "instruction": "DJNZ, e",
           "manualPage": 278,
-          "tStates": 8,
-          "machineCycles": [5, 3],
-          "printedMCycles": 2
+          "tStates": 13,
+          "machineCycles": [5, 3, 5],
+          "printedMCycles": 3
         },
         {
           "instruction": "CALL nn",
@@ -1423,18 +1654,18 @@
           "printedMCycles": 5
         },
         {
-          "instruction": "Relevant",
-          "manualPage": 284,
-          "tStates": 17,
-          "machineCycles": [4, 3, 4, 3, 3],
-          "printedMCycles": 5
-        },
-        {
-          "instruction": "Relevant",
+          "instruction": "CALL cc, nn",
           "manualPage": 284,
           "tStates": 10,
           "machineCycles": [4, 3, 3],
           "printedMCycles": 3
+        },
+        {
+          "instruction": "CALL cc, nn",
+          "manualPage": 284,
+          "tStates": 17,
+          "machineCycles": [4, 3, 4, 3, 3],
+          "printedMCycles": 5
         },
         {
           "instruction": "RET",
@@ -1444,18 +1675,18 @@
           "printedMCycles": 3
         },
         {
-          "instruction": "see page",
-          "manualPage": 287,
-          "tStates": 11,
-          "machineCycles": [5, 3, 3],
-          "printedMCycles": 3
-        },
-        {
-          "instruction": "see page",
+          "instruction": "RET cc",
           "manualPage": 287,
           "tStates": 5,
           "machineCycles": [5],
           "printedMCycles": 1
+        },
+        {
+          "instruction": "RET cc",
+          "manualPage": 287,
+          "tStates": 11,
+          "machineCycles": [5, 3, 3],
+          "printedMCycles": 3
         },
         {
           "instruction": "RETI",
@@ -1472,7 +1703,7 @@
           "printedMCycles": 4
         },
         {
-          "instruction": "Example",
+          "instruction": "RST p",
           "manualPage": 293,
           "tStates": 11,
           "machineCycles": [5, 3, 3],
@@ -1502,16 +1733,16 @@
         {
           "instruction": "INIR",
           "manualPage": 300,
-          "tStates": 21,
-          "machineCycles": [4, 5, 3, 4, 5],
-          "printedMCycles": 5
+          "tStates": 16,
+          "machineCycles": [4, 5, 3, 4],
+          "printedMCycles": 4
         },
         {
           "instruction": "INIR",
           "manualPage": 300,
-          "tStates": 16,
-          "machineCycles": [4, 5, 3, 4],
-          "printedMCycles": 4
+          "tStates": 21,
+          "machineCycles": [4, 5, 3, 4, 5],
+          "printedMCycles": 5
         },
         {
           "instruction": "IND",
@@ -1523,16 +1754,16 @@
         {
           "instruction": "INDR",
           "manualPage": 304,
-          "tStates": 21,
-          "machineCycles": [4, 5, 3, 4, 5],
-          "printedMCycles": 5
+          "tStates": 16,
+          "machineCycles": [4, 5, 3, 4],
+          "printedMCycles": 4
         },
         {
           "instruction": "INDR",
           "manualPage": 304,
-          "tStates": 16,
-          "machineCycles": [4, 5, 3, 4],
-          "printedMCycles": 4
+          "tStates": 21,
+          "machineCycles": [4, 5, 3, 4, 5],
+          "printedMCycles": 5
         },
         {
           "instruction": "OUT (n), A",
@@ -1563,7 +1794,7 @@
           "printedMCycles": 5
         },
         {
-          "instruction": "If B = 0:",
+          "instruction": "OTIR",
           "manualPage": 312,
           "tStates": 16,
           "machineCycles": [4, 5, 3, 4],
@@ -1584,13 +1815,23 @@
           "printedMCycles": 5
         },
         {
-          "instruction": "If B = 0:",
+          "instruction": "OTDR",
           "manualPage": 316,
           "tStates": 16,
           "machineCycles": [4, 5, 3, 4],
           "printedMCycles": 4
         }
-      ]
+      ],
+      "notationExample": {
+        "manualPage": 69,
+        "why": "The manual explains its own notation with a worked table under the heading Z80 Instruction Description, and that table names no instruction. An earlier reading took it for one and labelled it Sign Flag, after the flag section that ends higher up the same page.",
+        "printedMCycles": 2,
+        "tStates": 7,
+        "machineCycles": [4, 3],
+        "quote": "This example indicates that the instruction consists of two machine cycles. The first cycle contains 4 clock periods/T states). The second cycle contains 3 clock periods, for a total of 7 clock periods/T states. The instruction executes in 1.75 microseconds."
+      },
+      "howItWasRead": "The pages were rendered at 300 dots per inch and read as images, because only 13 of the roughly one hundred pages carrying a timing table expose one as text. Two layouts appear. A page describing one instruction prints three columns and names the instruction only in the page heading; a page describing a group prints a fourth column naming each member. An earlier reading took the text nearest each table as its name, which is why 43 rows once carried words like Description or Register r, and why the group pages were short of rows. Column boundaries are now taken from the header cells themselves. Where the recogniser dropped a digit the value already held was kept, and where it dropped one the record did not hold, the cell was re-rendered on its own until two crops agreed. Two group pages were found only on a second pass: page 152 heads its column MCycle and page 154 heads it M Cycle, where every other page prints M Cycles, so a matcher keyed to the plural walked past both. ADC A, s and SUB s were absent from the record entirely until then.",
+      "reReadOn": "2026-08-23"
     },
     "interruptResponse": {
       "note": "What the part does once it accepts an interrupt. Every total below is printed or is stated as an addition to a printed one, and the derivation is named in each case.",
