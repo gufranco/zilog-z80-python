@@ -4,7 +4,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import memory
+from z80 import Cpu, memory
+from z80.memory import Memory
 
 
 class SparseTest(unittest.TestCase):
@@ -52,6 +53,67 @@ class SparseTest(unittest.TestCase):
         space.write8(0x0000, 0x1FF)
 
         self.assertEqual(space.read8(0x0000), 0xFF)
+
+
+class MemoryTest(unittest.TestCase):
+    """The dense one, which is where a ROM image goes."""
+
+    def test_it_holds_a_pattern_rather_than_zeroes(self) -> None:
+        held = Memory(0x100)
+
+        self.assertNotEqual(held.data, bytearray(0x100))
+
+    def test_no_caller_can_ask_for_a_cleared_one(self) -> None:
+        with self.assertRaises(TypeError):
+            Memory(0x100, fill=0)  # type: ignore[call-arg]
+
+    def test_nor_is_it_one_byte_repeated(self) -> None:
+        held = Memory(0x100)
+
+        self.assertGreater(len(set(held.data)), 1)
+
+    def test_one_seed_gives_one_pattern(self) -> None:
+        self.assertEqual(Memory(0x100, seed=3).data, Memory(0x100, seed=3).data)
+
+    def test_and_a_different_seed_a_different_one(self) -> None:
+        self.assertNotEqual(Memory(0x100, seed=1).data, Memory(0x100, seed=2).data)
+
+    def test_an_image_is_what_the_board_knows(self) -> None:
+        held = Memory(0x10, image=b"\x3e\x42")
+
+        self.assertEqual(bytes(held.data[:2]), b"\x3e\x42")
+
+    def test_and_the_rest_is_what_it_does_not(self) -> None:
+        bare = Memory(0x10, seed=7)
+        loaded = Memory(0x10, image=b"\x3e", seed=7)
+
+        self.assertEqual(loaded.data[1:], bare.data[1:])
+
+    def test_it_reads_back_what_was_written(self) -> None:
+        held = Memory(0x100)
+        held.write8(0x40, 0x99)
+
+        self.assertEqual(held.read8(0x40), 0x99)
+
+    def test_a_write_keeps_only_the_low_byte(self) -> None:
+        held = Memory(0x100)
+        held.write8(0x40, 0x1FF)
+
+        self.assertEqual(held.read8(0x40), 0xFF)
+
+    def test_an_address_wraps_to_sixteen_bits(self) -> None:
+        held = Memory(0x10000)
+        held.write8(0x0010, 0x77)
+
+        self.assertEqual(held.read8(0x10010), 0x77)
+
+    def test_it_drives_a_processor(self) -> None:
+        cpu = Cpu("z80", Memory(image=b"\x3e\x42"))
+        cpu.registers.pc = 0
+
+        cpu.step()
+
+        self.assertEqual(cpu.registers.a, 0x42)
 
 
 class PortTest(unittest.TestCase):

@@ -25,7 +25,7 @@ from typing import Any
 
 from . import blocks, bus, core, flags, memory, models, opcodes, registers
 from .core import StepLimit
-from .memory import Ports, SparseMemory
+from .memory import Memory, Ports, SparseMemory
 from .models import MODELS, Model, UnknownModelError, describe
 from .opcodes import decode, disassemble
 from .registers import Registers
@@ -53,6 +53,7 @@ __all__ = [
     "DEFAULT_MODEL",
     "MODELS",
     "Cpu",
+    "Memory",
     "Model",
     "Ports",
     "Registers",

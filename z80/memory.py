@@ -16,6 +16,7 @@ that answered rather than inferred.
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from typing import Protocol
 
 
@@ -57,6 +58,39 @@ class SparseMemory:
 
     def write8(self, address: int, value: int) -> None:
         self.written[address & ADDRESS_MASK] = value & 0xFF
+
+
+class Memory:
+    """Sixty four kilobytes, holding the pattern the parts it is built from decide.
+
+    There is no way to ask for a cleared one, because no machine hands one over.
+    A read of a byte nothing wrote is a defect on real silicon, and memory that
+    answers zero to it turns that defect into a passing test.
+
+    `image` is what a board genuinely does know at power on: the bytes a mask ROM
+    or a cartridge holds, loaded at the bottom. Everything the image does not
+    cover stays undefined, because on the board it is.
+
+    `SparseMemory` is the same promise without the allocation, for a test that
+    touches a dozen addresses. This one suits a machine that will touch most of
+    its space, and is where a ROM image goes.
+    """
+
+    def __init__(
+        self,
+        size: int = 0x10000,
+        image: Sequence[int] | None = None,
+        seed: int = UNSET_SEED,
+    ) -> None:
+        self.data = bytearray(_derive(seed, address) for address in range(size))
+        if image is not None:
+            self.data[: len(image)] = image
+
+    def read8(self, address: int) -> int:
+        return self.data[address & ADDRESS_MASK]
+
+    def write8(self, address: int, value: int) -> None:
+        self.data[address & ADDRESS_MASK] = value & 0xFF
 
 
 class Ports:
