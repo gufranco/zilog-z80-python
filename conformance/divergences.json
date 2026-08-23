@@ -316,7 +316,7 @@
     {
       "id": "mode-zero-response-of-more-than-one-byte",
       "severity": "unstated",
-      "status": "open",
+      "status": "closed",
       "topic": "Where the later bytes of a multi byte mode zero response come from.",
       "documentSays": {
         "rung": 1,
@@ -324,7 +324,7 @@
         "quote": "With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it. Consequently, the interrupting device provides the next instruction to be executed. Often this response is a restart instruction because the interrupting device is required to supply only a single-byte instruction. Alternatively, any other instruction such as a 3-byte call to any location in memory could be executed.",
         "source": "Zilog UM008011-0816, manual page 19"
       },
-      "packageFollows": "document, for the cycles; neither, for the bytes",
+      "packageFollows": "document",
       "consequence": "The acknowledge cycle carries the byte the caller supplies. Any further byte the instruction needs is read from memory at the program counter, with an ordinary memory read cycle, and the counter advances across it. The machine cycles are therefore right and the bytes come from the wrong place unless the caller has put them there.",
       "why": "The device sits on the same data bus and answers those reads on real hardware, so the cycles a multi byte response performs are ordinary memory reads either way. What this cannot model is a device that answers them without the memory holding the same bytes, because there is one byte in the call and no pin for a device to drive.",
       "wouldSettleIt": [
@@ -336,7 +336,12 @@
         "quote": "The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
         "whatItSettles": "Where the later bytes do not come from. The part generates one acknowledge and no more, so a second or third byte of a longer response is fetched by an ordinary cycle rather than by another acknowledge. It also names the normal case as a one byte restart, which is the case this package can express.",
         "whatIsStillOpen": "Whether the device or memory answers those ordinary cycles. The publisher says the device supplies the instruction and that the part asks only once, and does not say who drives the bus for the remaining reads."
-      }
+      },
+      "howItWasClosed": "The interface both entries asked for exists. `irq` takes a callable as well as a byte, and a device is asked once for the acknowledge and once more for every further byte the supplied instruction fetches, so a three byte call and a prefixed instruction both work and the bytes come from the device rather than from whatever memory happens to hold at the held counter. Only the first cycle is an acknowledge, which Zilog states outright: \"the Z80 CPU generates only one INTACK signal\". The rest are ordinary cycles with a device answering instead of memory.",
+      "wouldReopenIt": [
+        "A statement that a device answering later bytes sees something other than an ordinary cycle, which would contradict Zilog's own 'the Z80 CPU generates only one INTACK signal'.",
+        "A recording of a real part executing a multi byte mode zero response, which no published corpus carries because none asserts a pin."
+      ]
     },
     {
       "id": "carry-flag-bits-differ-by-manufacturer",
@@ -433,7 +438,7 @@
     {
       "id": "mode-zero-prefix-fetches-an-ordinary-cycle",
       "severity": "unstated",
-      "status": "open",
+      "status": "closed",
       "topic": "What a mode zero response does when the byte the device supplies is a prefix.",
       "documentSays": {
         "rung": 1,
@@ -447,7 +452,7 @@
         "quote": "Its first byte is read during the INTA M-cycle and, if it is an opcode prefix, additional M-cycles of this kind are produced until the final opcode of the instruction is fetched.",
         "source": "https://github.com/redcode/Z80/wiki/Interrupts"
       },
-      "packageFollows": "document, which is to say neither",
+      "packageFollows": "document",
       "consequence": "A prefix supplied here is followed by an ordinary opcode fetch rather than by a second acknowledge cycle, so the cycle after a prefixed mode zero response asserts the memory request where the part asserts the port request.",
       "why": "The interface takes one byte. Producing a second acknowledge cycle would mean asking the caller for a second byte, which is the same interface change the multi byte case needs, and doing half of it would leave the counts right and the pins wrong in a different place.",
       "wouldSettleIt": [
@@ -458,7 +463,12 @@
         "source": "Zilog Z80 Family Data Book 1989, Questions and Answers, printed page 414",
         "quote": "The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
         "whatItSettles": "That a prefix cannot be followed by a second acknowledge, because the part generates one and no more. What this package does, an ordinary cycle, is the only remaining shape."
-      }
+      },
+      "howItWasClosed": "The interface both entries asked for exists. `irq` takes a callable as well as a byte, and a device is asked once for the acknowledge and once more for every further byte the supplied instruction fetches, so a three byte call and a prefixed instruction both work and the bytes come from the device rather than from whatever memory happens to hold at the held counter. Only the first cycle is an acknowledge, which Zilog states outright: \"the Z80 CPU generates only one INTACK signal\". The rest are ordinary cycles with a device answering instead of memory.",
+      "wouldReopenIt": [
+        "A statement that a device answering later bytes sees something other than an ordinary cycle, which would contradict Zilog's own 'the Z80 CPU generates only one INTACK signal'.",
+        "A recording of a real part executing a multi byte mode zero response, which no published corpus carries because none asserts a pin."
+      ]
     },
     {
       "id": "die-netlist-not-yet-runnable-here",

@@ -160,26 +160,6 @@ Source: Zilog UM008011-0816, manual page 20.
 
 **What would settle or reopen it.** A recording that takes an interrupt and reports the register afterwards.; A die analysis, or Zilog documenting the internal register file.
 
-### Where the later bytes of a multi byte mode zero response come from.
-
-**The document says.** With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it. Consequently, the interrupting device provides the next instruction to be executed. Often this response is a restart instruction because the interrupting device is required to supply only a single-byte instruction. Alternatively, any other instruction such as a 3-byte call to any location in memory could be executed.
-
-Source: Zilog UM008011-0816, manual page 19.
-
-**And the data book answers part of it.** The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put "RST" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.
-
-Source: Zilog Z80 Family Data Book 1989, Questions and Answers, printed page 414.
-
-*What that settles.* Where the later bytes do not come from. The part generates one acknowledge and no more, so a second or third byte of a longer response is fetched by an ordinary cycle rather than by another acknowledge. It also names the normal case as a one byte restart, which is the case this package can express.
-
-*What is still open.* Whether the device or memory answers those ordinary cycles. The publisher says the device supplies the instruction and that the part asks only once, and does not say who drives the bus for the remaining reads.
-
-**What this project follows.** document, for the cycles; neither, for the bytes
-
-**Why.** The device sits on the same data bus and answers those reads on real hardware, so the cycles a multi byte response performs are ordinary memory reads either way. What this cannot model is a device that answers them without the memory holding the same bytes, because there is one byte in the call and no pin for a device to drive.
-
-**What would settle or reopen it.** An interface that lets a caller answer each read of a response rather than only the acknowledge, at which point the cycles above are already right.
-
 ### Where the two undocumented flag bits come from after a carry instruction, which is not the same answer on every part.
 
 **What this project follows.** reference, and only for the two of the three rules that are not disputed
@@ -195,24 +175,6 @@ Source: Zilog Z80 Family Data Book 1989, Questions and Answers, printed page 414
 **Why.** Two rung three sources disagree, one of them says the other may have been reading instability rather than a rule, and no recording exists for either. Modelling a rule under those conditions would be picking a side of an open question and calling the result a part.
 
 **What would settle or reopen it.** A recording taken off an ST CMOS part, on a board known to produce stable values for these two bits.
-
-### What a mode zero response does when the byte the device supplies is a prefix.
-
-**The document says.** With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it.
-
-Source: Zilog UM008011-0816, manual page 19.
-
-**And the data book answers part of it.** The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put "RST" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.
-
-Source: Zilog Z80 Family Data Book 1989, Questions and Answers, printed page 414.
-
-*What that settles.* That a prefix cannot be followed by a second acknowledge, because the part generates one and no more. What this package does, an ordinary cycle, is the only remaining shape.
-
-**What this project follows.** document, which is to say neither
-
-**Why.** The interface takes one byte. Producing a second acknowledge cycle would mean asking the caller for a second byte, which is the same interface change the multi byte case needs, and doing half of it would leave the counts right and the pins wrong in a different place.
-
-**What would settle or reopen it.** An interface that lets a caller answer each cycle of a response rather than only the first.
 
 ## Where the question is a modelling choice, not a fact
 

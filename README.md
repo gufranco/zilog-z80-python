@@ -17,7 +17,7 @@
 
 </div>
 
-**3** parts · **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures · **704** tests · **100%** statement and branch coverage · no dependencies
+**3** parts · **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures · **709** tests · **100%** statement and branch coverage · no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -56,7 +56,7 @@ Everything a caller touches. Nothing else is public.
 | `cpu.run_for(cycles)` | Runs whole instructions until at least that many T states have passed | T states actually spent, usually a little over |
 | `cpu.run_until(check, limit=None)` | Steps while `check(cpu)` is false. `limit` bounds the instructions and raises `RunLimit` | the `Cpu` |
 | `cpu.held()` | Whether the part has stopped advancing the program | `bool` |
-| `cpu.irq(vector=0xFF)` / `cpu.nmi()` | Offers a line and acts on it now | `True` if taken / nothing |
+| `cpu.irq(vector=0xFF)` / `cpu.nmi()` | Offers a line and acts on it now. `vector` may be a callable, which is how a device supplies an instruction longer than one byte in mode zero | `True` if taken / nothing |
 | `disassemble(data, address)` | Reads bytes with no machine to run them in | `Instruction` objects with `.text` |
 | `describe(model)` | The part behind a name, before building one | a `Model` |
 
@@ -206,7 +206,7 @@ The suite commit is pinned so a build is reproducible, and a weekly job runs aga
 
 Where the manual and the recordings disagree, both are kept. [`conformance/hardware.json`](conformance/hardware.json) holds every fact taken from a document with the sentence it came from and the page. [`conformance/divergences.json`](conformance/divergences.json) holds every place two sources part, with what would settle it. That reading found four places where the manual contradicts itself, three of them in its own timing tables.
 
-**Nineteen questions remain** where being faithful is a claim rather than a measurement, and each names the measurement that would close it: [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md). Some cannot be closed by anyone. Bits 3 and 5 of the flag register have gone undocumented through eleven revisions in forty years, and the internal register the recordings call `WZ` appears nowhere in 780 pages of Zilog's own paper.
+**Seventeen questions remain** where being faithful is a claim rather than a measurement, and each names the measurement that would close it: [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md). Some cannot be closed by anyone. Bits 3 and 5 of the flag register have gone undocumented through eleven revisions in forty years, and the internal register the recordings call `WZ` appears nowhere in 780 pages of Zilog's own paper.
 
 ## Working on it
 

@@ -171,5 +171,64 @@ class WaitLineTest(unittest.TestCase):
         self.assertEqual(clock.cycles, 9)
 
 
+class DeviceResponseTest(unittest.TestCase):
+    """That a device can put a whole instruction on the bus, not just one byte.
+
+    "With Mode 0, the interrupting device can place any instruction on the data
+    bus and the CPU executes it." Any instruction is wider than a restart, and a
+    caller that could only answer one byte could not say so.
+    """
+
+    def interrupted(self) -> Any:
+        space = z80.Memory(image=bytes([0x00] * 16))
+        cpu = z80.Cpu("z80", space, recording=True)
+        cpu.reset()
+        cpu.registers.pc = 0x0100
+        cpu.registers.sp = 0x8000
+        cpu.registers.iff1 = True
+        cpu.registers.im = 0
+        return cpu
+
+    def test_a_device_can_supply_a_three_byte_call(self) -> None:
+        cpu = self.interrupted()
+        supplied = iter([0xCD, 0x34, 0x12])
+
+        cpu.irq(lambda: next(supplied))
+
+        self.assertEqual(cpu.registers.pc, 0x1234)
+
+    def test_a_device_can_supply_a_prefixed_instruction(self) -> None:
+        cpu = self.interrupted()
+        cpu.registers.ix = 0x2000
+        supplied = iter([0xDD, 0x23])
+
+        cpu.irq(lambda: next(supplied))
+
+        self.assertEqual(cpu.registers.ix, 0x2001)
+
+    def test_and_the_counter_is_still_where_the_program_left_it(self) -> None:
+        cpu = self.interrupted()
+        supplied = iter([0xDD, 0x23])
+
+        cpu.irq(lambda: next(supplied))
+
+        self.assertEqual(cpu.registers.pc, 0x0100)
+
+    def test_a_supplied_byte_is_what_the_bus_carries_not_what_memory_holds(self) -> None:
+        cpu = self.interrupted()
+        supplied = iter([0x3E, 0x7F])
+
+        cpu.irq(lambda: next(supplied))
+
+        self.assertEqual(cpu.registers.a, 0x7F)
+
+    def test_one_byte_still_works_as_a_byte(self) -> None:
+        cpu = self.interrupted()
+
+        cpu.irq(0xC7)
+
+        self.assertEqual(cpu.registers.pc, 0x0000)
+
+
 if __name__ == "__main__":
     unittest.main()

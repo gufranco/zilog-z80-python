@@ -149,6 +149,13 @@ class Cpu:
         self.carry_rule = models.ZILOG_CARRY
         self.interrupt_clears_parity = True
         self.holding_counter = False
+        self.responding: Callable[[], int] | None = None
+        """Set while a device is answering the bus, and read for every byte it owes.
+
+        Mode zero lets the device put a whole instruction on the bus, and a whole
+        instruction can be more than one byte. While this is set, every fetch from
+        the held counter takes its byte from here rather than from memory.
+        """
         self.deferring_interrupt = False
 
     def spend(self) -> None:
@@ -273,7 +280,11 @@ class Cpu:
         self.write8(address + 1, value >> 8)
 
     def fetch8(self) -> int:
-        value = self.read8(self.registers.pc)
+        value = (
+            self.answered(self.registers.pc)
+            if self.responding is not None
+            else self.read8(self.registers.pc)
+        )
         if not self.holding_counter:
             self.registers.pc = self.registers.pc + 1
         return value
@@ -303,6 +314,19 @@ class Cpu:
         self.registers.sp = self.registers.sp + 2
         return value
 
+    def answered(self, address: int) -> int:
+        """One read cycle a device answers instead of memory.
+
+        The cycle happens either way: the part drives the address and a read, and
+        something puts a byte on the data bus. Which something it is decides the
+        value, not the shape, so this draws an ordinary read and takes the byte
+        from the device.
+        """
+        assert self.responding is not None
+        value = self.responding() & 0xFF
+        self.bus.read(address & 0xFFFF, value)
+        return value
+
     def opcode_fetch(self) -> int:
         """One opcode: a four T state machine cycle, not a three T state read.
 
@@ -317,8 +341,12 @@ class Cpu:
         """
         counter = self.registers.pc
         refresh = (self.registers.i << 8) | self.registers.r
-        opcode = self.memory.read8(counter & 0xFFFF)
-        self.registers.pc = counter + 1
+        if self.responding is not None:
+            opcode = self.responding() & 0xFF
+        else:
+            opcode = self.memory.read8(counter & 0xFFFF)
+        if not self.holding_counter:
+            self.registers.pc = counter + 1
         self.bus.fetch(counter, refresh, opcode)
         self.registers.tick_refresh()
         return opcode
@@ -567,7 +595,7 @@ class Cpu:
         self.begin()
         self.halted = False
 
-    def irq(self, vector: int = 0xFF) -> bool:
+    def irq(self, vector: int | Callable[[], int] = 0xFF) -> bool:
         """Offer the maskable line, and report whether the part took it.
 
         Refused while the enable flip-flop is clear, and refused for one further
@@ -591,10 +619,19 @@ class Cpu:
         against the figures the manual prints.
 
         In mode zero the counter is held while the supplied instruction runs, so
-        that the operand bytes it reads come from the address the counter already
-        held rather than from successive ones. The part does not advance it for a
-        fetch it never made: the device supplies those bytes, and the counter goes
-        back to the interrupted program.
+        that the bytes it reads come from the address the counter already held
+        rather than from successive ones. The part does not advance it for a fetch
+        it never made, and the counter goes back to the interrupted program.
+
+        `vector` may be a callable rather than a byte, and that is how a device
+        supplies an instruction longer than one byte. It is asked once for the
+        acknowledge and once more for every further byte the instruction fetches,
+        which is what "the interrupting device can place any instruction on the
+        data bus" needs in order to mean anything wider than a restart. Only the
+        first of those cycles is an acknowledge, because Zilog says so plainly:
+        "the Z80 CPU generates only one INTACK signal". The rest are ordinary
+        cycles with a device answering instead of memory, which is also what a
+        prefix byte needs, since a prefix is followed by another opcode fetch.
 
         An interrupt taken while one of the two instructions that copy the
         interrupt latch into the parity flag was executing clears that flag on the
@@ -612,7 +649,11 @@ class Cpu:
         self.registers.iff2 = False
         if reading_the_latch and self.interrupt_clears_parity:
             self.registers.f &= ~flags.PV
-        answer = self.acknowledge(vector)
+        if isinstance(vector, int):
+            answering, first = None, vector
+        else:
+            answering, first = vector, vector()
+        answer = self.acknowledge(first)
         if self.registers.im == 1:
             self.restart(MODE_ONE_RESTART)
             return True
@@ -625,10 +666,12 @@ class Cpu:
             self.keep_flags()
             return True
         self.holding_counter = True
+        self.responding = answering
         try:
             self.execute(answer, None)
         finally:
             self.holding_counter = False
+            self.responding = None
         return True
 
     def nmi(self) -> None:
