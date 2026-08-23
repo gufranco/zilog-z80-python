@@ -11,7 +11,7 @@
 [![Conformance](https://img.shields.io/badge/conformance-1%2C604%2C000%20%2F%201%2C604%2C000-brightgreen)](#conformance)
 [![Cycles](https://img.shields.io/badge/T%20states-22%2C005%2C372%20compared-brightgreen)](#cycle-by-cycle)
 [![Manual](https://img.shields.io/badge/Zilog-UM008011--0816-brightgreen)](#where-each-answer-comes-from)
-[![Coverage](https://img.shields.io/badge/coverage-100%25%20statement%20%2B%20branch-brightgreen)](#tests)
+[![Coverage](https://img.shields.io/badge/coverage-100%25%20statement%20%2B%20branch-brightgreen)](#running-the-tests)
 [![Types](https://img.shields.io/badge/mypy-strict-blue)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -406,14 +406,18 @@ instructions: the part "samples the interrupt signal (INT) with the rising edge
 of the final clock at the end of any instruction".
 
 ```python
+from z80 import Cpu
+
+cpu = Cpu("z80")
+
 cpu.irq(0xFF)  # the maskable line, with the byte the device puts on the bus
 cpu.nmi()  # the other one, which is always taken
 ```
 
-`interrupt` reports whether the part took it, and refuses while the enable flip
-flop is clear or for one instruction after an enable, which is the delay that
-exists so an enable followed by a return is not interrupted between the two.
-`nonmaskable` reports nothing, because the part has no way of refusing it.
+`irq` reports whether the part took it, and refuses while the enable flip flop is
+clear or for one instruction after an enable, which is the delay that exists so
+an enable followed by a return is not interrupted between the two. `nmi` reports
+nothing, because the part has no way of refusing it.
 
 Offering them only between steps is less of a restriction than it sounds. A
 repeating block instruction is one step per iteration here, exactly as it is one
@@ -498,10 +502,10 @@ parts, Zilog's and Toshiba's and the KR1858VM3. `upd780c` covers NEC's, which is
 NMOS and is not one of the others.
 
 ```python
-from z80 import describe
+from z80 import Cpu
 
-nmos = Cpu("z80", space, ports=ports)
-cmos = Cpu("Z84-C00", space, ports=ports)
+nmos = Cpu("z80")
+cmos = Cpu("Z84-C00")
 ```
 
 Names are matched however they are written: case and separators do not matter,
