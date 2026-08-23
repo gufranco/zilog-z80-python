@@ -560,11 +560,19 @@ latch is executing clears the parity flag, reporting that interrupts were
 disabled at the one moment they cannot have been. That last one is Zilog's own:
 *"On CMOS Z80 CPU, we've fixed this problem."*
 
-| Build it with | Bare `OUT (C)` sends | Carry flag bits | Interrupt clears parity | Suite |
+| Build it with | Bare `OUT (C)` sends | Carry flag bits | Interrupt clears parity | These three rows measured |
 |:--|:--|:--|:--|:--|
-| `Cpu("z80")` | nothing | accumulator and latch | yes, and Zilog documents it | yes |
-| `Cpu("z84c00")` | every bit | accumulator and latch | no, Zilog fixed it | yes |
-| `Cpu("upd780c")` | nothing | accumulator alone | not stated | no |
+| `Cpu("z80")` | nothing | accumulator and latch | yes, and Zilog documents it | yes, by the corpus |
+| `Cpu("z84c00")` | every bit | accumulator and latch | no, Zilog fixed it | no, Zilog's own sentence |
+| `Cpu("upd780c")` | nothing | accumulator alone | not stated | no, independent research |
+
+The last column is narrow on purpose. A corpus exists for one part, and
+everything the other two share with it, which is the whole instruction set and
+every T state of it, is measured through that corpus. What is not measured is the
+handful of behaviours that make them different parts, and those are the three
+columns before it. Saying "yes" against a part whose differences rest on a
+sentence would report the covered ground, which was never in doubt, and hide the
+ground the row exists to describe.
 
 Every part the package accepts is in that table. A name it does not know is
 refused rather than quietly resolved to something close, so `Cpu("z180")` raises

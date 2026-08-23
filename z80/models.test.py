@@ -30,7 +30,7 @@ class CatalogueTest(unittest.TestCase):
     def test_every_model_says_whether_a_suite_stands_behind_it(self) -> None:
         held = {model.name: model.verified for model in models.MODELS.values()}
 
-        self.assertEqual(held, {"z80": True, "z84c00": True, "upd780c": False})
+        self.assertEqual(held, {"z80": True, "z84c00": False, "upd780c": False})
 
     def test_the_two_zilog_parts_differ_only_in_what_the_bare_output_sends(self) -> None:
         zilog, cmos = models.describe("z80"), models.describe("z84c00")

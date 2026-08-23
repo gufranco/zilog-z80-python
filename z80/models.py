@@ -28,7 +28,16 @@ are not modelled here rather than modelled badly.
 Adding a model means adding an entry here. A model held to a conformance suite
 says so; one that is not says that too, in ``verified``, because the difference
 between a measurement and a reading of somebody's research is the whole point of
-this table. A part number that resolves to a model whose behaviour it does not
+this table.
+
+Only the NMOS part carries that flag, and the reason is worth stating plainly
+rather than leaving to be inferred. A corpus exists for one part. Everything the
+other two share with it, which is the whole instruction set and every T state of
+it, is measured through that corpus. What is not measured is the handful of
+behaviours that make them different parts at all, and those are exactly the rows
+of the table below. A part whose differences rest on a manufacturer's sentence
+rather than on a recording says ``verified=False``, even though almost all of
+its behaviour is covered, because the covered part was never in doubt. A part number that resolves to a model whose behaviour it does not
 share is worse than an absent part number, because it answers.
 """
 
@@ -152,6 +161,7 @@ _CATALOGUE = (
             "family behave as this one does."
         ),
         floating_output=0xFF,
+        verified=False,
         aliases=(
             "cmosz80",
             "z80c",
