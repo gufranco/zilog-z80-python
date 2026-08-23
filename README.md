@@ -28,7 +28,7 @@
   <a href="https://github.com/gufranco/zilog-z80-python/issues">Issues</a>
 </p>
 
-**3** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **585** tests · **100%** statement and branch coverage
+**3** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **668** tests · **100%** statement and branch coverage
 
 ```python
 from z80 import Cpu
@@ -71,6 +71,39 @@ print(f"{cpu.registers.b:02X}")
 ```
 42
 ```
+
+### Run it at a real speed
+
+A part does not run at "as fast as the host manages". It runs at whatever its
+crystal says, and every instruction costs a known number of T states. `step()`
+returns what the instruction it ran cost, `cycles` is the running total, and
+`run_for()` spends a budget of them so a host can hold the part to a real clock.
+
+```python
+import time
+
+from z80 import Cpu
+
+HERTZ = 3_546_895
+SLICE = 0.02
+
+cpu = Cpu("z80")
+per_slice = round(HERTZ * SLICE)
+owed = 0
+
+for _ in range(5):
+    began = time.perf_counter()
+    owed += per_slice
+    owed -= cpu.run_for(owed)
+    time.sleep(max(0.0, SLICE - (time.perf_counter() - began)))
+
+print(cpu.cycles)
+```
+
+An instruction is not divisible, so `run_for()` almost always overshoots its
+budget slightly and returns what it really spent. Carrying that overshoot into
+the next slice, rather than throwing it away, is what stops a long run drifting
+away from the wall clock.
 
 ### Read it back
 

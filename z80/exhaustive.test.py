@@ -75,9 +75,8 @@ class ExecutionTest(unittest.TestCase):
     def test_the_repeating_forms_all_finish_when_run_to_completion(self) -> None:
         for opcode in (0xB0, 0xB1, 0xB2, 0xB3, 0xB8, 0xB9, 0xBA, 0xBB):
             cpu = machine([0xED, opcode], {"f": 0x00, "bc": 0x0303, "a": 0x77})
-            cpu.step_limit = 2000
 
-            cpu.run_until(lambda machine: machine.registers.pc != AT)
+            cpu.run_until(lambda machine: machine.registers.pc != AT, limit=2000)
 
             self.assertEqual(cpu.registers.pc, AT + 2, f"ED {opcode:02X}")
 

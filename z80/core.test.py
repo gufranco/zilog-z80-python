@@ -256,29 +256,51 @@ class ResetTest(unittest.TestCase):
         self.assertNotEqual(first.registers.hl, second.registers.hl)
 
 
-class LimitTest(unittest.TestCase):
-    def test_a_run_that_never_ends_is_stopped_rather_than_hanging(self) -> None:
+class ClockTest(unittest.TestCase):
+    def test_a_step_reports_the_t_states_that_instruction_took(self) -> None:
+        cpu, _ = machine([0x00])
+
+        states = cpu.step()
+
+        self.assertEqual(states, 4)
+
+    def test_the_tally_adds_up_across_instructions(self) -> None:
+        cpu, _ = machine([0x00, 0x00, 0x00])
+
+        cpu.step()
+        cpu.step()
+        cpu.step()
+
+        self.assertEqual(cpu.cycles, 12)
+
+    def test_a_budget_runs_whole_instructions_and_reports_what_was_spent(self) -> None:
+        cpu, _ = machine([0x00] * 8)
+
+        spent = cpu.run_for(10)
+
+        self.assertEqual(spent, 12)
+
+    def test_the_tally_survives_a_reset_because_a_clock_does_not_rewind(self) -> None:
+        cpu, _ = machine([0x00])
+        cpu.step()
+
+        cpu.reset()
+
+        self.assertEqual(cpu.cycles, 4)
+
+    def test_a_bounded_run_gives_up_rather_than_hanging(self) -> None:
         cpu, _ = machine([0xC3, 0x00, 0x80])
-        cpu.step_limit = 50
 
-        with self.assertRaises(core.StepLimit):
-            cpu.run_until(lambda _: False)
+        with self.assertRaises(core.RunLimit):
+            cpu.run_until(lambda _: False, limit=50)
 
-    def test_an_offered_interrupt_counts_against_the_same_limit(self) -> None:
-        cpu, _ = machine([0x00])
-        cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = 0x8000, True, 1
-        cpu.step_limit = 0
+    def test_a_bounded_run_that_reaches_its_condition_does_not_raise(self) -> None:
+        cpu, _ = machine([0x00, 0x00])
+        target = cpu.registers.pc + 2
 
-        with self.assertRaises(core.StepLimit):
-            cpu.irq(0xFF)
+        cpu.run_until(lambda part: part.registers.pc == target, limit=50)
 
-    def test_and_so_does_the_nonmaskable_line(self) -> None:
-        cpu, _ = machine([0x00])
-        cpu.registers.sp = 0x8000
-        cpu.step_limit = 0
-
-        with self.assertRaises(core.StepLimit):
-            cpu.nmi()
+        self.assertEqual(cpu.registers.pc, target)
 
 
 if __name__ == "__main__":

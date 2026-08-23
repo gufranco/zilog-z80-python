@@ -43,7 +43,6 @@ from .registers import Registers
 if TYPE_CHECKING:
     from .memory import PortBus, SparseMemory
 
-STEP_LIMIT = 2_000_000
 
 REGISTER_NAMES = ("b", "c", "d", "e", "h", "l", "(hl)", "a")
 
@@ -71,8 +70,14 @@ the two bytes straddle two entries. It is not what the silicon does with the byt
 """
 
 
-class StepLimit(Exception):
-    pass
+class RunLimit(Exception):
+    """A bounded run reached its bound before the caller's condition held.
+
+    Only `run_until` raises this, and only when a caller asked for a bound. A
+    part has no such limit: given a program that never satisfies the condition
+    it runs until the power goes. The bound is a courtesy to whoever is driving,
+    not a property of the silicon.
+    """
 
 
 class Cpu:
@@ -92,7 +97,6 @@ class Cpu:
         self,
         memory: SparseMemory,
         ports: PortBus | None = None,
-        step_limit: int = STEP_LIMIT,
         seed: int = UNSET_SEED,
         reset: bool = True,
         recording: bool = False,
@@ -100,10 +104,10 @@ class Cpu:
     ) -> None:
         self.memory = memory
         self.ports = ports
-        self.step_limit = step_limit
         self.registers = Registers(seed)
         self.bus = bus.Bus(recording=recording, shape=shape)
         self.steps = 0
+        self.cycles = 0
         self.halted = False
         self.model = "z80"
         self.floating_output = 0x00
@@ -115,6 +119,13 @@ class Cpu:
             self.reset()
 
     def reset(self) -> Cpu:
+        """Drive RESET, which returns the part to a known state and nothing else.
+
+        The T state tally survives, because a reset does not rewind a clock. The
+        oscillator kept running through the pulse, the part spent cycles
+        answering it, and a host pacing against real time still owes the wall
+        every one of them.
+        """
         self.registers.reset()
         self.halted = False
         self.steps = 0
@@ -353,19 +364,56 @@ class Cpu:
         """
         self.bus.clear()
         self.steps += 1
-        if self.steps > self.step_limit:
-            raise StepLimit(f"stopped after {self.steps} steps at ${self.registers.pc:04X}")
         self.registers.ei = 0
         self.registers.p = 0
         self.deferring_interrupt = False
 
-    def step(self) -> None:
+    def step(self) -> int:
+        """Run one instruction, and report the T states it took.
+
+        The count is what a caller needs to keep a host in step with a real
+        clock. A part at 3.5 MHz spends 3,500,000 T states a second, so a host
+        that adds up what each instruction returns knows exactly how far ahead
+        of the wall it has run.
+        """
         self.begin()
         if self.halted:
             self.halt_cycle()
             self.keep_flags()
-            return None
-        return self.execute(self.opcode_fetch(), None)
+        else:
+            self.execute(self.opcode_fetch(), None)
+        self.cycles += self.bus.states
+        return self.bus.states
+
+    def run_for(self, states: int) -> int:
+        """Run whole instructions until at least this many T states have passed.
+
+        Returns what was actually spent, which is almost never the number asked
+        for: an instruction is not divisible, so the last one usually carries the
+        count past the budget. A host pacing against a clock carries the excess
+        into the next call rather than discarding it, which is what keeps a long
+        run from drifting.
+        """
+        spent = 0
+        while spent < states:
+            spent += self.step()
+        return spent
+
+    def run_until(self, predicate: Callable[[Cpu], bool], limit: int | None = None) -> Cpu:
+        """Step until the predicate holds.
+
+        `limit` bounds the number of instructions and raises when it is reached.
+        Without one this runs as long as the part would, which for a program
+        that never satisfies the predicate is forever. That is what the silicon
+        does, so it is what happens here unless a caller asks for otherwise.
+        """
+        taken = 0
+        while not predicate(self):
+            self.step()
+            taken += 1
+            if limit is not None and taken >= limit:
+                raise RunLimit(f"gave up after {taken} instructions at ${self.registers.pc:04X}")
+        return self
 
     def halt_cycle(self) -> None:
         """One machine cycle of a halted part, which is a fetch it throws away.
@@ -501,11 +549,6 @@ class Cpu:
         self.registers.pc = address
         self.registers.wz = address
         self.keep_flags()
-
-    def run_until(self, predicate: Callable[[Cpu], bool]) -> Cpu:
-        while not predicate(self):
-            self.step()
-        return self
 
     def execute(self, opcode: int, prefix: str | None) -> None:
         if opcode in INDEX_PREFIX:

@@ -24,10 +24,10 @@ real silicon.
 from typing import Any
 
 from . import blocks, bus, core, flags, memory, models, opcodes, registers
-from .core import StepLimit
-from .memory import Memory, Ports, SparseMemory
+from .core import RunLimit
+from .memory import UNSET_SEED, Memory, Ports, SparseMemory
 from .models import MODELS, Model, UnknownModelError, describe
-from .opcodes import decode, disassemble
+from .opcodes import Truncated, decode, disassemble
 from .registers import Registers
 from .version import VERSION
 
@@ -52,13 +52,15 @@ def Cpu(  # noqa: N802
 __all__ = [
     "DEFAULT_MODEL",
     "MODELS",
+    "UNSET_SEED",
     "Cpu",
     "Memory",
     "Model",
     "Ports",
     "Registers",
+    "RunLimit",
     "SparseMemory",
-    "StepLimit",
+    "Truncated",
     "UnknownModelError",
     "__version__",
     "blocks",
