@@ -26,7 +26,7 @@ def machine(program: list[int], at: int = 0x8000, **fields: Any) -> tuple[Cpu, S
     space = SparseMemory(seed=1)
     for offset, value in enumerate(program):
         space.write8(at + offset, value)
-    cpu = core.Cpu(space, Ports(seed=1), reset=False)
+    cpu = core.Cpu(space, Ports(seed=1))
     cpu.registers.pc = at
     cpu.registers.sp = 0xFFFE
     cpu.registers.af = 0x0000

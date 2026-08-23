@@ -46,7 +46,7 @@ def machine(program: Sequence[int], seed: int, finishing: str | None) -> core.Cp
         space.write8(START + offset, byte)
     for address in range(0x2000, 0x2010):
         space.write8(address, generator.randrange(256))
-    cpu = core.Cpu(space, ports=ScriptedPorts(generator), reset=True)
+    cpu = core.Cpu(space, ports=ScriptedPorts(generator))
     cpu.registers.pc = START
     cpu.registers.a = generator.randrange(256)
     cpu.registers.f = generator.randrange(256)
@@ -156,7 +156,7 @@ class BitInstructionTest(unittest.TestCase):
         space = memory.SparseMemory()
         for offset, byte in enumerate(program):
             space.write8(START + offset, byte)
-        cpu = core.Cpu(space, reset=True)
+        cpu = core.Cpu(space)
         cpu.registers.pc = START
         cpu.registers.hl = cpu.registers.ix = cpu.registers.iy = 0x2000
         cpu.registers.f = 0x00
@@ -197,7 +197,7 @@ class BlockTransferTest(unittest.TestCase):
         space = memory.SparseMemory()
         for offset, byte in enumerate(program):
             space.write8(START + offset, byte)
-        cpu = core.Cpu(space, ports=self.Port(value), reset=True)
+        cpu = core.Cpu(space, ports=self.Port(value))
         cpu.registers.pc, cpu.registers.b, cpu.registers.c = START, b, c
         cpu.registers.hl, cpu.registers.f = 0x2000, 0x00
         cpu.step()
@@ -263,7 +263,7 @@ class BlockTransferTest(unittest.TestCase):
         for offset, byte in enumerate((0xED, 0xA3)):
             space.write8(START + offset, byte)
         space.write8(0x2000, 0x5A)
-        cpu = core.Cpu(space, ports=port, reset=True)
+        cpu = core.Cpu(space, ports=port)
         cpu.registers.pc, cpu.registers.b, cpu.registers.c = START, 0x40, 0x10
         cpu.registers.hl = 0x2000
 

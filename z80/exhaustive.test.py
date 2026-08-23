@@ -31,7 +31,7 @@ def machine(bytes_: list[int], state: dict[str, int]) -> Cpu:
     space = SparseMemory(seed=3)
     for offset, value in enumerate(bytes_):
         space.write8(AT + offset, value)
-    cpu = core.Cpu(space, Ports(seed=3), reset=False)
+    cpu = core.Cpu(space, Ports(seed=3))
     cpu.registers.pc = AT
     cpu.registers.sp = 0x9000
     cpu.registers.hl = 0x4000
@@ -100,7 +100,7 @@ class ExecutionTest(unittest.TestCase):
         space = SparseMemory(seed=3)
         for offset, value in enumerate([0xED, 0x40]):
             space.write8(AT + offset, value)
-        cpu = core.Cpu(space, None, reset=False)
+        cpu = core.Cpu(space, None)
         cpu.registers.pc = AT
 
         cpu.step()
@@ -112,7 +112,7 @@ class ExecutionTest(unittest.TestCase):
             space = SparseMemory(seed=3)
             for offset, value in enumerate(bytes_):
                 space.write8(AT + offset, value)
-            cpu = core.Cpu(space, None, reset=False)
+            cpu = core.Cpu(space, None)
             cpu.registers.pc = AT
             cpu.registers.bc = 0x0102
 

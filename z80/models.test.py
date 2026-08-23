@@ -114,7 +114,7 @@ class BuildTest(unittest.TestCase):
         for name in ("z80", "upd780c"):
             space = SparseMemory()
             space.write8(0x0100, 0x37)
-            cpu = Cpu(name, space, reset=True)
+            cpu = Cpu(name, space)
             cpu.registers.pc, cpu.registers.a, cpu.registers.f = 0x0100, 0x00, 0x28
             cpu.registers.q = 0
             cpu.step()
@@ -141,7 +141,7 @@ class BuildTest(unittest.TestCase):
         space.write8(0x8000, 0xED)
         space.write8(0x8001, 0x71)
         ports = Ports(seed=1)
-        cpu = Cpu(name, space, ports=ports, reset=False)
+        cpu = Cpu(name, space, ports=ports)
         cpu.registers.pc = 0x8000
         cpu.registers.bc = 0x1234
         return cpu, ports

@@ -107,7 +107,6 @@ class Cpu:
         memory: SparseMemory,
         ports: PortBus | None = None,
         seed: int = UNSET_SEED,
-        reset: bool = True,
         recording: bool = False,
         shape: str = bus.MANUAL,
     ) -> None:
@@ -124,8 +123,6 @@ class Cpu:
         self.interrupt_clears_parity = True
         self.holding_counter = False
         self.deferring_interrupt = False
-        if reset:
-            self.reset()
 
     def reset(self) -> Cpu:
         """Drive RESET, which returns the part to a known state and nothing else.

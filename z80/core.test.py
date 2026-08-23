@@ -13,7 +13,7 @@ def machine(program: list[int], at: int = 0x8000, **fields: Any) -> tuple[Cpu, S
     space = SparseMemory(seed=1)
     for offset, value in enumerate(program):
         space.write8(at + offset, value)
-    cpu = core.Cpu(space, Ports(seed=1), reset=False)
+    cpu = core.Cpu(space, Ports(seed=1))
     cpu.registers.pc = at
     cpu.registers.sp = 0xFFFE
     cpu.registers.af = 0x0000
@@ -246,12 +246,15 @@ class RefreshTest(unittest.TestCase):
 class ResetTest(unittest.TestCase):
     def test_a_reset_puts_the_program_counter_at_the_bottom(self) -> None:
         cpu = core.Cpu(SparseMemory(seed=1), Ports(seed=1))
+        cpu.reset()
 
         self.assertEqual(cpu.registers.pc, 0x0000)
 
     def test_a_reset_leaves_the_working_registers_holding_what_they_held(self) -> None:
         first = core.Cpu(SparseMemory(), Ports(), seed=1)
+        first.reset()
         second = core.Cpu(SparseMemory(), Ports(), seed=2)
+        second.reset()
 
         self.assertNotEqual(first.registers.hl, second.registers.hl)
 

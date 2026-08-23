@@ -110,7 +110,7 @@ def machine_for(
     space = memory.SparseMemory()
     for address, value in initial["ram"]:
         space.write8(address, value)
-    cpu = core.Cpu(space, ports, reset=False, recording=recording, shape=shape)
+    cpu = core.Cpu(space, ports, recording=recording, shape=shape)
     for name in REGISTERS:
         if name in initial:
             value = initial[name]

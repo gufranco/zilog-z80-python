@@ -20,7 +20,7 @@ def run(program: Sequence[int], **setup: int) -> Any:
     space = memory.SparseMemory()
     for offset, byte in enumerate(program):
         space.write8(START + offset, byte)
-    cpu = Cpu("z80", space, reset=True)
+    cpu = Cpu("z80", space)
     cpu.registers.pc = START
     for name, value in setup.items():
         setattr(cpu.registers, name, value)
@@ -128,7 +128,7 @@ class InterruptAcceptanceTest(unittest.TestCase):
         space = memory.SparseMemory()
         space.write8(START, 0xED)
         space.write8(START + 1, 0x45)
-        cpu = Cpu("z80", space, reset=True)
+        cpu = Cpu("z80", space)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.iff2, cpu.registers.im = False, True, 1
         cpu.step()
@@ -139,7 +139,7 @@ class InterruptAcceptanceTest(unittest.TestCase):
         space = memory.SparseMemory()
         space.write8(START, 0xED)
         space.write8(START + 1, 0x45)
-        cpu = Cpu("z80", space, reset=True)
+        cpu = Cpu("z80", space)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.iff2, cpu.registers.im = True, True, 1
         cpu.step()
@@ -156,7 +156,7 @@ class ModeZeroTest(unittest.TestCase):
     def machine(self, model: str = "z80") -> Any:
         space = memory.SparseMemory()
         space.write8(START, 0x00)
-        cpu = Cpu(model, space, reset=True)
+        cpu = Cpu(model, space)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
         return cpu
@@ -173,7 +173,7 @@ class ModeZeroTest(unittest.TestCase):
         space.write8(START, 0x00)
         space.write8(START + 1, 0x34)
         space.write8(START + 2, 0x12)
-        cpu = Cpu("z80", space, reset=True)
+        cpu = Cpu("z80", space)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
 
@@ -198,7 +198,7 @@ class ModeTwoVectorTest(unittest.TestCase):
         space.write8(START, 0x00)
         for address, value in ((0x00FE, 0x11), (0x00FF, 0x22), (0x0100, 0x33)):
             space.write8(address, value)
-        cpu = Cpu("z80", space, reset=True)
+        cpu = Cpu("z80", space)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.i, cpu.registers.iff1, cpu.registers.im = 0x00, True, 2
         cpu.irq(vector)
@@ -221,7 +221,7 @@ class ResponseCostTest(unittest.TestCase):
     """What each response spends, against a source that is not the manual's arithmetic."""
 
     def spent(self, mode: int, vector: int = 0xFF, nonmaskable: bool = False) -> int:
-        cpu = Cpu("z80", memory.SparseMemory(), reset=True)
+        cpu = Cpu("z80", memory.SparseMemory())
         cpu.registers.sp, cpu.registers.pc = 0x8000, START
         cpu.registers.iff1, cpu.registers.im = True, mode
         if nonmaskable:
@@ -254,7 +254,7 @@ class CarryRuleTest(unittest.TestCase):
     def carried(self, model: str, latch: int, f: int, a: int) -> int:
         space = memory.SparseMemory()
         space.write8(START, 0x37)
-        cpu = Cpu(model, space, reset=True)
+        cpu = Cpu(model, space)
         cpu.registers.pc, cpu.registers.a, cpu.registers.f = START, a, f
         cpu.registers.q = latch
         cpu.step()

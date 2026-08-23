@@ -60,7 +60,7 @@ space = SparseMemory()
 for offset, value in enumerate([0x3E, 0x42, 0x47]):
     space.write8(0x8000 + offset, value)
 
-cpu = Cpu("z80", space, reset=False)
+cpu = Cpu("z80", space)
 cpu.registers.pc = 0x8000
 cpu.step()
 cpu.step()
@@ -154,13 +154,16 @@ Everything a caller touches, in one place. Nothing else is public.
 | `cpu.bus` | the T states of the last instruction, and the recorded cycles when `recording=True` |
 | `cpu.memory`, `cpu.ports` | what was handed in, or what was made |
 
-Options to `Cpu`: `seed=` fixes the undefined state; `reset=False` hands back a
-part that has been powered and not yet reset, which is a real instant on a real
-board. Every register holds rubbish derived from the seed, the program counter
-included, and no cycle has been spent because nothing has driven RESET yet. A
-reset then sets only what a reset defines, leaves the working registers holding
-what they held, and costs the three T states Zilog names as the minimum the pin
-must be held for. Also `recording=True` to keep a bus log, `shape=` to pick which
+**A part arrives powered, not reset.** There is no option to skip that and no
+option to start clean, because no board offers one. Every register holds rubbish
+derived from the seed, the program counter included, and nothing has been spent
+because nothing has driven RESET yet. Stepping it executes rubbish from a rubbish
+address, which is what the silicon does. Call `reset()` to get a machine that
+runs a program: it sets only what a reset defines, leaves the working registers
+holding what they held, and costs the three T states Zilog names as the minimum
+the pin must be held for.
+
+Options to `Cpu`: `seed=` fixes the undefined state. `recording=True` to keep a bus log, `shape=` to pick which
 edge a pin is read on. `ports=` takes an I/O bus, which is a separate space on
 this part.
 
@@ -487,17 +490,28 @@ latch is executing clears the parity flag, reporting that interrupts were
 disabled at the one moment they cannot have been. That last one is Zilog's own:
 *"On CMOS Z80 CPU, we've fixed this problem."*
 
-| Model | Bare `OUT (C)` sends | Carry flag bits | Interrupt clears parity | Suite |
+| Build it with | Bare `OUT (C)` sends | Carry flag bits | Interrupt clears parity | Suite |
 |:--|:--|:--|:--|:--|
-| `z80` | nothing | accumulator and latch | yes, and Zilog documents it | yes |
-| `z84c00` | every bit | accumulator and latch | no, Zilog fixed it | yes |
-| `upd780c` | nothing | accumulator alone | not stated | no |
+| `Cpu("z80")` | nothing | accumulator and latch | yes, and Zilog documents it | yes |
+| `Cpu("z84c00")` | every bit | accumulator and latch | no, Zilog fixed it | yes |
+| `Cpu("upd780c")` | nothing | accumulator alone | not stated | no |
+
+Every part the package accepts is in that table. A name it does not know is
+refused rather than quietly resolved to something close, so `Cpu("z180")` raises
+`UnknownModelError` instead of handing back a Z80 that is missing instructions
+the caller asked for.
 
 Each answers to the part numbers its manufacturer sold it under. `z80` covers the
 Zilog NMOS parts and the second sources built from the same design: Mostek,
 Sharp, MME, Thesys, Goldstar and the Soviet KR1858VM1. `z84c00` covers the CMOS
 parts, Zilog's and Toshiba's and the KR1858VM3. `upd780c` covers NEC's, which is
 NMOS and is not one of the others.
+
+| Build it with | Also answers to |
+|:--|:--|
+| `Cpu("z80")` | `z8400`, `nmosz80`, `z0840004psc`, `z0840006psc`, `z0840008psc`, `mostekmk3880`, `mk3880`, `mk3880n`, `sharplh0080`, `lh0080`, `lh0080a`, `u880`, `ud880d`, `kr1858vm1`, `t34vm1`, `mme`, `goldstargms z80`, `thesysz80` |
+| `Cpu("upd780c")` | `necupd780c`, `d780c`, `d780c1`, `d780c2`, `upd780`, `upd780c1`, `upd780c2` |
+| `Cpu("z84c00")` | `cmosz80`, `z80c`, `z8400c`, `z84c0006`, `z84c0008`, `z84c0010`, `z84c0020`, `toshibatmpz84c00`, `tmpz84c00`, `t84c00`, `kr1858vm3` |
 
 ```python
 from z80 import Cpu
