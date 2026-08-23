@@ -286,7 +286,15 @@ class ClockTest(unittest.TestCase):
 
         cpu.reset()
 
-        self.assertEqual(cpu.cycles, 4)
+        self.assertEqual(cpu.cycles, 4 + core.RESET_STATES)
+
+    def test_a_reset_costs_the_minimum_the_manual_states(self) -> None:
+        cpu, _ = machine([0x00])
+        before = cpu.cycles
+
+        cpu.reset()
+
+        self.assertEqual(cpu.cycles - before, core.RESET_STATES)
 
     def test_a_bounded_run_gives_up_rather_than_hanging(self) -> None:
         cpu, _ = machine([0xC3, 0x00, 0x80])

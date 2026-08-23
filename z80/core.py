@@ -53,6 +53,15 @@ INTERRUPT_MODES = (0, 0, 1, 2, 0, 0, 1, 2)
 
 INDEX_PREFIX = {0xDD: "ix", 0xFD: "iy"}
 
+RESET_STATES = 3
+"""The minimum a reset costs, which is how long the pin has to be held.
+
+Zilog states it rather than leaving it to be inferred: "RESET must be active for
+a minimum of three full clock cycles before a reset operation is complete." It is
+a floor and not a figure, because how long a board actually holds the pin is the
+board's decision and nothing here can know it.
+"""
+
 NONMASKABLE_RESTART = 0x0066
 """Where the nonmaskable line sends the part, which the manual prints outright."""
 
@@ -125,7 +134,16 @@ class Cpu:
         oscillator kept running through the pulse, the part spent cycles
         answering it, and a host pacing against real time still owes the wall
         every one of them.
+
+        Three of those are charged, which is the minimum Zilog states the pin
+        must be held for. A board that holds it longer spends longer, and this
+        model has no way to know that it did, so the floor is what it charges.
+        The bus is not recorded across them: the manual says the address and data
+        lines are in a high impedance state for the duration, which is a thing
+        the trace has no way to write down, since it records accesses rather than
+        line states.
         """
+        self.cycles += RESET_STATES
         self.registers.reset()
         self.halted = False
         self.steps = 0

@@ -154,8 +154,13 @@ Everything a caller touches, in one place. Nothing else is public.
 | `cpu.bus` | the T states of the last instruction, and the recorded cycles when `recording=True` |
 | `cpu.memory`, `cpu.ports` | what was handed in, or what was made |
 
-Options to `Cpu`: `reset=False` to skip the reset sequence, `seed=` to fix the
-undefined state, `recording=True` to keep a bus log, `shape=` to pick which
+Options to `Cpu`: `seed=` fixes the undefined state; `reset=False` hands back a
+part that has been powered and not yet reset, which is a real instant on a real
+board. Every register holds rubbish derived from the seed, the program counter
+included, and no cycle has been spent because nothing has driven RESET yet. A
+reset then sets only what a reset defines, leaves the working registers holding
+what they held, and costs the three T states Zilog names as the minimum the pin
+must be held for. Also `recording=True` to keep a bus log, `shape=` to pick which
 edge a pin is read on. `ports=` takes an I/O bus, which is a separate space on
 this part.
 
