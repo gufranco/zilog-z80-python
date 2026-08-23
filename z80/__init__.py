@@ -24,6 +24,7 @@ real silicon.
 from typing import Any
 
 from . import blocks, bus, core, flags, memory, models, opcodes, registers
+from .clock import Clock, ClockClosed
 from .core import RunLimit
 from .memory import UNSET_SEED, Memory, Ports, SparseMemory
 from .models import MODELS, Model, UnknownModelError, describe
@@ -53,6 +54,8 @@ __all__ = [
     "DEFAULT_MODEL",
     "MODELS",
     "UNSET_SEED",
+    "Clock",
+    "ClockClosed",
     "Cpu",
     "Memory",
     "Model",

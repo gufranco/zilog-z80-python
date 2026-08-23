@@ -113,7 +113,10 @@ class Cpu:
         self.memory = memory
         self.ports = ports
         self.registers = Registers(seed)
-        self.bus = bus.Bus(recording=recording, shape=shape)
+        self.on_cycle: Callable[[], None] | None = None
+        """Called once per T state, after that state's bus activity."""
+
+        self.bus = bus.Bus(recording=recording, shape=shape, on_state=self.spend)
         self.steps = 0
         self.cycles = 0
         self.halted = False
@@ -123,6 +126,22 @@ class Cpu:
         self.interrupt_clears_parity = True
         self.holding_counter = False
         self.deferring_interrupt = False
+
+    def spend(self) -> None:
+        """Account for one T state, and tell whoever is watching that it happened.
+
+        Every T state this part runs passes through here and nowhere else. The
+        bus counts states because it draws them; this is where the part learns
+        one went by, so a count kept by the bus and a count kept by the processor
+        cannot come apart.
+
+        `on_cycle` is what a board hangs off the pin. It is called once per T
+        state, after that state's activity, so what it observes is a state the
+        part has finished rather than one it is about to start.
+        """
+        self.cycles += 1
+        if self.on_cycle is not None:
+            self.on_cycle()
 
     def reset(self) -> Cpu:
         """Drive RESET, which returns the part to a known state and nothing else.
@@ -140,7 +159,8 @@ class Cpu:
         the trace has no way to write down, since it records accesses rather than
         line states.
         """
-        self.cycles += RESET_STATES
+        for _ in range(RESET_STATES):
+            self.spend()
         self.registers.reset()
         self.halted = False
         self.steps = 0
@@ -397,7 +417,6 @@ class Cpu:
             self.keep_flags()
         else:
             self.execute(self.opcode_fetch(), None)
-        self.cycles += self.bus.states
         return self.bus.states
 
     def run_for(self, cycles: int) -> int:

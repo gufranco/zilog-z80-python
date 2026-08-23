@@ -63,6 +63,7 @@ selects it so that the recording still checks this core cycle for cycle.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import override
 
 READ = "r"
@@ -177,11 +178,23 @@ class Bus:
     only the count.
     """
 
-    __slots__ = ("address", "cycles", "log", "recording", "shape", "states")
+    __slots__ = ("address", "cycles", "log", "on_state", "recording", "shape", "states")
 
-    def __init__(self, recording: bool = False, shape: str = MANUAL) -> None:
+    def __init__(
+        self,
+        recording: bool = False,
+        shape: str = MANUAL,
+        on_state: Callable[[], None] | None = None,
+    ) -> None:
         if shape not in SHAPES:
             raise UnknownShape(f"{shape} is not a pin shape; there are {', '.join(SHAPES)}")
+        self.on_state = on_state
+        """Called once per T state, after that state's activity is recorded.
+
+        The part that owns this bus hangs its own accounting here, so a T state
+        counted by the bus and a T state counted by the processor cannot come
+        apart. Nothing else may write to it.
+        """
         self.recording = recording
         self.shape = shape
         self.log: list[tuple[int | None, int | None, str]] = []
@@ -207,6 +220,8 @@ class Bus:
             self.address = address & ADDRESS_MASK
         if self.recording:
             self.log.append((None if address is None else address & ADDRESS_MASK, value, pins))
+        if self.on_state is not None:
+            self.on_state()
 
     def spend(
         self,

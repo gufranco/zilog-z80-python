@@ -105,6 +105,76 @@ budget slightly and returns what it really spent. Carrying that overshoot into
 the next slice, rather than throwing it away, is what stops a long run drifting
 away from the wall clock.
 
+### Watching every cycle, and driving them one at a time
+
+`step()` runs a whole instruction because that is the unit a program is written
+in. A board has no such unit. Two things are offered for callers that need the
+smaller one.
+
+`on_cycle` is called once per cycle, after that cycle's bus activity. Every cycle
+the part runs passes through one place, so a counter and a watcher cannot come
+apart, and a watcher sees the cycles that touch no memory as well as the ones
+that do.
+
+```python
+from z80 import Cpu, Memory
+
+cpu = Cpu("z80", Memory(image=bytes([0x00])))
+cpu.reset()
+cpu.registers.pc = 0
+
+watched = []
+cpu.on_cycle = lambda: watched.append(cpu.cycles)
+
+cpu.step()
+print(watched)
+```
+
+```
+[4, 5, 6, 7]
+```
+
+`Clock` goes further and suspends the part between any two cycles, which is what
+a board does when a device changes what a read will answer part way through an
+instruction.
+
+```python
+from z80 import Clock, Cpu, Memory
+
+space = Memory(image=bytes([0x3E, 0x42, 0x00, 0x00, 0x00, 0x00]))
+cpu = Cpu("z80", space, recording=True)
+cpu.reset()
+cpu.registers.pc = 0
+
+with Clock(cpu) as clock:
+    clock.tick()
+    space.write8(0x0001, 0x99)
+    clock.run_for(6)
+
+print(0x99 in [value for _, value, _ in cpu.bus.log])
+```
+
+```
+True
+```
+
+Note the difference from the part's own `run_for`, which spends whole
+instructions and overshoots because an instruction cannot be cut in half. A
+clock stops exactly where it is told, including mid-instruction.
+
+The cost is real. An instruction is an ordinary call stack, and Python cannot
+suspend one of those, so `Clock` runs the part on a thread of its own and lets it
+block where a cycle is spent. That is the approach ares and bsnes take, and it
+keeps every instruction written the way it reads now. A cycle costs a pair of
+handoffs between two threads, so this is far slower than `step()`. Use `step()`
+for speed and `Clock` when the question is where a cycle falls.
+
+One thing to know: `tick()` returns once that cycle's bus activity is done, but
+a register the instruction is about to write lands on the next resume. A board
+cannot see a register mid-instruction either, so this matters for reading state
+in a debugger rather than for fidelity.
+
+
 ### Read it back
 
 ```python

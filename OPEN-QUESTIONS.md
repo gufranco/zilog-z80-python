@@ -277,9 +277,10 @@ Absent rather than unknown, and absent on purpose:
 - **Wait states.** No slow memory to wait for.
 - **Bus request and bus acknowledge.** No second bus master to arbitrate with.
 - **Power-down modes.** Nothing here has a power rail.
-- **A clock that drives the part rather than a host that counts.** `step()` runs
-  one whole instruction and reports the T states it cost, and `run_for()` spends a
-  budget of them. Neither is a cycle-by-cycle entry point: nothing outside can
-  advance the part half an instruction and read a pin. A part held in a real
-  machine is clocked, not stepped, and that difference is what keeps a pin
-  asserted mid-instruction out of reach here.
+- **A pin asserted part way through an instruction.** `Clock` now advances the
+  part one T state at a time and stops between any two, so a host can change what
+  a read will answer mid-instruction. What is still absent is the other half:
+  the part does not sample `irq` or `nmi` at the T state the manual says it
+  samples them. It takes them between instructions. Closing that needs the core
+  to announce the state where the latch happens, which is what ares calls
+  `lastCycle`, rather than any further work on the clock.
