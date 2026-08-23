@@ -28,7 +28,7 @@
   <a href="https://github.com/gufranco/zilog-z80-python/issues">Issues</a>
 </p>
 
-**3** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **668** tests · **100%** statement and branch coverage
+**3** parts · **1,604,000** conformance cases, **0** failures · **22,005,372** T states compared, **0** failures · **699** tests · **100%** statement and branch coverage
 
 ```python
 from z80 import Cpu
