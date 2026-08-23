@@ -329,7 +329,14 @@
       "why": "The device sits on the same data bus and answers those reads on real hardware, so the cycles a multi byte response performs are ordinary memory reads either way. What this cannot model is a device that answers them without the memory holding the same bytes, because there is one byte in the call and no pin for a device to drive.",
       "wouldSettleIt": [
         "An interface that lets a caller answer each read of a response rather than only the acknowledge, at which point the cycles above are already right."
-      ]
+      ],
+      "andTheDataBookAnswersPartOfIt": {
+        "rung": 1,
+        "source": "Zilog Z80 Family Data Book 1989, Questions and Answers, printed page 414",
+        "quote": "The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
+        "whatItSettles": "Where the later bytes do not come from. The part generates one acknowledge and no more, so a second or third byte of a longer response is fetched by an ordinary cycle rather than by another acknowledge. It also names the normal case as a one byte restart, which is the case this package can express.",
+        "whatIsStillOpen": "Whether the device or memory answers those ordinary cycles. The publisher says the device supplies the instruction and that the part asks only once, and does not say who drives the bus for the remaining reads."
+      }
     },
     {
       "id": "carry-flag-bits-differ-by-manufacturer",
@@ -445,7 +452,13 @@
       "why": "The interface takes one byte. Producing a second acknowledge cycle would mean asking the caller for a second byte, which is the same interface change the multi byte case needs, and doing half of it would leave the counts right and the pins wrong in a different place.",
       "wouldSettleIt": [
         "An interface that lets a caller answer each cycle of a response rather than only the first."
-      ]
+      ],
+      "andTheDataBookAnswersPartOfIt": {
+        "rung": 1,
+        "source": "Zilog Z80 Family Data Book 1989, Questions and Answers, printed page 414",
+        "quote": "The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
+        "whatItSettles": "That a prefix cannot be followed by a second acknowledge, because the part generates one and no more. What this package does, an ordinary cycle, is the only remaining shape."
+      }
     },
     {
       "id": "die-netlist-not-yet-runnable-here",

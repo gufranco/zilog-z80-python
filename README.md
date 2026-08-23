@@ -601,6 +601,12 @@ sentences are quoted in [`conformance/hardware.json`](conformance/hardware.json)
 with the page each came from, which is what makes those records checkable without
 reproducing the work.
 
+The 1989 data book earns its place twice over. Its Questions and Answers section
+is the one Zilog publication that corrects another Zilog publication: it states
+that a sentence in the CPU Technical Manual is wrong, says which of its own
+documents still carries the withdrawn wording, and answers several questions the
+User Manual leaves open.
+
 ### Rung 3: the research nobody at Zilog wrote
 
 These settle nothing on their own. They are here because the model is held to

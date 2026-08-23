@@ -1652,6 +1652,30 @@
       "sampledQuote": "The two interrupt lines are sampled with the rising clock edge during each T4 state as depicted in Figure 11. If a nonmaskable interrupt is received or a maskable interrupt is received and the interrupt enable flip-flop is set, then the HALT state is exited on the next rising clock edge.",
       "repeatsQuote": "The HALT instruction is repeated during the memory cycle shown in Figure 11.",
       "manualPage": 14
+    },
+    "technicalManualAmended": {
+      "document": "secondDocument",
+      "section": "Questions and Answers, printed page 413",
+      "quote": "In the Z80 CPU Technical Manual (Pages 70 and 72, footnote B), it is stated that \"All control signals are internally synchronized so that they are totally asynchronous with respect to the clock.\" This statement should be amended to say \"When interfacing the Z80 CPU to the Z80 family peripherals, the interface control signals are internally synchronized with the system clock by the peripherals themselves. When interfacing to the Z80 CPU with other devices, these control signals should be synchronized with respect to the system clock.\" Note that the former statement has been removed from the data book and the CPU product specification, but has not been removed from the technical manual yet.",
+      "note": "The publisher amending itself in print, and saying which of its own documents still carries the withdrawn sentence. Nothing here models pin synchronisation, so it changes no behaviour, but it is the proof that an official correction to an official document exists for this part, which is worth knowing before assuming a printed sentence is final."
+    },
+    "modeZeroGeneratesOneAcknowledge": {
+      "document": "secondDocument",
+      "section": "Questions and Answers, printed page 414",
+      "quote": "The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
+      "note": "The User Manual says the device supplies the instruction and stops there. This says the part generates exactly one acknowledge, which answers where the later bytes of a longer response come from: not from further acknowledges. It also says what the normal case is, a one byte restart, which is the case this package can express."
+    },
+    "nonmaskableDuringReset": {
+      "document": "secondDocument",
+      "section": "Questions and Answers, printed page 412",
+      "quote": "Since NMI input is \"edge-triggered\" input, if the CPU has active NMI \"during\" reset, CPU won't detect NMI and will execute the instruction at 0000h. If NMI goes low after RESET goes inactive, then CPU will process NMI.",
+      "note": "A line held low across a reset is not an edge, so it is not seen. This package takes a non-maskable request as a call rather than as a level, so it has no way to express a line already low when reset ends, and it does not need one."
+    },
+    "m1IsNotTristatedDuringReset": {
+      "document": "secondDocument",
+      "section": "Questions and Answers, printed page 412",
+      "quote": "Q: Does the CPU tristate M1 during reset? A: No.",
+      "note": "One of the few statements anywhere about what the pins do while reset is held. Nothing here models a pin during reset, so it changes no behaviour and is recorded because the question was asked and answered by the publisher."
     }
   },
   "documentContradictions": [
@@ -1718,5 +1742,15 @@
     "internalCyclePlacement": "The manual gives how many T states each machine cycle takes and how many machine cycles an instruction has. It does not say, for a machine cycle longer than its bus access needs, where within that cycle the bus is idle. A cycle-by-cycle model needs that ordering and has to take it from the recording.",
     "undocumentedOpcodes": "The manual describes the documented instruction set. The prefixed forms that reach the halves of the index registers, and the ED opcodes that are not listed, are not in it at all.",
     "acknowledgeInternalState": "The printed totals for mode 1 and mode 2 both give the interrupt acknowledge cycle seven T states, which is a five state M1 plus the two wait states the manual adds. Figure 9 draws six states and stops. Where the seventh falls within the cycle is not drawn and not stated."
+  },
+  "secondDocument": {
+    "publisher": "Zilog, Inc.",
+    "title": "Z80 Family Data Book",
+    "documentNumber": "00-2490-01",
+    "date": "1989-01",
+    "readOn": "2026-08-23",
+    "readVia": "z80-family-data-book-1989.pdf, 448 pages. The Questions and Answers section at pages 411 to 424 read as printed; the CPU entries are on 416 to 419 and the rest concern the peripheral parts.",
+    "whyItMatters": "It is the one Zilog publication that corrects another Zilog publication. Its Q and A section states outright that a sentence in the CPU Technical Manual is wrong, and it answers several questions the User Manual leaves open.",
+    "pinnedIn": "the References section of README.md"
   }
 }
