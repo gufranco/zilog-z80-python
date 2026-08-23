@@ -113,6 +113,25 @@ class Cpu:
         self.memory = memory
         self.ports = ports
         self.registers = Registers(seed)
+        self.irq_line = False
+        """The request line, active when true. Level sensitive: held, not pulsed."""
+
+        self.nmi_line = False
+        """The non-maskable line, active when true. Edge sensitive: the transition interrupts."""
+
+        self.nmi_seen = False
+        """The level the non-maskable line last had when it was read."""
+
+        self.sampled_irq = False
+        """What the request line read at the most recent T state.
+
+        Zilog states where the part looks: "The CPU samples the interrupt signal
+        (INT) with the rising edge of the final clock at the end of any
+        instruction." Which state is the final one is not known until the
+        instruction ends, so every state records what it saw and the last
+        recording is the one that counts.
+        """
+
         self.on_cycle: Callable[[], None] | None = None
         """Called once per T state, after that state's bus activity."""
 
@@ -140,8 +159,32 @@ class Cpu:
         part has finished rather than one it is about to start.
         """
         self.cycles += 1
+        self.sampled_irq = self.irq_line
         if self.on_cycle is not None:
             self.on_cycle()
+
+    def sample_pins(self) -> bool:
+        """Act on whatever the interrupt lines were showing when the part looked.
+
+        The request line is read at the final T state of the instruction, which
+        is where Zilog says the part reads it, so a caller that raises the line
+        and drops it again before that state gets nothing. That is what a device
+        withdrawing its request produces, and it is only reachable at all because
+        a clock can stop between two T states.
+
+        The non-maskable line is edge sensitive: it is the transition that
+        interrupts, so the level is compared against the one last seen rather
+        than simply tested. Both are refused while the part is answering nothing,
+        which the individual methods decide.
+        """
+        edge = self.nmi_line and not self.nmi_seen
+        self.nmi_seen = self.nmi_line
+        if edge:
+            self.nmi()
+            return True
+        if self.sampled_irq:
+            return self.irq()
+        return False
 
     def reset(self) -> Cpu:
         """Drive RESET, which returns the part to a known state and nothing else.
@@ -417,6 +460,7 @@ class Cpu:
             self.keep_flags()
         else:
             self.execute(self.opcode_fetch(), None)
+        self.sample_pins()
         return self.bus.states
 
     def run_for(self, cycles: int) -> int:

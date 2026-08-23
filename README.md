@@ -210,8 +210,10 @@ Everything a caller touches, in one place. Nothing else is public.
 | `cpu.run_for(cycles)` | Runs whole instructions until at least that many T states have passed | T states actually spent, usually a little over |
 | `cpu.run_until(predicate, limit=None)` | Steps while `predicate(cpu)` is false. `limit` bounds the instructions and raises `RunLimit` | the `Cpu` |
 | `cpu.reset()` | Drives RESET. The T state tally survives, because a clock does not rewind | the `Cpu` |
-| `cpu.irq(vector=0xFF)` | Offers the maskable line with the byte the device puts on the bus | `True` if taken |
-| `cpu.nmi()` | Offers the line no flag defends against | nothing, because the part cannot refuse |
+| `cpu.irq(vector=0xFF)` | Offers the maskable line with the byte the device puts on the bus, and acts on it now | `True` if taken |
+| `cpu.nmi()` | Offers the line no flag defends against, and acts on it now | nothing, because the part cannot refuse |
+| `cpu.irq_line` | The request line as a level. Held low, not pulsed; the part reads it at the final T state of an instruction, so a request withdrawn before then is not taken | `bool` |
+| `cpu.nmi_line` | The non-maskable line as a level. Edge sensitive, so the transition interrupts and holding it low afterwards does not interrupt again | `bool` |
 | `disassemble(data, address)` | Reads bytes without a machine to run them in | `Instruction` objects with `.text` |
 | `describe(model)` | The part behind a name, before building one | a `Model` |
 

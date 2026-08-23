@@ -277,10 +277,10 @@ Absent rather than unknown, and absent on purpose:
 - **Wait states.** No slow memory to wait for.
 - **Bus request and bus acknowledge.** No second bus master to arbitrate with.
 - **Power-down modes.** Nothing here has a power rail.
-- **A pin asserted part way through an instruction.** `Clock` now advances the
-  part one T state at a time and stops between any two, so a host can change what
-  a read will answer mid-instruction. What is still absent is the other half:
-  the part does not sample `irq` or `nmi` at the T state the manual says it
-  samples them. It takes them between instructions. Closing that needs the core
-  to announce the state where the latch happens, which is what ares calls
-  `lastCycle`, rather than any further work on the clock.
+- **The one thing left about the interrupt lines.** They are lines now:
+  `irq_line` is read at the final T state, which is where the manual says the
+  part reads it, and `nmi_line` interrupts on its transition. A request raised
+  and withdrawn between two T states is correctly not taken. What is still
+  absent is what the manual mentions in the same sentence: "The signal is not
+  accepted if ... the BUSREQ signal is active." There is no bus request line
+  here to be active, so that clause has nothing to model against.
