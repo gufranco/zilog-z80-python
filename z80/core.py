@@ -385,8 +385,11 @@ class Cpu:
         self.cycles += self.bus.states
         return self.bus.states
 
-    def run_for(self, states: int) -> int:
-        """Run whole instructions until at least this many T states have passed.
+    def run_for(self, cycles: int) -> int:
+        """Run whole instructions until at least this many cycles have passed.
+
+        A cycle on this part is a T state, and the parameter is named for the
+        family rather than for the part so that one host loop drives either.
 
         Returns what was actually spent, which is almost never the number asked
         for: an instruction is not divisible, so the last one usually carries the
@@ -395,7 +398,7 @@ class Cpu:
         run from drifting.
         """
         spent = 0
-        while spent < states:
+        while spent < cycles:
             spent += self.step()
         return spent
 

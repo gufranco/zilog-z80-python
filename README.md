@@ -122,49 +122,42 @@ for found in disassemble(bytes([0x3E, 0x42, 0x47, 0xC9]), 0x8000):
 
 ## What this is
 
-<table>
-<tr>
-<td width="50%" valign="top">
+| | |
+|:--|:--|
+| **Held to an oracle** | Every instruction is checked against a published suite that states each register and each byte of memory before and after, for one thousand cases across each of one thousand six hundred and four opcode sequences. Where the model and the suite disagree, the suite is right. |
+| **Decoded, not tabulated** | The core walks the opcode's bit fields the way the silicon does, so several hundred instructions come from one page of dispatch rather than from a table nobody can proofread. |
+| **Nothing starts clean** | Memory and registers hold what they held. A model that starts at zero hides the class of bug that only appears on real hardware, where an unwritten byte is whatever the board powered up with. |
+| **The undocumented parts too** | The two flag bits the datasheet leaves blank, the internal address register that only two instructions reveal, and the latch that records whether the previous instruction wrote the flags at all. |
 
-### Held to an oracle
+## The whole interface
 
-Every instruction is checked against a published suite that states each register
-and each byte of memory before and after, for one thousand cases across each of
-one thousand six hundred and four opcode sequences. Where the model and the suite
-disagree, the suite is right.
+Everything a caller touches, in one place. Nothing else is public.
 
-</td>
-<td width="50%" valign="top">
+| Call | Does | Returns |
+|:--|:--|:--|
+| `Cpu(model="z80", memory=None, **options)` | Builds a part. Memory of its own if none is given, scrambled rather than cleared | a `Cpu` |
+| `cpu.step()` | Runs one instruction | T states it cost |
+| `cpu.run_for(cycles)` | Runs whole instructions until at least that many T states have passed | T states actually spent, usually a little over |
+| `cpu.run_until(predicate, limit=None)` | Steps while `predicate(cpu)` is false. `limit` bounds the instructions and raises `RunLimit` | the `Cpu` |
+| `cpu.reset()` | Drives RESET. The T state tally survives, because a clock does not rewind | the `Cpu` |
+| `cpu.irq(vector=0xFF)` | Offers the maskable line with the byte the device puts on the bus | `True` if taken |
+| `cpu.nmi()` | Offers the line no flag defends against | nothing, because the part cannot refuse |
+| `disassemble(data, address)` | Reads bytes without a machine to run them in | `Instruction` objects with `.text` |
+| `describe(model)` | The part behind a name, before building one | a `Model` |
 
-### Decoded, not tabulated
+| Attribute | Is |
+|:--|:--|
+| `cpu.cycles` | T states since construction, across resets |
+| `cpu.steps` | instructions since the last reset |
+| `cpu.halted` | whether a `HALT` is being executed, which still costs four T states a time |
+| `cpu.registers` | `a`, `f`, `b`, `c`, `d`, `e`, `h`, `l` and the pairs `af`, `bc`, `de`, `hl`; `sp`, `pc`, `ix`, `iy` with their halves; the shadow set as `af_`, `bc_`, `de_`, `hl_`; `i`, `r`, `iff1`, `iff2`, `im`; and `wz` and `q`, the two nobody documented |
+| `cpu.bus` | the T states of the last instruction, and the recorded cycles when `recording=True` |
+| `cpu.memory`, `cpu.ports` | what was handed in, or what was made |
 
-The core walks the opcode's bit fields the way the silicon does, so several
-hundred instructions come from one page of dispatch rather than from a table
-nobody can proofread.
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### Nothing starts clean
-
-Memory and registers hold what they held. A model that starts at zero hides the
-class of bug that only appears on real hardware, where an unwritten byte is
-whatever the board powered up with.
-
-</td>
-<td width="50%" valign="top">
-
-### The undocumented parts too
-
-The two flag bits the datasheet leaves blank, the internal address register that
-only two instructions reveal, and the latch that records whether the previous
-instruction wrote the flags at all.
-
-</td>
-</tr>
-</table>
+Options to `Cpu`: `reset=False` to skip the reset sequence, `seed=` to fix the
+undefined state, `recording=True` to keep a bus log, `shape=` to pick which
+edge a pin is read on. `ports=` takes an I/O bus, which is a separate space on
+this part.
 
 ## Conformance
 
