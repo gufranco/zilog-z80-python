@@ -10,6 +10,15 @@ body:
         stepped instruction with its bus log, which says exactly where the two
         part company. The fields below ask for whichever applies.
 
+  - type: textarea
+    id: doctor
+    attributes:
+      label: What the doctor says
+      description: Run `python3 -m z80.doctor` and paste all of it. It names the part, the suite on this machine, and whether that suite is complete.
+      render: text
+    validations:
+      required: true
+
   - type: dropdown
     id: kind
     attributes:

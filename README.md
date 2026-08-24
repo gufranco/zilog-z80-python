@@ -17,7 +17,7 @@
 
 </div>
 
-**3** parts · **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures · **802** tests · **100%** statement and branch coverage · no dependencies
+**3** parts · **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures · **842** tests · **100%** statement and branch coverage · no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -217,6 +217,8 @@ for file in $(find z80 conformance -name '*.test.py' | sort); do
 done
 python -m coverage report
 ```
+
+`python -m z80.doctor` says what is actually on this machine: the parts, what makes each one different, and whether the files this repository cannot carry are here and whole. It is what an issue asks for, because a report is only as good as what it says about the machine that produced it.
 
 Tests sit beside the module they cover, named `<module>.test.py`. Coverage is 100% of statements and branches, enforced. Types are `mypy` at strict. Commits follow [Conventional Commits](https://www.conventionalcommits.org/), and releases are cut by [semantic-release](https://semantic-release.gitbook.io/).
 
