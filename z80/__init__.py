@@ -24,10 +24,11 @@ real silicon.
 from typing import Any
 
 from . import blocks, bus, core, flags, memory, models, opcodes, registers
+from .bus import UnknownShape
 from .clock import Clock, ClockClosed
 from .core import RunLimit
 from .memory import UNSET_SEED, Memory, Ports, SparseMemory
-from .models import MODELS, Model, UnknownModelError, describe
+from .models import MODELS, Model, UnknownCarryRule, UnknownModelError, describe
 from .opcodes import Truncated, decode, disassemble
 from .registers import Registers
 from .version import VERSION
@@ -64,7 +65,9 @@ __all__ = [
     "RunLimit",
     "SparseMemory",
     "Truncated",
+    "UnknownCarryRule",
     "UnknownModelError",
+    "UnknownShape",
     "__version__",
     "blocks",
     "bus",
