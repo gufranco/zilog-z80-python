@@ -65,6 +65,16 @@ CARRY_RULES = (ZILOG_CARRY, NEC_CARRY)
 class Model:
     """One part of the family: what it is, and how to build one."""
 
+    __slots__ = (
+        "aliases",
+        "carry_rule",
+        "floating_output",
+        "interrupt_clears_parity",
+        "name",
+        "summary",
+        "verified",
+    )
+
     def __init__(
         self,
         name: str,

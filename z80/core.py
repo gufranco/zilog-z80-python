@@ -81,7 +81,37 @@ the two bytes straddle two entries. It is not what the silicon does with the byt
 
 
 class Cpu:
-    """One Z80, holding whatever it held until something writes to it."""
+    """One Z80, holding whatever it held until something writes to it.
+    The slots are the point rather than a saving. Without them a name this class
+    does not have is accepted in silence: the caller sets a stray attribute, the
+    one they meant keeps whatever it held, and nothing reports that the write went
+    nowhere. A sibling package shipped exactly that, where two parts spell the
+    interrupt disable flag differently and reaching for the wrong one did nothing
+    at all.
+    """
+
+    __slots__ = (
+        "bus",
+        "carry_rule",
+        "cycles",
+        "deferring_interrupt",
+        "floating_output",
+        "halted",
+        "holding_counter",
+        "interrupt_clears_parity",
+        "irq_line",
+        "memory",
+        "model",
+        "nmi_line",
+        "nmi_seen",
+        "on_cycle",
+        "ports",
+        "registers",
+        "responding",
+        "sampled_irq",
+        "steps",
+        "wait_line",
+    )
 
     model: str
 

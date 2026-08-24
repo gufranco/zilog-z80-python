@@ -46,6 +46,13 @@ INDEX_PREFIX = {0xDD: "ix", 0xFD: "iy"}
 class Instruction:
     """One decoded instruction: where it sat, how long it was, and what it says."""
 
+    __slots__ = (
+        "address",
+        "raw",
+        "size",
+        "text",
+    )
+
     def __init__(self, address: int, size: int, text: str, raw: Sequence[int]) -> None:
         self.address = address
         self.size = size
@@ -59,6 +66,12 @@ class Instruction:
 
 class Reader:
     """A cursor over the bytes, which refuses to read past the end rather than guess."""
+
+    __slots__ = (
+        "data",
+        "offset",
+        "start",
+    )
 
     def __init__(self, data: Sequence[int], offset: int) -> None:
         self.data = data

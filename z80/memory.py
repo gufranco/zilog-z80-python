@@ -46,6 +46,11 @@ def _derive(seed: int, address: int) -> int:
 class SparseMemory:
     """Unclean everywhere without being allocated anywhere."""
 
+    __slots__ = (
+        "seed",
+        "written",
+    )
+
     def __init__(self, seed: int = UNSET_SEED) -> None:
         self.seed = seed
         self.written: dict[int, int] = {}
@@ -76,6 +81,8 @@ class Memory:
     its space, and is where a ROM image goes.
     """
 
+    __slots__ = ("data",)
+
     def __init__(
         self,
         size: int = 0x10000,
@@ -95,6 +102,12 @@ class Memory:
 
 class Ports:
     """The other sixteen bit space, and a record of what happened on it."""
+
+    __slots__ = (
+        "log",
+        "seed",
+        "written",
+    )
 
     def __init__(self, seed: int = UNSET_SEED) -> None:
         self.seed = seed
