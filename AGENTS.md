@@ -75,7 +75,7 @@ corpus on the machine.
 from the Condition Bits Affected block of all 131 instruction pages and fuzzed.
 124 hold; the two that do not are recorded.
 
-**Not settled: nineteen things**, each in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)
+**Not settled: 17 things**, each in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)
 with what would close it. Most are behaviour Zilog documented for programmers
 rather than for people rebuilding the part. Do not close one by argument.
 

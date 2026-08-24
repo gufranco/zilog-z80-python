@@ -17,7 +17,7 @@
 
 </div>
 
-**3** parts · **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures · **1,004** tests · **100%** statement and branch coverage · no dependencies
+**3** parts · **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures · **1,008** tests · **100%** statement and branch coverage · no dependencies
 
 ```python
 from z80 import Cpu, Memory
