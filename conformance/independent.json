@@ -11,9 +11,18 @@
       "after": "the value it holds when the instruction finishes"
     },
     "rules": [
-      { "instruction": "ld a,(bc)", "memptr": "bc before, plus one" },
-      { "instruction": "ld a,(de)", "memptr": "de before, plus one" },
-      { "instruction": "ld a,(nn)", "memptr": "nn plus one" },
+      {
+        "instruction": "ld a,(bc)",
+        "memptr": "bc before, plus one"
+      },
+      {
+        "instruction": "ld a,(de)",
+        "memptr": "de before, plus one"
+      },
+      {
+        "instruction": "ld a,(nn)",
+        "memptr": "nn plus one"
+      },
       {
         "instruction": "ld (bc),a",
         "memptr": "the accumulator above the low half of bc before plus one"
@@ -22,21 +31,66 @@
         "instruction": "ld (de),a",
         "memptr": "the accumulator above the low half of de before plus one"
       },
-      { "instruction": "ld (nn),a", "memptr": "the accumulator above the low half of nn plus one" },
-      { "instruction": "ld hl,(nn)", "memptr": "nn plus one" },
-      { "instruction": "ld (nn),hl", "memptr": "nn plus one" },
-      { "instruction": "add hl,ss", "memptr": "hl before, plus one" },
-      { "instruction": "rld", "memptr": "hl plus one" },
-      { "instruction": "jp nn", "memptr": "nn" },
-      { "instruction": "jr e", "memptr": "the counter before, plus two, plus the displacement" },
-      { "instruction": "in a,(n)", "memptr": "the accumulator above n, plus one" },
-      { "instruction": "in r,(c)", "memptr": "bc plus one" },
-      { "instruction": "out (c),r", "memptr": "bc plus one" },
-      { "instruction": "ini", "memptr": "bc before, plus one" },
-      { "instruction": "ind", "memptr": "bc before, minus one" },
-      { "instruction": "outi", "memptr": "bc after, plus one" },
-      { "instruction": "outd", "memptr": "bc after, minus one" },
-      { "instruction": "rst n", "memptr": "the address restarted to" }
+      {
+        "instruction": "ld (nn),a",
+        "memptr": "the accumulator above the low half of nn plus one"
+      },
+      {
+        "instruction": "ld hl,(nn)",
+        "memptr": "nn plus one"
+      },
+      {
+        "instruction": "ld (nn),hl",
+        "memptr": "nn plus one"
+      },
+      {
+        "instruction": "add hl,ss",
+        "memptr": "hl before, plus one"
+      },
+      {
+        "instruction": "rld",
+        "memptr": "hl plus one"
+      },
+      {
+        "instruction": "jp nn",
+        "memptr": "nn"
+      },
+      {
+        "instruction": "jr e",
+        "memptr": "the counter before, plus two, plus the displacement"
+      },
+      {
+        "instruction": "in a,(n)",
+        "memptr": "the accumulator above n, plus one"
+      },
+      {
+        "instruction": "in r,(c)",
+        "memptr": "bc plus one"
+      },
+      {
+        "instruction": "out (c),r",
+        "memptr": "bc plus one"
+      },
+      {
+        "instruction": "ini",
+        "memptr": "bc before, plus one"
+      },
+      {
+        "instruction": "ind",
+        "memptr": "bc before, minus one"
+      },
+      {
+        "instruction": "outi",
+        "memptr": "bc after, plus one"
+      },
+      {
+        "instruction": "outd",
+        "memptr": "bc after, minus one"
+      },
+      {
+        "instruction": "rst n",
+        "memptr": "the address restarted to"
+      }
     ]
   },
   "interruptAcceptance": {

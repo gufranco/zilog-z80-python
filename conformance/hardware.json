@@ -10,18 +10,44 @@
   },
   "part": "Zilog Z80 CPU",
   "verified": true,
-  "document": {
-    "publisher": "Zilog, Inc.",
-    "title": "Z80 CPU User Manual",
-    "documentNumber": "UM008011-0816",
-    "revisionLevel": 11,
-    "date": "2016-08",
-    "readOn": "2026-08-21",
-    "retrievedFrom": "www.zilog.com/docs/z80/um0080.pdf",
-    "sha256": "e3c83da5a5d8e372364c20fa53665e6fbb165ec6ac38c8c1eebc359603447b5e",
-    "bytes": 1587333,
-    "pages": 332,
-    "note": "The publisher's own current revision. The prose carries a clean text layer; the large opcode map tables do not, and reading them from the extracted text produces characters that are not in the printed tables. Every figure in this file was taken either from the prose or from a per-instruction timing table, and the three rows where the printed M Cycles column disagrees with its own breakdown were checked against the rendered page image one by one."
+  "documents": {
+    "userManual": {
+      "publisher": "Zilog, Inc.",
+      "title": "Z80 CPU User Manual",
+      "documentNumber": "UM008011-0816",
+      "revisionLevel": 11,
+      "date": "2016-08",
+      "readOn": "2026-08-21",
+      "retrievedFrom": "www.zilog.com/docs/z80/um0080.pdf",
+      "sha256": "e3c83da5a5d8e372364c20fa53665e6fbb165ec6ac38c8c1eebc359603447b5e",
+      "bytes": 1587333,
+      "pages": 332,
+      "note": "The publisher's own current revision. The prose carries a clean text layer; the large opcode map tables do not, and reading them from the extracted text produces characters that are not in the printed tables. Every figure in this file was taken either from the prose or from a per-instruction timing table, and the three rows where the printed M Cycles column disagrees with its own breakdown were checked against the rendered page image one by one.",
+      "file": "um0080.pdf"
+    },
+    "familyDataBook": {
+      "publisher": "Zilog, Inc.",
+      "title": "Z80 Family Data Book",
+      "documentNumber": "00-2490-01",
+      "date": "1989-01",
+      "readOn": "2026-08-23",
+      "readVia": "z80-family-data-book-1989.pdf, 448 pages. Printed page numbers run five behind file page numbers here, so printed 412 is file page 417.",
+      "whyItMatters": "It is the one Zilog publication that corrects another Zilog publication. Its Q and A section states outright that a sentence in the CPU Technical Manual is wrong, and it answers several questions the User Manual leaves open.",
+      "pinnedIn": "the References section of README.md",
+      "sectionPages": [
+        {
+          "from": 416,
+          "to": 419
+        },
+        {
+          "from": 424,
+          "to": 424
+        }
+      ],
+      "whichPagesAreTheCpu": "The Questions and Answers section runs from file page 416 to 424 and covers the whole family, a few entries per part. File pages 416 to 419 and 424 answer questions about the CPU; 421 to 423 answer questions about the PIO, the CTC, the SIO and the DART, which are different chips. The ranges above are the CPU pages, and a fact citing this document has to name one of them.",
+      "howItWasFound": "Each file page from 416 to 424 was read for which part it names. The gap at 420 carries no part at all, and 424 returns to the CPU after the peripheral entries, which is why this is two ranges rather than one.",
+      "file": "z80-family-data-book-1989.pdf"
+    }
   },
   "facts": {
     "machineCycleShapes": {
@@ -248,32 +274,32 @@
       "m1": {
         "quote": "M1. Machine Cycle One (output, active Low). M1, together with MREQ, indicates that the current machine cycle is the op code fetch cycle of an instruction execution. M1, when operating together with IORQ, indicates an interrupt acknowledge cycle.",
         "page": 6,
-        "document": "um0080.pdf"
+        "document": "userManual"
       },
       "mreq": {
         "quote": "MREQ. Memory Request (output, active Low, tristate). MREQ indicates that the address bus holds a valid address for a memory read or a memory write operation.",
         "page": 6,
-        "document": "um0080.pdf"
+        "document": "userManual"
       },
       "iorq": {
         "quote": "IORQ. Input/Output Request (output, active Low, tristate). IORQ indicates that the lower half of the address bus holds a valid I/O address for an I/O read or write operation.",
         "page": 6,
-        "document": "um0080.pdf"
+        "document": "userManual"
       },
       "rd": {
         "quote": "RD. Read (output, active Low, tristate). RD indicates that the CPU wants to read data from memory or an I/O device.",
         "page": 6,
-        "document": "um0080.pdf"
+        "document": "userManual"
       },
       "wr": {
         "quote": "WR. Write (output, active Low, tristate). WR indicates that the CPU data bus contains valid data to be stored at the addressed memory or I/O location.",
         "page": 7,
-        "document": "um0080.pdf"
+        "document": "userManual"
       },
       "rfsh": {
         "quote": "RFSH. Refresh (output, active Low). RFSH, together with MREQ, indicates that the lower seven bits of the system's address bus can be used as a refresh address to the system's dynamic memories.",
         "page": 7,
-        "document": "um0080.pdf"
+        "document": "userManual"
       }
     },
     "reset": {
@@ -306,7 +332,7 @@
       "count": 3,
       "quote": "The Z80 CPU contains two interrupt inputs: a software maskable interrupt (INT) and a nonmaskable interrupt (NMI).",
       "page": 6,
-      "document": "um0080.pdf",
+      "document": "userManual",
       "nmiVector": 102,
       "nmiVectorQuote": "NMI is always recognized at the end of the current instruction, independent of the status of the interrupt enable flip-flop, and automatically forces the CPU to restart at location 0066h."
     },
@@ -1890,14 +1916,14 @@
       },
       "maskableIffQuote": "When the CPU accepts a maskable interrupt, both IFF1 and IFF2 are automatically reset, inhibiting further interrupts until the programmer issues a new El instruction.",
       "page": 12,
-      "document": "um0080.pdf",
+      "document": "userManual",
       "enableDelayQuote": "When an EI instruction is executed, any pending interrupt request is not accepted until after the instruction following EI is executed.",
       "sampledQuote": "The CPU samples the interrupt signal (INT) with the rising edge of the final clock at the end of any instruction. The signal is not accepted if the internal CPU software controlled interrupt enable flip-flop is not set or if the BUSREQ signal is active.",
       "nmosParityDefect": {
         "note": "A defect Zilog documents, along with its own fix. It is reachable only once interrupts are modelled, because it needs an interrupt accepted at one specific instruction boundary.",
         "quote": "On CMOS Z80 CPU, we've fixed this problem. On NMOS Z80 CPU, in certain narrowly defined circumstances, the Z80 CPU interrupt enable latch, IFF2, does not necessarily reflect the true interrupt status. The two instructions LD A,R and LD A,I copy the state of interrupt enable latch (IFF2) into the parity flag and modifies the accumulator contents (See table 7.0.1 in the Z80 CPU technical manual for details). Thus, it is possible to determine whether interrupts are enabled or disabled at the time that the instruction is executed. This facility is necessary to save the complete state of the machine. However, if an interrupt is accepted by the CPU during the execution of the instruction -- implying that the interrupts must be enabled -- the P/V flag is cleared. This incorrectly asserts that interrupts were disabled at the time the instruction was executed.",
         "page": 412,
-        "document": "secondDocument",
+        "document": "familyDataBook",
         "cause": "This paradox can be traced to the internal timing of the CPU. The problem is that the interrupt flip-flop (IFF2) is cleared before it is actually transferred to the P/V flag. The state of the interrupt enable latch is not copied into the parity flag until after the interrupt time, occurring during the execution of the instruction, has been accepted. Since the acceptance of the interrupt automatically clears the interrupt enable latch, the parity flag is also cleared, despite the fact that interrupts were enabled when the instruction started executing.",
         "affects": ["z80"],
         "fixedIn": ["z84c00"],
@@ -1916,28 +1942,28 @@
       "manualPage": 14
     },
     "technicalManualAmended": {
-      "document": "secondDocument",
+      "document": "familyDataBook",
       "section": "Questions and Answers, printed page 413",
       "quote": "In the Z80 CPU Technical Manual (Pages 70 and 72, footnote B), it is stated that \"All control signals are internally synchronized so that they are totally asynchronous with respect to the clock.\" This statement should be amended to say \"When interfacing the Z80 CPU to the Z80 family peripherals, the interface control signals are internally synchronized with the system clock by the peripherals themselves. When interfacing to the Z80 CPU with other devices, these control signals should be synchronized with respect to the system clock.\" Note that the former statement has been removed from the data book and the CPU product specification, but has not been removed from the technical manual yet.",
       "note": "The publisher amending itself in print, and saying which of its own documents still carries the withdrawn sentence. Nothing here models pin synchronisation, so it changes no behaviour, but it is the proof that an official correction to an official document exists for this part, which is worth knowing before assuming a printed sentence is final.",
       "filePage": 418
     },
     "modeZeroGeneratesOneAcknowledge": {
-      "document": "secondDocument",
+      "document": "familyDataBook",
       "section": "Questions and Answers, printed page 414",
       "quote": "The 8080 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
       "note": "The User Manual says the device supplies the instruction and stops there. This says the part generates exactly one acknowledge, where the 8080 it is source compatible with generates three, which answers where the later bytes of a longer response come from: not from further acknowledges. It also says what the normal case is, a one byte restart, which is the case this package can express.",
       "filePage": 419
     },
     "nonmaskableDuringReset": {
-      "document": "secondDocument",
+      "document": "familyDataBook",
       "section": "Questions and Answers, printed page 412",
       "quote": "Since NMI input is \"edge-triggered\" input, if the CPU has active NMI \"during\" reset, CPU won't detect NMI and will execute the instruction at 0000h. If NMI goes low after RESET goes inactive, then CPU will process NMI.",
       "note": "A line held low across a reset is not an edge, so it is not seen. This package takes a non-maskable request as a call rather than as a level, so it has no way to express a line already low when reset ends, and it does not need one.",
       "filePage": 417
     },
     "m1IsNotTristatedDuringReset": {
-      "document": "secondDocument",
+      "document": "familyDataBook",
       "section": "Questions and Answers, printed page 412",
       "quote": "Q: Does the CPU tristate M1 during reset? A: No.",
       "note": "One of the few statements anywhere about what the pins do while reset is held. Nothing here models a pin during reset, so it changes no behaviour and is recorded because the question was asked and answered by the publisher.",
@@ -2008,27 +2034,5 @@
     "internalCyclePlacement": "The manual gives how many T states each machine cycle takes and how many machine cycles an instruction has. It does not say, for a machine cycle longer than its bus access needs, where within that cycle the bus is idle. A cycle-by-cycle model needs that ordering and has to take it from the recording.",
     "undocumentedOpcodes": "The manual describes the documented instruction set. The prefixed forms that reach the halves of the index registers, and the ED opcodes that are not listed, are not in it at all.",
     "acknowledgeInternalState": "The printed totals for mode 1 and mode 2 both give the interrupt acknowledge cycle seven T states, which is a five state M1 plus the two wait states the manual adds. Figure 9 draws six states and stops. Where the seventh falls within the cycle is not drawn and not stated."
-  },
-  "secondDocument": {
-    "publisher": "Zilog, Inc.",
-    "title": "Z80 Family Data Book",
-    "documentNumber": "00-2490-01",
-    "date": "1989-01",
-    "readOn": "2026-08-23",
-    "readVia": "z80-family-data-book-1989.pdf, 448 pages. Printed page numbers run five behind file page numbers here, so printed 412 is file page 417.",
-    "whyItMatters": "It is the one Zilog publication that corrects another Zilog publication. Its Q and A section states outright that a sentence in the CPU Technical Manual is wrong, and it answers several questions the User Manual leaves open.",
-    "pinnedIn": "the References section of README.md",
-    "sectionPages": [
-      {
-        "from": 416,
-        "to": 419
-      },
-      {
-        "from": 424,
-        "to": 424
-      }
-    ],
-    "whichPagesAreTheCpu": "The Questions and Answers section runs from file page 416 to 424 and covers the whole family, a few entries per part. File pages 416 to 419 and 424 answer questions about the CPU; 421 to 423 answer questions about the PIO, the CTC, the SIO and the DART, which are different chips. The ranges above are the CPU pages, and a fact citing this document has to name one of them.",
-    "howItWasFound": "Each file page from 416 to 424 was read for which part it names. The gap at 420 carries no part at all, and 424 returns to the CPU after the peripheral entries, which is why this is two ranges rather than one."
   }
 }

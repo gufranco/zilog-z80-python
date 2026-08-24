@@ -143,13 +143,13 @@ class RowLookupTest(unittest.TestCase):
 
 class DocumentTest(unittest.TestCase):
     def test_the_part_is_backed_by_a_named_document(self) -> None:
-        self.assertEqual(HELD["document"]["publisher"], "Zilog, Inc.")
+        self.assertEqual(HELD["documents"]["userManual"]["publisher"], "Zilog, Inc.")
 
     def test_the_document_is_the_publisher_current_revision(self) -> None:
-        self.assertEqual(HELD["document"]["documentNumber"], "UM008011-0816")
+        self.assertEqual(HELD["documents"]["userManual"]["documentNumber"], "UM008011-0816")
 
     def test_it_carries_a_digest_so_the_reading_can_be_repeated(self) -> None:
-        self.assertRegex(HELD["document"]["sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(HELD["documents"]["userManual"]["sha256"], r"^[0-9a-f]{64}$")
 
     def test_the_part_is_marked_verified_because_the_document_exists(self) -> None:
         self.assertTrue(HELD["verified"])
