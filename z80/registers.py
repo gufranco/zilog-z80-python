@@ -29,7 +29,7 @@ reproducible values, because that is what a real part holds.
 from __future__ import annotations
 
 import random
-from typing import Any, override
+from typing import override
 
 UNSET_SEED = 0x5A5A5A5A
 
@@ -67,44 +67,53 @@ SHADOWS = ("af_", "bc_", "de_", "hl_")
 REFRESH_MASK = 0x7F
 
 
-def _pair_property(high: str, low: str) -> property:
-    def read(self: Any) -> int:
-        return int((getattr(self, high) << 8) | getattr(self, low))
-
-    def write(self: Any, value: int) -> None:
-        value &= 0xFFFF
-        setattr(self, high, value >> 8)
-        setattr(self, low, value & 0xFF)
-
-    return property(read, write)
-
-
-def _byte_property(name: str) -> property:
-    store = f"_{name}"
-
-    def read(self: Any) -> int:
-        return int(getattr(self, store))
-
-    def write(self: Any, value: int) -> None:
-        setattr(self, store, value & 0xFF)
-
-    return property(read, write)
-
-
-def _word_property(name: str) -> property:
-    store = f"_{name}"
-
-    def read(self: Any) -> int:
-        return int(getattr(self, store))
-
-    def write(self: Any, value: int) -> None:
-        setattr(self, store, value & 0xFFFF)
-
-    return property(read, write)
-
-
 class Registers:
-    """One Z80's registers, the hidden ones included."""
+    """One Z80's registers, the hidden ones included.
+
+    Every name is declared here, so a name this part does not have cannot be
+    written. Without the slots below a wrong spelling is accepted in silence: the
+    caller sets a stray attribute, the register they meant keeps whatever it
+    held, and nothing reports that the write went nowhere.
+
+    The twenty-nine are written out rather than generated. Generating them put a
+    Python level call on the hottest path in the package and cost about six per
+    cent of the throughput, where a property is implemented in C. The risk that
+    buys, one of them masking to the wrong width, is answered by a test that
+    drives every register past its width and checks what comes back, which is a
+    better answer than a factory anyway: it holds whether they were generated or
+    typed.
+    """
+
+    __slots__ = (
+        "_a",
+        "_af_",
+        "_b",
+        "_bc_",
+        "_c",
+        "_d",
+        "_de_",
+        "_e",
+        "_f",
+        "_h",
+        "_hl_",
+        "_i",
+        "_ixh",
+        "_ixl",
+        "_iyh",
+        "_iyl",
+        "_l",
+        "_pc",
+        "_r",
+        "_sp",
+        "_w",
+        "_z",
+        "ei",
+        "iff1",
+        "iff2",
+        "im",
+        "p",
+        "q",
+    )
 
     im: int
     iff1: bool
@@ -112,43 +121,252 @@ class Registers:
     q: int
     p: int
     ei: int
-    a: int
-    f: int
-    b: int
-    c: int
-    d: int
-    e: int
-    h: int
-    l: int  # noqa: E741 -- the part has a register called L
-    w: int
-    z: int
-    ixh: int
-    ixl: int
-    iyh: int
-    iyl: int
-    i: int
-    r: int
-    af_: int
-    bc_: int
-    de_: int
-    hl_: int
-    pc: int
-    sp: int
-    af: int
-    bc: int
-    de: int
-    hl: int
-    wz: int
-    ix: int
-    iy: int
-    """Every register, declared for the checker and attached below as a property.
 
-    The eight bit registers, the shadows and the pairs are all built by the same
-    three factories rather than written out, because writing twenty-nine nearly
-    identical properties by hand is how one of them ends up masking to the wrong
-    width. A bare annotation creates no class attribute at runtime, so these say
-    what the type is without getting in the way of the properties that follow.
-    """
+    @property
+    def a(self) -> int:
+        return self._a
+
+    @a.setter
+    def a(self, value: int) -> None:
+        self._a = value & 0xFF
+
+    @property
+    def f(self) -> int:
+        return self._f
+
+    @f.setter
+    def f(self, value: int) -> None:
+        self._f = value & 0xFF
+
+    @property
+    def b(self) -> int:
+        return self._b
+
+    @b.setter
+    def b(self, value: int) -> None:
+        self._b = value & 0xFF
+
+    @property
+    def c(self) -> int:
+        return self._c
+
+    @c.setter
+    def c(self, value: int) -> None:
+        self._c = value & 0xFF
+
+    @property
+    def d(self) -> int:
+        return self._d
+
+    @d.setter
+    def d(self, value: int) -> None:
+        self._d = value & 0xFF
+
+    @property
+    def e(self) -> int:
+        return self._e
+
+    @e.setter
+    def e(self, value: int) -> None:
+        self._e = value & 0xFF
+
+    @property
+    def h(self) -> int:
+        return self._h
+
+    @h.setter
+    def h(self, value: int) -> None:
+        self._h = value & 0xFF
+
+    @property
+    def l(self) -> int:  # noqa: E743 -- the part has a register called L
+        return self._l
+
+    @l.setter
+    def l(self, value: int) -> None:  # noqa: E743 -- the part has a register called L
+        self._l = value & 0xFF
+
+    @property
+    def w(self) -> int:
+        return self._w
+
+    @w.setter
+    def w(self, value: int) -> None:
+        self._w = value & 0xFF
+
+    @property
+    def z(self) -> int:
+        return self._z
+
+    @z.setter
+    def z(self, value: int) -> None:
+        self._z = value & 0xFF
+
+    @property
+    def ixh(self) -> int:
+        return self._ixh
+
+    @ixh.setter
+    def ixh(self, value: int) -> None:
+        self._ixh = value & 0xFF
+
+    @property
+    def ixl(self) -> int:
+        return self._ixl
+
+    @ixl.setter
+    def ixl(self, value: int) -> None:
+        self._ixl = value & 0xFF
+
+    @property
+    def iyh(self) -> int:
+        return self._iyh
+
+    @iyh.setter
+    def iyh(self, value: int) -> None:
+        self._iyh = value & 0xFF
+
+    @property
+    def iyl(self) -> int:
+        return self._iyl
+
+    @iyl.setter
+    def iyl(self, value: int) -> None:
+        self._iyl = value & 0xFF
+
+    @property
+    def i(self) -> int:
+        return self._i
+
+    @i.setter
+    def i(self, value: int) -> None:
+        self._i = value & 0xFF
+
+    @property
+    def r(self) -> int:
+        return self._r
+
+    @r.setter
+    def r(self, value: int) -> None:
+        self._r = value & 0xFF
+
+    @property
+    def af_(self) -> int:
+        return self._af_
+
+    @af_.setter
+    def af_(self, value: int) -> None:
+        self._af_ = value & 0xFFFF
+
+    @property
+    def bc_(self) -> int:
+        return self._bc_
+
+    @bc_.setter
+    def bc_(self, value: int) -> None:
+        self._bc_ = value & 0xFFFF
+
+    @property
+    def de_(self) -> int:
+        return self._de_
+
+    @de_.setter
+    def de_(self, value: int) -> None:
+        self._de_ = value & 0xFFFF
+
+    @property
+    def hl_(self) -> int:
+        return self._hl_
+
+    @hl_.setter
+    def hl_(self, value: int) -> None:
+        self._hl_ = value & 0xFFFF
+
+    @property
+    def pc(self) -> int:
+        return self._pc
+
+    @pc.setter
+    def pc(self, value: int) -> None:
+        self._pc = value & 0xFFFF
+
+    @property
+    def sp(self) -> int:
+        return self._sp
+
+    @sp.setter
+    def sp(self, value: int) -> None:
+        self._sp = value & 0xFFFF
+
+    @property
+    def af(self) -> int:
+        return (self.a << 8) | self.f
+
+    @af.setter
+    def af(self, value: int) -> None:
+        value &= 0xFFFF
+        self.a = value >> 8
+        self.f = value & 0xFF
+
+    @property
+    def bc(self) -> int:
+        return (self.b << 8) | self.c
+
+    @bc.setter
+    def bc(self, value: int) -> None:
+        value &= 0xFFFF
+        self.b = value >> 8
+        self.c = value & 0xFF
+
+    @property
+    def de(self) -> int:
+        return (self.d << 8) | self.e
+
+    @de.setter
+    def de(self, value: int) -> None:
+        value &= 0xFFFF
+        self.d = value >> 8
+        self.e = value & 0xFF
+
+    @property
+    def hl(self) -> int:
+        return (self.h << 8) | self.l
+
+    @hl.setter
+    def hl(self, value: int) -> None:
+        value &= 0xFFFF
+        self.h = value >> 8
+        self.l = value & 0xFF
+
+    @property
+    def wz(self) -> int:
+        return (self.w << 8) | self.z
+
+    @wz.setter
+    def wz(self, value: int) -> None:
+        value &= 0xFFFF
+        self.w = value >> 8
+        self.z = value & 0xFF
+
+    @property
+    def ix(self) -> int:
+        return (self.ixh << 8) | self.ixl
+
+    @ix.setter
+    def ix(self, value: int) -> None:
+        value &= 0xFFFF
+        self.ixh = value >> 8
+        self.ixl = value & 0xFF
+
+    @property
+    def iy(self) -> int:
+        return (self.iyh << 8) | self.iyl
+
+    @iy.setter
+    def iy(self, value: int) -> None:
+        value &= 0xFFFF
+        self.iyh = value >> 8
+        self.iyl = value & 0xFF
 
     def __init__(self, seed: int = UNSET_SEED) -> None:
         generator = random.Random(seed)
@@ -204,13 +422,3 @@ class Registers:
     @override
     def __repr__(self) -> str:
         return f"<Registers pc={self.pc:04X} af={self.af:04X} hl={self.hl:04X}>"
-
-
-for _name in EIGHT_BIT:
-    setattr(Registers, _name, _byte_property(_name))
-
-for _name in (*SHADOWS, "pc", "sp"):
-    setattr(Registers, _name, _word_property(_name))
-
-for _pair, (_high, _low) in PAIRS.items():
-    setattr(Registers, _pair, _pair_property(_high, _low))

@@ -1,6 +1,8 @@
+import contextlib
 import sys
 import unittest
 from pathlib import Path
+from typing import ClassVar
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -137,6 +139,93 @@ class ReadingTest(unittest.TestCase):
         file.hl = 0x9ABC
 
         self.assertEqual(repr(file), "<Registers pc=1234 af=5678 hl=9ABC>")
+
+
+def narrower(held: object, names: tuple[str, ...], mask: int) -> list[str]:
+    """Every register that kept more than its own width after an oversized write."""
+    found = []
+    for name in names:
+        with contextlib.suppress(AttributeError):
+            setattr(held, name, mask << 1 | 1)
+        value = getattr(held, name)
+        if value != mask:
+            found.append(f"{name} kept {value:#x}")
+    return found
+
+
+class WidthTest(unittest.TestCase):
+    """That every register masks to its own width, and to no other.
+
+    The twenty-nine properties are written out rather than generated, which buys
+    the throughput of a C descriptor and risks one of them masking to the wrong
+    width. This is the answer to that risk, and it is a better one than a factory
+    was: it holds whether they were typed or generated, and it names the register
+    that is wrong rather than failing somewhere downstream.
+    """
+
+    BYTES: ClassVar[tuple[str, ...]] = (
+        "a",
+        "f",
+        "b",
+        "c",
+        "d",
+        "e",
+        "h",
+        "l",
+        "w",
+        "z",
+        "ixh",
+        "ixl",
+        "iyh",
+        "iyl",
+        "i",
+        "r",
+    )
+
+    WORDS: ClassVar[tuple[str, ...]] = (
+        "af_",
+        "bc_",
+        "de_",
+        "hl_",
+        "pc",
+        "sp",
+        "af",
+        "bc",
+        "de",
+        "hl",
+        "wz",
+        "ix",
+        "iy",
+    )
+
+    def test_every_eight_bit_register_keeps_eight_bits(self) -> None:
+        self.assertEqual(narrower(registers.Registers(), self.BYTES, 0xFF), [])
+
+    def test_every_sixteen_bit_register_keeps_sixteen(self) -> None:
+        self.assertEqual(narrower(registers.Registers(), self.WORDS, 0xFFFF), [])
+
+    def test_the_reader_names_a_register_that_keeps_too_much(self) -> None:
+        """A check nothing has been seen to fail is a check nobody knows."""
+
+        class Wider:
+            eight = 0x1FF
+
+        self.assertEqual(narrower(Wider(), ("eight",), 0xFF), ["eight kept 0x1ff"])
+
+    def test_the_two_lists_cover_every_register_the_class_has(self) -> None:
+        """A register left out of both lists is one this check never reaches."""
+        held = {
+            name for name, value in vars(registers.Registers).items() if isinstance(value, property)
+        }
+
+        self.assertEqual(held, set(self.BYTES) | set(self.WORDS))
+
+    def test_a_name_the_part_does_not_have_cannot_be_written(self) -> None:
+        """The slots are the point: a wrong spelling fails instead of going nowhere."""
+        held = registers.Registers()
+
+        with self.assertRaises(AttributeError):
+            held.irq_disable = False  # type: ignore[attr-defined]
 
 
 if __name__ == "__main__":
