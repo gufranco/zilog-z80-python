@@ -1289,10 +1289,17 @@ class Cpu:
         self.set_flags((self.registers.f & flags.C) | flags.sign_zero(value) | flags.parity(value))
 
     def extended_out(self, y: int) -> None:
+        """OUT (C),r, twelve T states over three machine cycles.
+
+        The write goes through port_write whether or not a device is attached,
+        because the machine cycle is the part's and not the device's. Guarding
+        the call instead of letting port_write handle an absent device dropped
+        the cycle and four T states with it, which no suite noticed because a
+        suite always attaches ports.
+        """
         address = self.registers.bc
         value = self.floating_output if y == 6 else self.register_read(y)
-        if self.ports is not None:
-            self.port_write(address, value)
+        self.port_write(address, value)
         self.registers.wz = address + 1
         self.keep_flags()
 

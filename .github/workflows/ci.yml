@@ -102,6 +102,12 @@ jobs:
       - name: Coverage must be total
         run: python -m coverage report
 
+      # Uninstrumented, and deliberately after the coverage run. This is the one
+      # check that holds the core to Zilog rather than to a recording, and it
+      # needs no corpus, so a machine with no network still runs it.
+      - name: Every timing the manual prints, against a run of the instruction
+        run: python conformance/timing.py
+
   conformance:
     name: Conformance against the published suite
     runs-on: ubuntu-latest
