@@ -179,5 +179,52 @@ class EntryPointTest(unittest.TestCase):
         self.assertEqual((status, "1 not" in said), (1, True))
 
 
+class CitationTest(unittest.TestCase):
+    """That a reader can look up every sentence the manufacturer is quoted saying."""
+
+    def test_every_manufacturer_quote_names_a_page(self) -> None:
+        self.assertEqual(quotes.unpaged(), [])
+
+    def test_a_record_that_quotes_without_a_page_is_reported(self) -> None:
+        found = quotes.unpaged([("made-up.json", {"facts": {"one": {"quote": "hello"}}})])
+
+        self.assertEqual(found, ["made-up.json.facts.one.quote"])
+
+    def test_but_not_when_the_quote_is_the_recording_speaking(self) -> None:
+        found = quotes.unpaged([("made-up.json", {"referenceDoes": {"quote": "hello"}})])
+
+        self.assertEqual(found, [])
+
+    def test_the_records_beside_this_file_are_the_ones_read(self) -> None:
+        names = [name for name, _ in quotes.loaded()]
+
+        self.assertIn("hardware.json", names)
+
+    def test_a_quote_with_no_page_anywhere_above_it_is_reported(self) -> None:
+        found = quotes.uncited({"quote": "hello"})
+
+        self.assertEqual(found, ["quote"])
+
+    def test_a_page_beside_it_is_enough(self) -> None:
+        found = quotes.uncited({"quote": "hello", "page": 7})
+
+        self.assertEqual(found, [])
+
+    def test_and_a_page_on_the_object_above_counts_for_the_quotes_below(self) -> None:
+        found = quotes.uncited({"page": 7, "inner": {"quote": "hello"}})
+
+        self.assertEqual(found, [])
+
+    def test_a_quote_inside_a_list_is_reached(self) -> None:
+        found = quotes.uncited([{"quote": "hello"}])
+
+        self.assertEqual(found, ["[0].quote"])
+
+    def test_and_a_key_that_merely_ends_in_quote_is_held_to_the_same_rule(self) -> None:
+        found = quotes.uncited({"vectorQuote": "hello"})
+
+        self.assertEqual(found, ["vectorQuote"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -28,6 +28,8 @@
         "rung": 1,
         "claim": "Every control pin edge falls on a clock edge, which is half a T state. On a fetch the strobes go active half a clock into T1 and are turned off on the rising edge of T3; on a plain read they are turned off half a clock later still. The edges are recorded under figureEdges in hardware.json, measured off the figures.",
         "quote": "One half clock cycle later, the MREQ signal goes active. At this time, the address to memory has had time to stabilize so that the falling edge of MREQ can be used directly as a chip enable clock to dynamic memories. The RD line also goes active to indicate that the memory read data should be enabled onto the CPU data bus. The CPU samples the data from the memory space on the data bus with the rising edge of the clock of state T3, and this same edge is used by the CPU to turn off the RD and MREQ signals.",
+        "page": 8,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 8"
       },
       "referenceDoes": {
@@ -55,6 +57,8 @@
         "rung": 1,
         "claim": "The lower seven bits carry a refresh address. The manual does not say what the upper nine carry.",
         "quote": "During T3 and T4, the lower seven bits of the address bus contain a memory refresh address and the RFSH signal becomes active, indicating that a refresh read of all dynamic memories must be performed.",
+        "page": 8,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 8"
       },
       "referenceDoes": {
@@ -99,6 +103,8 @@
         "rung": 1,
         "claim": "They are not used and have no behaviour.",
         "quote": "Each of these two Flag registers contains 6 bits of status information that are set or cleared by CPU operations; bits 3 and 5 are not used.",
+        "page": 66,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 66"
       },
       "referenceDoes": {
@@ -162,6 +168,8 @@
         "rung": 1,
         "claim": "An accepted interrupt generates a special M1 in which the port request replaces the memory request and two wait states are added, making it six T states.",
         "quote": "When the signal is accepted, a special M1 cycle is generated. During this special M1 cycle, the IORQ signal becomes active (instead of the normal MREQ) to indicate that the interrupting device can place an 8-bit vector on the data bus. Two wait states are automatically added to this cycle.",
+        "page": 12,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 12"
       },
       "packageFollows": "document",
@@ -181,6 +189,8 @@
         "rung": 1,
         "claim": "It keeps fetching, so that dynamic memory keeps being refreshed.",
         "quote": "Each cycle in the HALT state is a normal M1 (fetch) cycle except that the data received from the memory is ignored and an NOP instruction is forced internally to the CPU.",
+        "page": 14,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 14"
       },
       "packageFollows": "document, for the cycle; neither, for the address",
@@ -200,6 +210,8 @@
         "rung": 1,
         "claim": "Any machine cycle can be lengthened indefinitely by an external device holding the wait line.",
         "quote": "During T2 and every subsequent automatic WAIT state (TW), the CPU samples the WAIT line with the falling edge of the clock. If the WAIT line is active at this time, another WAIT state is entered during the following cycle.",
+        "page": 7,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 7"
       },
       "packageFollows": "neither",
@@ -249,6 +261,8 @@
         "rung": 1,
         "claim": "That the cycle is seven T states, twice over and never directly. Mode 1 is a restart taking 'two more than normal', and a restart is 11 as (5, 3, 3), which gives 13 as (7, 3, 3). Mode 2 is printed as 19 and broken down as seven, six and six. Figure 9 draws six states and stops.",
         "quote": "This mode of response requires 19 clock periods to complete (seven to fetch the lower eight bits from the interrupting device, six to save the program counter, and six to obtain the jump address).",
+        "page": 20,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 20"
       },
       "packageFollows": "document",
@@ -267,6 +281,8 @@
         "rung": 1,
         "claim": "An external device can take the buses at the end of any machine cycle, for as long as it likes, and the part floats every control signal until it gives them back.",
         "quote": "The BUSREQ signal is sampled by the CPU with the rising edge of the most recent clock period of any machine cycle. If the BUSREQ signal is active, the CPU sets its address, data, and tristate control signals to the high-impedance state with the rising edge of the next clock pulse.",
+        "page": 11,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 11"
       },
       "packageFollows": "neither",
@@ -283,6 +299,8 @@
         "rung": 1,
         "claim": "Stopping the clock stops the part with everything held, and supplying it again resumes from where it stopped.",
         "quote": "When the clock input to the Z80 CPU is stopped at either a High or Low level, the Z80 CPU stops its operation and maintains all registers and control signals.",
+        "page": 15,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 15"
       },
       "packageFollows": "neither",
@@ -322,6 +340,8 @@
         "rung": 1,
         "claim": "That the device supplies the instruction, without saying how a device supplies a second or third byte.",
         "quote": "With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it. Consequently, the interrupting device provides the next instruction to be executed. Often this response is a restart instruction because the interrupting device is required to supply only a single-byte instruction. Alternatively, any other instruction such as a 3-byte call to any location in memory could be executed.",
+        "page": 19,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 19"
       },
       "packageFollows": "document",
@@ -334,6 +354,8 @@
         "rung": 1,
         "source": "Zilog Z80 Family Data Book 1989, Questions and Answers, printed page 414",
         "quote": "The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
+        "page": 414,
+        "document": "z80-family-data-book-1989.pdf",
         "whatItSettles": "Where the later bytes do not come from. The part generates one acknowledge and no more, so a second or third byte of a longer response is fetched by an ordinary cycle rather than by another acknowledge. It also names the normal case as a one byte restart, which is the case this package can express.",
         "whatIsStillOpen": "Whether the device or memory answers those ordinary cycles. The publisher says the device supplies the instruction and that the part asks only once, and does not say who drives the bus for the remaining reads."
       },
@@ -420,6 +442,8 @@
         "rung": 1,
         "claim": "It does not, because the byte carries only seven bits of information.",
         "quote": "The lower eight bits of the pointer must be supplied by the interrupting device. Only seven bits are required from the interrupting device, because the least-significant bit must be a 0. This process is required, because the pointer must receive two adjacent bytes to form a complete 16-bit service routine starting address; addresses must always start in even locations.",
+        "page": 20,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 20"
       },
       "referenceDoes": {
@@ -444,6 +468,8 @@
         "rung": 1,
         "claim": "Nothing beyond that the device supplies the instruction.",
         "quote": "With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it.",
+        "page": 19,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, manual page 19"
       },
       "referenceDoes": {
@@ -462,6 +488,8 @@
         "rung": 1,
         "source": "Zilog Z80 Family Data Book 1989, Questions and Answers, printed page 414",
         "quote": "The 8259 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
+        "page": 414,
+        "document": "z80-family-data-book-1989.pdf",
         "whatItSettles": "That a prefix cannot be followed by a second acknowledge, because the part generates one and no more. What this package does, an ordinary cycle, is the only remaining shape."
       },
       "howItWasClosed": "The interface both entries asked for exists. `irq` takes a callable as well as a byte, and a device is asked once for the acknowledge and once more for every further byte the supplied instruction fetches, so a three byte call and a prefixed instruction both work and the bytes come from the device rather than from whatever memory happens to hold at the held counter. Only the first cycle is an acknowledge, which Zilog states outright: \"the Z80 CPU generates only one INTACK signal\". The rest are ordinary cycles with a device answering instead of memory.",
@@ -504,6 +532,8 @@
         "rung": 1,
         "claim": "The negate flag is set, the carry is untouched, and the half carry is unknown. Each of the eight pages says it.",
         "quote": "S is unknown. Z is set if B - 1 = 0; otherwise it is reset. H is unknown. P/V is unknown. N is set. C is not affected.",
+        "page": 298,
+        "document": "um0080.pdf",
         "source": "Zilog UM008011-0816, the INI page and the seven like it"
       },
       "referenceDoes": {

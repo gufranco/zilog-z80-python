@@ -246,22 +246,34 @@
     "pins": {
       "note": "Only the pins a bus recording can observe. The recording names four of them.",
       "m1": {
-        "quote": "M1. Machine Cycle One (output, active Low). M1, together with MREQ, indicates that the current machine cycle is the op code fetch cycle of an instruction execution. M1, when operating together with IORQ, indicates an interrupt acknowledge cycle."
+        "quote": "M1. Machine Cycle One (output, active Low). M1, together with MREQ, indicates that the current machine cycle is the op code fetch cycle of an instruction execution. M1, when operating together with IORQ, indicates an interrupt acknowledge cycle.",
+        "page": 6,
+        "document": "um0080.pdf"
       },
       "mreq": {
-        "quote": "MREQ. Memory Request (output, active Low, tristate). MREQ indicates that the address bus holds a valid address for a memory read or a memory write operation."
+        "quote": "MREQ. Memory Request (output, active Low, tristate). MREQ indicates that the address bus holds a valid address for a memory read or a memory write operation.",
+        "page": 6,
+        "document": "um0080.pdf"
       },
       "iorq": {
-        "quote": "IORQ. Input/Output Request (output, active Low, tristate). IORQ indicates that the lower half of the address bus holds a valid I/O address for an I/O read or write operation."
+        "quote": "IORQ. Input/Output Request (output, active Low, tristate). IORQ indicates that the lower half of the address bus holds a valid I/O address for an I/O read or write operation.",
+        "page": 6,
+        "document": "um0080.pdf"
       },
       "rd": {
-        "quote": "RD. Read (output, active Low, tristate). RD indicates that the CPU wants to read data from memory or an I/O device."
+        "quote": "RD. Read (output, active Low, tristate). RD indicates that the CPU wants to read data from memory or an I/O device.",
+        "page": 6,
+        "document": "um0080.pdf"
       },
       "wr": {
-        "quote": "WR. Write (output, active Low, tristate). WR indicates that the CPU data bus contains valid data to be stored at the addressed memory or I/O location."
+        "quote": "WR. Write (output, active Low, tristate). WR indicates that the CPU data bus contains valid data to be stored at the addressed memory or I/O location.",
+        "page": 7,
+        "document": "um0080.pdf"
       },
       "rfsh": {
-        "quote": "RFSH. Refresh (output, active Low). RFSH, together with MREQ, indicates that the lower seven bits of the system's address bus can be used as a refresh address to the system's dynamic memories."
+        "quote": "RFSH. Refresh (output, active Low). RFSH, together with MREQ, indicates that the lower seven bits of the system's address bus can be used as a refresh address to the system's dynamic memories.",
+        "page": 7,
+        "document": "um0080.pdf"
       }
     },
     "reset": {
@@ -293,6 +305,8 @@
     "interruptModes": {
       "count": 3,
       "quote": "The Z80 CPU contains two interrupt inputs: a software maskable interrupt (INT) and a nonmaskable interrupt (NMI).",
+      "page": 6,
+      "document": "um0080.pdf",
       "nmiVector": 102,
       "nmiVectorQuote": "NMI is always recognized at the end of the current instruction, independent of the status of the interrupt enable flip-flop, and automatically forces the CPU to restart at location 0066h."
     },
@@ -1875,15 +1889,18 @@
         "manualPage": 20
       },
       "maskableIffQuote": "When the CPU accepts a maskable interrupt, both IFF1 and IFF2 are automatically reset, inhibiting further interrupts until the programmer issues a new El instruction.",
+      "page": 12,
+      "document": "um0080.pdf",
       "enableDelayQuote": "When an EI instruction is executed, any pending interrupt request is not accepted until after the instruction following EI is executed.",
       "sampledQuote": "The CPU samples the interrupt signal (INT) with the rising edge of the final clock at the end of any instruction. The signal is not accepted if the internal CPU software controlled interrupt enable flip-flop is not set or if the BUSREQ signal is active.",
       "nmosParityDefect": {
         "note": "A defect Zilog documents, along with its own fix. It is reachable only once interrupts are modelled, because it needs an interrupt accepted at one specific instruction boundary.",
         "quote": "On CMOS Z80 CPU, we've fixed this problem. On NMOS Z80 CPU, in certain narrowly defined circumstances, the Z80 CPU interrupt enable latch, IFF2, does not necessarily reflect the true interrupt status. The two instructions LD A,R and LD A,I copy the state of interrupt enable latch (IFF2) into the parity flag and modifies the accumulator contents (See table 7.0.1 in the Z80 CPU technical manual for details). Thus, it is possible to determine whether interrupts are enabled or disabled at the time that the instruction is executed. This facility is necessary to save the complete state of the machine. However, if an interrupt is accepted by the CPU during the execution of the instruction -- implying that the interrupts must be enabled -- the P/V flag is cleared. This incorrectly asserts that interrupts were disabled at the time the instruction was executed.",
+        "page": 412,
+        "document": "Zilog Z80 Family Data Book, 1989-01, document 00-2490-01, printed page 412",
         "cause": "This paradox can be traced to the internal timing of the CPU. The problem is that the interrupt flip-flop (IFF2) is cleared before it is actually transferred to the P/V flag. The state of the interrupt enable latch is not copied into the parity flag until after the interrupt time, occurring during the execution of the instruction, has been accepted. Since the acceptance of the interrupt automatically clears the interrupt enable latch, the parity flag is also cleared, despite the fact that interrupts were enabled when the instruction started executing.",
         "affects": ["z80"],
         "fixedIn": ["z84c00"],
-        "document": "Zilog Z80 Family Data Book, 1989-01, document 00-2490-01, printed page 412",
         "readOn": "2026-08-21",
         "readVia": "the rendered page image, because the scan's text layer breaks the passage across columns"
       }

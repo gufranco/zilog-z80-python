@@ -123,10 +123,68 @@ def said(node: Any, trail: str = "") -> list[tuple[str, str]]:
 def quoted() -> list[tuple[str, str]]:
     """Every quote a pinned document is supposed to carry."""
     found: list[tuple[str, str]] = []
-    for path in sorted(RECORDS.glob("*.json")):
-        for where, quote in said(json.loads(path.read_text()), path.name):
+    for name, held in loaded():
+        for where, quote in said(held, name):
             if not any(one in where for one in ELSEWHERE):
                 found.append((where, quote))
+    return found
+
+
+PAGE_KEYS = frozenset(
+    {
+        "page",
+        "pages",
+        "manualPage",
+        "printedPage",
+        "printedPages",
+        "pdfPage",
+        "pdfPages",
+        "printedPageRange",
+        "section",
+        "manualSection",
+    }
+)
+"""Every key this family uses to say where in a document something is printed.
+
+A page named on a parent counts for the quotes beneath it, because a fact that
+names one page and quotes three sentences from it is citing all three.
+"""
+
+
+def uncited(node: Any, inherited: bool = False, trail: str = "") -> list[str]:
+    """Every quote no page can be reached from.
+
+    A quote a reader cannot look up is a claim they have to take on trust, which
+    is the thing this whole record exists not to ask of them.
+    """
+    found: list[str] = []
+    if isinstance(node, dict):
+        here = inherited or bool(PAGE_KEYS & set(node))
+        for key, value in node.items():
+            step = f"{trail}.{key}" if trail else key
+            if key.endswith(("quote", "Quote")) and isinstance(value, str):
+                if not here:
+                    found.append(step)
+            else:
+                found.extend(uncited(value, here, step))
+    elif isinstance(node, list):
+        for at, one in enumerate(node):
+            found.extend(uncited(one, inherited, f"{trail}[{at}]"))
+    return found
+
+
+def loaded() -> list[tuple[str, Any]]:
+    """Every record beside this file, by name."""
+    return [(path.name, json.loads(path.read_text())) for path in sorted(RECORDS.glob("*.json"))]
+
+
+def unpaged(records: Iterable[tuple[str, Any]] | None = None) -> list[str]:
+    """Every manufacturer quote in these records that names no page."""
+    found: list[str] = []
+    for name, held in loaded() if records is None else records:
+        for where in uncited(held, False, name):
+            if not any(one in where for one in ELSEWHERE):
+                found.append(where)
     return found
 
 
