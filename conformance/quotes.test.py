@@ -80,6 +80,16 @@ class ReadingTest(unittest.TestCase):
     def test_the_records_hold_quotes_to_look_for(self) -> None:
         self.assertGreater(len(quotes.quoted()), 0)
 
+    def test_a_quote_the_recording_made_is_not_one_to_look_for(self) -> None:
+        found = quotes.quoted([("made-up.json", {"referenceDoes": {"quote": "hello"}})])
+
+        self.assertEqual(found, [])
+
+    def test_but_one_the_manufacturer_made_is(self) -> None:
+        found = quotes.quoted([("made-up.json", {"documentSays": {"quote": "hello"}})])
+
+        self.assertEqual(found, [("made-up.json.documentSays.quote", "hello")])
+
     def test_and_none_of_them_comes_from_the_recording(self) -> None:
         stray = [where for where, _ in quotes.quoted() if "referenceDoes" in where]
 
@@ -98,6 +108,15 @@ class LibraryTest(unittest.TestCase):
 
     def test_something_that_cannot_be_read_yields_no_text(self) -> None:
         self.assertEqual(quotes.readable(ROOT / "no such file.pdf"), "")
+
+    def test_and_a_machine_with_no_reader_installed_checks_nothing(self) -> None:
+        found = quotes.readable(ROOT / "anything.pdf", self.refuse)
+
+        self.assertEqual(found, "")
+
+    @staticmethod
+    def refuse(*rest: object, **named: object) -> None:
+        raise FileNotFoundError("pdftotext")
 
 
 class VerdictTest(unittest.TestCase):

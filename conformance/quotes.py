@@ -100,13 +100,20 @@ def windows(quote: str) -> list[str]:
 
 
 def said(node: Any, trail: str = "") -> list[tuple[str, str]]:
-    """Every quoted sentence in a record, with where it sits."""
+    """Every quoted sentence in a record that a document should carry contiguously.
+
+    Two markers take a quote out of scope, and each says something a reader can
+    check. ``assembled`` means the words are the document's but the order is not:
+    a table or a figure flattened into a sentence, which no search for a run of
+    words can find. ``saysNothing`` means the document is silent and the text is
+    this record summarising that silence, so there is nothing to look for.
+    """
     found: list[tuple[str, str]] = []
     if isinstance(node, dict):
         for key, value in node.items():
             here = f"{trail}.{key}" if trail else key
             if key.endswith(("quote", "Quote")) and isinstance(value, str):
-                if not node.get("assembled"):
+                if not (node.get("assembled") or node.get("saysNothing")):
                     found.append((here, value))
             elif key == "quotes" and isinstance(value, list):
                 found.extend(
@@ -120,10 +127,10 @@ def said(node: Any, trail: str = "") -> list[tuple[str, str]]:
     return found
 
 
-def quoted() -> list[tuple[str, str]]:
+def quoted(records: Iterable[tuple[str, Any]] | None = None) -> list[tuple[str, str]]:
     """Every quote a pinned document is supposed to carry."""
     found: list[tuple[str, str]] = []
-    for name, held in loaded():
+    for name, held in loaded() if records is None else records:
         for where, quote in said(held, name):
             if not any(one in where for one in ELSEWHERE):
                 found.append((where, quote))
@@ -151,6 +158,27 @@ names one page and quotes three sentences from it is citing all three.
 """
 
 
+LOCATOR = re.compile(r"\d+[.\-]\d|page|table|appendix|section", re.IGNORECASE)
+"""What makes a document reference specific enough to look up.
+
+Naming a document is not a citation; naming a section, a table or a page in it
+is. A record that says W65C816S Data Sheet, 8.11.2 has told a reader where to
+look, and demanding a page number on top of that would be asking for a second
+form of the same thing.
+"""
+
+
+def pointed(node: dict[str, Any]) -> bool:
+    """Whether this object says where in a document its quote is printed."""
+    if PAGE_KEYS & set(node):
+        return True
+    for key in ("document", "source"):
+        value = node.get(key)
+        if isinstance(value, str) and LOCATOR.search(value):
+            return True
+    return False
+
+
 def uncited(node: Any, inherited: bool = False, trail: str = "") -> list[str]:
     """Every quote no page can be reached from.
 
@@ -159,11 +187,11 @@ def uncited(node: Any, inherited: bool = False, trail: str = "") -> list[str]:
     """
     found: list[str] = []
     if isinstance(node, dict):
-        here = inherited or bool(PAGE_KEYS & set(node))
+        here = inherited or pointed(node)
         for key, value in node.items():
             step = f"{trail}.{key}" if trail else key
             if key.endswith(("quote", "Quote")) and isinstance(value, str):
-                if not here:
+                if not here and not node.get("saysNothing"):
                     found.append(step)
             else:
                 found.extend(uncited(value, here, step))
@@ -188,23 +216,33 @@ def unpaged(records: Iterable[tuple[str, Any]] | None = None) -> list[str]:
     return found
 
 
-def readable(path: Path) -> str:
-    """The text a document carries, flattened. Empty when nothing can read it."""
-    done = subprocess.run(
-        ["pdftotext", "-layout", str(path), "-"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+def readable(path: Path, run: Any = None) -> str:
+    """The text a document carries, flattened. Empty when nothing can read it.
+
+    A machine without pdftotext installed is the same case as a machine without
+    the documents: nothing can be checked, and saying so is the whole point.
+    Letting the missing binary raise would turn a check that cannot run into a
+    run that failed.
+    """
+    runner = subprocess.run if run is None else run
+    try:
+        done = runner(
+            ["pdftotext", "-layout", str(path), "-"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return ""
     return flatten(done.stdout)
 
 
-def library(where: Path | None = None) -> dict[str, str]:
+def library(where: Path | None = None, run: Any = None) -> dict[str, str]:
     """Every pinned document on this machine, flattened once."""
     folder = DOCUMENTS if where is None else where
     if not folder.is_dir():
         return {}
-    return {path.name: readable(path) for path in sorted(folder.glob("*.pdf"))}
+    return {path.name: readable(path, run) for path in sorted(folder.glob("*.pdf"))}
 
 
 def verify(
