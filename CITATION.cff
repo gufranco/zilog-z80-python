@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: zilog-z80-python
+message: >-
+  If you use this work, or the states it was settled against, please cite it.
+type: software
+authors:
+  - given-names: Gustavo
+    family-names: Franco
+    alias: gufranco
+repository-code: https://github.com/gufranco/zilog-z80-python
+url: https://github.com/gufranco/zilog-z80-python
+abstract: >-
+  A model of the Zilog Z80 and its CMOS descendants, the processor at the centre of a
+  generation of home computers and arcade boards. Every documented instruction, flag
+  rule, machine cycle and pin transition is settled against recorded states and against
+  the manufacturer's own manual rather than against its author's confidence, and nothing
+  in it starts from a clean machine, because silicon powers up holding whatever it holds.
+keywords:
+  - emulation
+  - z80
+  - zilog
+  - processor
+  - hardware-model
+  - conformance
+  - cycle-accurate
+license: MIT
+version: 3.5.1
