@@ -641,7 +641,7 @@
           "printedMCycles": 1
         },
         {
-          "instruction": "EX AF, AF′",
+          "instruction": "EX AF, AF\u2032",
           "manualPage": 125,
           "tStates": 4,
           "machineCycles": [4],
@@ -1989,27 +1989,31 @@
       "id": "ld-dd-nn-m-cycle-count",
       "manualPage": 99,
       "instruction": "LD dd, nn",
-      "printed": "M Cycles 2, T States 10 (4, 3, 3)",
+      "printedQuote": "M Cycles 2, T States 10 (4, 3, 3)",
       "problem": "The breakdown has three groups and sums to ten. Two machine cycles cannot contain three groups of T states.",
       "reading": "Three machine cycles. The breakdown is the column closest to the silicon and it is internally consistent; the M Cycles column is not.",
       "verifiedOn": "the rendered page image, 2026-08-21, so this is what the document prints rather than an artefact of extracting its text",
-      "kind": "timingTableMisprint"
+      "kind": "timingTableMisprint",
+      "assembled": true,
+      "assembledNote": "A row of the instruction table rather than a sentence: the column headings and the cell beneath each one, read across. Every word is the manual's and the order is the table's, so no search for a run of words can place it. This is the only quote on this entry, so the marker silences nothing beside it."
     },
     {
       "id": "res-r-m-cycle-count",
       "manualPage": 260,
       "instruction": "RES r",
-      "printed": "M Cycles 4, T States 8 (4, 4)",
+      "printedQuote": "M Cycles 4, T States 8 (4, 4)",
       "problem": "Two groups summing to eight cannot be four machine cycles. The other three rows in the same table, RES (HL), RES (IX+d) and RES (IY+d), all have a group count matching their M Cycles column.",
       "reading": "Two machine cycles: the prefix fetch and the opcode fetch.",
       "verifiedOn": "the rendered page image, 2026-08-21",
-      "kind": "timingTableMisprint"
+      "kind": "timingTableMisprint",
+      "assembled": true,
+      "assembledNote": "A row of the instruction table rather than a sentence: the column headings and the cell beneath each one, read across. Every word is the manual's and the order is the table's, so no search for a run of words can place it. This is the only quote on this entry, so the marker silences nothing beside it."
     },
     {
       "id": "jr-nc-e-m-cycle-count",
       "manualPage": 269,
       "instruction": "JR NC, e",
-      "printed": "If the condition is not met: M Cycles 7, T States 7 (4, 3)",
+      "printedQuote": "If the condition is not met: M Cycles 7, T States 7 (4, 3)",
       "problem": "The M Cycles column repeats the T States value. Two groups summing to seven are two machine cycles.",
       "reading": "Two machine cycles. The condition-met row on the same page prints 3 and 12 (4, 3, 5), which is consistent.",
       "verifiedOn": "the rendered page image, 2026-08-21",
@@ -2019,7 +2023,7 @@
       "id": "read-strobe-release-prose-versus-figure",
       "manualPage": 9,
       "instruction": "memory read outside an opcode fetch",
-      "printed": "The MREQ signal and the RD signal are used the same way as in a fetch cycle.",
+      "printedQuote": "The MREQ signal and the RD signal are used the same way as in a fetch cycle.",
       "problem": "Figure 5 releases both on the rising edge of T3, so that the refresh address can take the bus. Figure 6 releases both on the falling edge of T3, half a T state later. The two cycles do not use the signals the same way.",
       "reading": "The figures. A fetch has a refresh address waiting for the bus at the start of T3 and a plain read does not, which is why only one of them has to let go early. The prose is a summary and the figures are the specification.",
       "verifiedOn": "the rendered page images of pages 9 and 10, 2026-08-21, with every edge measured rather than eyeballed",
@@ -2035,7 +2039,7 @@
       "kind": "proseVersusFigure",
       "manualPage": 245,
       "instruction": "BIT b, (HL) and BIT b, (IY+d)",
-      "printed": "S is unknown. Z is set if specified bit is 0; otherwise, it is reset. H is set. P/V is unknown. H is reset. C is not affected.",
+      "printedQuote": "S is unknown. Z is set if specified bit is 0; otherwise, it is reset. H is set. P/V is unknown. H is reset. C is not affected.",
       "problem": "The half carry appears twice on one page, once set and once reset, and the negate flag never appears at all. The other two pages of the same instruction, BIT b, r and BIT b, (IX+d), print N is reset in the position where these two print H is reset.",
       "reading": "The letter is wrong on those two pages. Every form sets the half carry and resets the negate, which is what the two correct pages say and what the recorded corpus carries for all four.",
       "verifiedOn": "the extracted text of all four pages of the instruction, 2026-08-21, compared line for line"

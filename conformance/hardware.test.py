@@ -202,7 +202,7 @@ class TimingTableTest(unittest.TestCase):
 
     def test_the_prose_a_figure_or_a_sibling_page_contradicts_is_quoted(self) -> None:
         found = [
-            entry["printed"]
+            entry["printedQuote"]
             for entry in HELD["documentContradictions"]
             if entry["kind"] == "proseVersusFigure"
         ]
@@ -216,7 +216,7 @@ class TimingTableTest(unittest.TestCase):
             if entry["id"] == "bit-instruction-negate-flag-printed-as-half-carry"
         ]
 
-        self.assertEqual(found[0]["printed"].count("H is"), 2)
+        self.assertEqual(found[0]["printedQuote"].count("H is"), 2)
 
     def test_every_row_names_an_instruction_this_core_can_name(self) -> None:
         core_names = named_by_the_core()
