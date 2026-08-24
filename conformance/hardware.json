@@ -1897,12 +1897,14 @@
         "note": "A defect Zilog documents, along with its own fix. It is reachable only once interrupts are modelled, because it needs an interrupt accepted at one specific instruction boundary.",
         "quote": "On CMOS Z80 CPU, we've fixed this problem. On NMOS Z80 CPU, in certain narrowly defined circumstances, the Z80 CPU interrupt enable latch, IFF2, does not necessarily reflect the true interrupt status. The two instructions LD A,R and LD A,I copy the state of interrupt enable latch (IFF2) into the parity flag and modifies the accumulator contents (See table 7.0.1 in the Z80 CPU technical manual for details). Thus, it is possible to determine whether interrupts are enabled or disabled at the time that the instruction is executed. This facility is necessary to save the complete state of the machine. However, if an interrupt is accepted by the CPU during the execution of the instruction -- implying that the interrupts must be enabled -- the P/V flag is cleared. This incorrectly asserts that interrupts were disabled at the time the instruction was executed.",
         "page": 412,
-        "document": "Zilog Z80 Family Data Book, 1989-01, document 00-2490-01, printed page 412",
+        "document": "secondDocument",
         "cause": "This paradox can be traced to the internal timing of the CPU. The problem is that the interrupt flip-flop (IFF2) is cleared before it is actually transferred to the P/V flag. The state of the interrupt enable latch is not copied into the parity flag until after the interrupt time, occurring during the execution of the instruction, has been accepted. Since the acceptance of the interrupt automatically clears the interrupt enable latch, the parity flag is also cleared, despite the fact that interrupts were enabled when the instruction started executing.",
         "affects": ["z80"],
         "fixedIn": ["z84c00"],
         "readOn": "2026-08-21",
-        "readVia": "the rendered page image, because the scan's text layer breaks the passage across columns"
+        "readVia": "the rendered page image, because the scan's text layer breaks the passage across columns",
+        "filePage": 417,
+        "documentTitle": "Zilog Z80 Family Data Book, 1989-01, document 00-2490-01, printed page 412"
       }
     },
     "halt": {
@@ -1917,25 +1919,29 @@
       "document": "secondDocument",
       "section": "Questions and Answers, printed page 413",
       "quote": "In the Z80 CPU Technical Manual (Pages 70 and 72, footnote B), it is stated that \"All control signals are internally synchronized so that they are totally asynchronous with respect to the clock.\" This statement should be amended to say \"When interfacing the Z80 CPU to the Z80 family peripherals, the interface control signals are internally synchronized with the system clock by the peripherals themselves. When interfacing to the Z80 CPU with other devices, these control signals should be synchronized with respect to the system clock.\" Note that the former statement has been removed from the data book and the CPU product specification, but has not been removed from the technical manual yet.",
-      "note": "The publisher amending itself in print, and saying which of its own documents still carries the withdrawn sentence. Nothing here models pin synchronisation, so it changes no behaviour, but it is the proof that an official correction to an official document exists for this part, which is worth knowing before assuming a printed sentence is final."
+      "note": "The publisher amending itself in print, and saying which of its own documents still carries the withdrawn sentence. Nothing here models pin synchronisation, so it changes no behaviour, but it is the proof that an official correction to an official document exists for this part, which is worth knowing before assuming a printed sentence is final.",
+      "filePage": 418
     },
     "modeZeroGeneratesOneAcknowledge": {
       "document": "secondDocument",
       "section": "Questions and Answers, printed page 414",
       "quote": "The 8080 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
-      "note": "The User Manual says the device supplies the instruction and stops there. This says the part generates exactly one acknowledge, where the 8080 it is source compatible with generates three, which answers where the later bytes of a longer response come from: not from further acknowledges. It also says what the normal case is, a one byte restart, which is the case this package can express."
+      "note": "The User Manual says the device supplies the instruction and stops there. This says the part generates exactly one acknowledge, where the 8080 it is source compatible with generates three, which answers where the later bytes of a longer response come from: not from further acknowledges. It also says what the normal case is, a one byte restart, which is the case this package can express.",
+      "filePage": 419
     },
     "nonmaskableDuringReset": {
       "document": "secondDocument",
       "section": "Questions and Answers, printed page 412",
       "quote": "Since NMI input is \"edge-triggered\" input, if the CPU has active NMI \"during\" reset, CPU won't detect NMI and will execute the instruction at 0000h. If NMI goes low after RESET goes inactive, then CPU will process NMI.",
-      "note": "A line held low across a reset is not an edge, so it is not seen. This package takes a non-maskable request as a call rather than as a level, so it has no way to express a line already low when reset ends, and it does not need one."
+      "note": "A line held low across a reset is not an edge, so it is not seen. This package takes a non-maskable request as a call rather than as a level, so it has no way to express a line already low when reset ends, and it does not need one.",
+      "filePage": 417
     },
     "m1IsNotTristatedDuringReset": {
       "document": "secondDocument",
       "section": "Questions and Answers, printed page 412",
       "quote": "Q: Does the CPU tristate M1 during reset? A: No.",
-      "note": "One of the few statements anywhere about what the pins do while reset is held. Nothing here models a pin during reset, so it changes no behaviour and is recorded because the question was asked and answered by the publisher."
+      "note": "One of the few statements anywhere about what the pins do while reset is held. Nothing here models a pin during reset, so it changes no behaviour and is recorded because the question was asked and answered by the publisher.",
+      "filePage": 417
     }
   },
   "documentContradictions": [
@@ -2009,8 +2015,20 @@
     "documentNumber": "00-2490-01",
     "date": "1989-01",
     "readOn": "2026-08-23",
-    "readVia": "z80-family-data-book-1989.pdf, 448 pages. The Questions and Answers section at pages 411 to 424 read as printed; the CPU entries are on 416 to 419 and the rest concern the peripheral parts.",
+    "readVia": "z80-family-data-book-1989.pdf, 448 pages. Printed page numbers run five behind file page numbers here, so printed 412 is file page 417.",
     "whyItMatters": "It is the one Zilog publication that corrects another Zilog publication. Its Q and A section states outright that a sentence in the CPU Technical Manual is wrong, and it answers several questions the User Manual leaves open.",
-    "pinnedIn": "the References section of README.md"
+    "pinnedIn": "the References section of README.md",
+    "sectionPages": [
+      {
+        "from": 416,
+        "to": 419
+      },
+      {
+        "from": 424,
+        "to": 424
+      }
+    ],
+    "whichPagesAreTheCpu": "The Questions and Answers section runs from file page 416 to 424 and covers the whole family, a few entries per part. File pages 416 to 419 and 424 answer questions about the CPU; 421 to 423 answer questions about the PIO, the CTC, the SIO and the DART, which are different chips. The ranges above are the CPU pages, and a fact citing this document has to name one of them.",
+    "howItWasFound": "Each file page from 416 to 424 was read for which part it names. The gap at 420 carries no part at all, and 424 returns to the CPU after the peripheral entries, which is why this is two ranges rather than one."
   }
 }
