@@ -275,6 +275,7 @@
     },
     "flagRegister": {
       "quote": "Table 21. Flag Register Bit Positions. Bit Position 7 S, 6 Z, 5 X, 4 H, 3 X, 2 P/V, 1 N, 0 C",
+      "assembled": true,
       "bits": {
         "c": 0,
         "n": 1,

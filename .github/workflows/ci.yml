@@ -125,6 +125,13 @@ jobs:
       - name: Every timing the manual prints, against a run of the instruction
         run: python conformance/timing.py
 
+      # No document is redistributable, so none is here and this checks nothing
+      # on a runner. It says so rather than reporting a pass: the value is that
+      # somebody running it with the documents on disk gets a real answer, and
+      # that a run without them cannot be mistaken for one.
+      - name: Every quoted sentence, against the document it came from
+        run: python conformance/quotes.py
+
   conformance:
     name: Conformance against the published suite
     runs-on: ubuntu-latest
