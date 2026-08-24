@@ -268,6 +268,10 @@ Independent research, used only where two lineages that never consulted each oth
 | [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git) | The generator that produced it, so it can be rebuilt rather than only downloaded |
 | [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer) | The netlist whose behaviour is recorded in [`conformance/divergences.json`](conformance/divergences.json) |
 
+## Citing this
+
+[CITATION.cff](CITATION.cff) is kept in step with the released version by the same script that stamps the package, so the version it names is the version that shipped. GitHub renders it as a Cite this repository button.
+
 ## License
 
 [MIT](LICENSE)
