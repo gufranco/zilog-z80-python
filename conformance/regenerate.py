@@ -16,7 +16,7 @@ the four globals it reaches for and writes each file as it is asked to, rather
 than collecting an archive it cannot build headless.
 
 Usage:
-    python3 conformance/regenerate.py <output-directory> [--full] [--clone DIR]
+    python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 DEFINITION = ROOT / "suites.json"
 
-USAGE = "usage: regenerate.py <output-directory> [--full] [--clone DIR]"
+USAGE = "usage: python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]"
 
 CLONE_TIMEOUT = 600
 """Seconds to wait on a clone of a repository of a few tens of megabytes."""

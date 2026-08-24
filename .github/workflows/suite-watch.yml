@@ -75,7 +75,7 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          python conformance/singlestep.py ~/.cache/suite/z80/v1 \
+          python -m conformance.singlestep ~/.cache/suite/z80/v1 \
             | tee /tmp/report.txt
 
       - name: Propose the bump

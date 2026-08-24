@@ -197,9 +197,9 @@ A byte derived from the address, the same every time, and not zero. The part has
 Every instruction is checked against a published per-opcode suite that states each register and each byte of memory before and after: **1,604,000 cases, no failures**. The comparison then goes further and checks what the part put on the bus, T state by T state, address by address, pin by pin: **22,005,372 T states, no failures**.
 
 ```bash
-python conformance/fetch.py ~/.cache/conformance-suites
-python conformance/singlestep.py ~/.cache/conformance-suites/z80/v1
-python conformance/cycles.py ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.fetch ~/.cache/conformance-suites
+python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 ```
 
 The suite commit is pinned so a build is reproducible, and a weekly job runs against whatever upstream holds now and opens a pull request or an issue. A runner reports what it checked rather than a bare pass, because a run that parsed nothing and found no failures exits zero and looks identical to one that checked everything.

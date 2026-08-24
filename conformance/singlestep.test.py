@@ -6,9 +6,8 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import singlestep
+from conformance import singlestep
 
 
 def case(name: str = "00 0000", **overrides: Any) -> dict[str, Any]:

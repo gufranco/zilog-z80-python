@@ -16,9 +16,8 @@ from typing import Any, override
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import links  # noqa: E402
+from conformance import links  # noqa: E402
 
 
 class Refusal(urllib.error.HTTPError):

@@ -12,7 +12,7 @@ case never mentioned is reading something undefined, and a run that quietly
 answered zero would hide it.
 
 Usage:
-    python3 conformance/singlestep.py <suite-directory> [--limit N] [--opcode NAME]
+    python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from z80 import bus, core, memory
 
-USAGE = "usage: singlestep.py <suite-directory> [--limit N] [--opcode NAME]"
+USAGE = "usage: python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]"
 
 REGISTERS = (
     "a",

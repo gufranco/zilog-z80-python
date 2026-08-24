@@ -102,9 +102,9 @@ python3 -m coverage report
 The conformance run needs the corpus, which is fetched rather than vendored:
 
 ```bash
-python3 conformance/fetch.py ~/.cache/conformance-suites
-python3 conformance/singlestep.py ~/.cache/conformance-suites/z80/v1
-python3 conformance/cycles.py ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.fetch ~/.cache/conformance-suites
+python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 ```
 
 ## Conventions that are not negotiable

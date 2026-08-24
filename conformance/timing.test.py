@@ -15,9 +15,8 @@ from typing import override
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import timing  # noqa: E402
+from conformance import timing  # noqa: E402
 
 SURVEYED = timing.survey()
 

@@ -6,10 +6,8 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import cycles
-
+from conformance import cycles
 from z80 import bus
 
 SUITE = Path.home() / ".cache" / "conformance-suites" / "z80" / "v1"

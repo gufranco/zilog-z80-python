@@ -24,7 +24,7 @@ the way the manual's figures do. The two corpora are not interchangeable, and
 neither is a directory the other runs against.
 
 Usage:
-    python3 conformance/cycles.py <suite-directory> [--limit N] [--opcode NAME]
+    python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME]
         [--shape manual|recording]
 """
 
@@ -37,10 +37,8 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from singlestep import ScriptedPorts, Usage, machine_for
-
+from conformance.singlestep import ScriptedPorts, Usage, machine_for
 from z80 import bus
 
 __all__ = [
@@ -55,7 +53,7 @@ __all__ = [
     "run",
 ]
 
-USAGE = "usage: cycles.py <suite-directory> [--limit N] [--opcode NAME] [--shape manual|recording]"
+USAGE = "usage: python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual|recording]"
 
 REPORT_LIMIT = 20
 

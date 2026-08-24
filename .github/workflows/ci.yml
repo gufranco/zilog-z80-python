@@ -123,14 +123,14 @@ jobs:
       # check that holds the core to Zilog rather than to a recording, and it
       # needs no corpus, so a machine with no network still runs it.
       - name: Every timing the manual prints, against a run of the instruction
-        run: python conformance/timing.py
+        run: python -m conformance.timing
 
       # No document is redistributable, so none is here and this checks nothing
       # on a runner. It says so rather than reporting a pass: the value is that
       # somebody running it with the documents on disk gets a real answer, and
       # that a run without them cannot be mistaken for one.
       - name: Every quoted sentence, against the document it came from
-        run: python conformance/quotes.py
+        run: python -m conformance.quotes
 
   conformance:
     name: Conformance against the published suite
@@ -157,7 +157,7 @@ jobs:
 
       - name: Fetch the suite
         if: steps.cache.outputs.cache-hit != 'true'
-        run: python conformance/fetch.py ~/.cache/conformance-suites
+        run: python -m conformance.fetch ~/.cache/conformance-suites
 
       # A pull request runs a tenth of the suite for a quick answer. A push to
       # main runs all one thousand cases per opcode across all sixteen hundred
@@ -170,9 +170,9 @@ jobs:
             limit=0
           fi
           if [ "${limit}" = "0" ]; then
-            python conformance/singlestep.py ~/.cache/conformance-suites/z80/v1
+            python -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
           else
-            python conformance/singlestep.py ~/.cache/conformance-suites/z80/v1 --limit "${limit}"
+            python -m conformance.singlestep ~/.cache/conformance-suites/z80/v1 --limit "${limit}"
           fi
         shell: bash
 
@@ -201,7 +201,7 @@ jobs:
 
       - name: Fetch the suite
         if: steps.cache.outputs.cache-hit != 'true'
-        run: python conformance/fetch.py ~/.cache/conformance-suites
+        run: python -m conformance.fetch ~/.cache/conformance-suites
 
       # The state comparison beside this one asks what an instruction left
       # behind. This asks what the part did while producing it: the address, the
@@ -211,8 +211,8 @@ jobs:
       - name: Compare every T state
         run: |
           if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-            python conformance/cycles.py ~/.cache/conformance-suites/z80/v1 --limit 100
+            python -m conformance.cycles ~/.cache/conformance-suites/z80/v1 --limit 100
           else
-            python conformance/cycles.py ~/.cache/conformance-suites/z80/v1
+            python -m conformance.cycles ~/.cache/conformance-suites/z80/v1
           fi
         shell: bash
