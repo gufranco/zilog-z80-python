@@ -267,7 +267,8 @@
         },
         "units": "T states from the start of the machine cycle",
         "columnsNote": "The columns each cycle carries are what the rule above gives when applied to the edges beside them. They are not a coverage of the intervals: a pin asserted for part of a state and released before that state ends does not appear in it."
-      }
+      },
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "pins": {
       "note": "Only the pins a bus recording can observe. The recording names four of them.",
@@ -300,7 +301,8 @@
         "quote": "RFSH. Refresh (output, active Low). RFSH, together with MREQ, indicates that the lower seven bits of the system's address bus can be used as a refresh address to the system's dynamic memories.",
         "page": 7,
         "document": "userManual"
-      }
+      },
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "reset": {
       "quote": "RESET. Reset (input, active Low). RESET initializes the CPU as follows: it resets the interrupt enable flip-flop, clears the Program Counter and registers I and R, and sets the interrupt status to Mode 0. During reset time, the address and data bus enter a high-impedance state, and all control output signals enter an inactive state. RESET must be active for a minimum of three full clock cycles before a reset operation is complete.",
@@ -309,7 +311,8 @@
       "clearsInterruptEnable": true,
       "leavesEverythingElse": "The manual names what reset defines. Every other register keeps what it held, which is why this model seeds them rather than clearing them.",
       "minimumClockCycles": 3,
-      "manualPage": 6
+      "manualPage": 6,
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "flagRegister": {
       "quote": "Table 21. Flag Register Bit Positions. Bit Position 7 S, 6 Z, 5 X, 4 H, 3 X, 2 P/V, 1 N, 0 C",
@@ -326,7 +329,8 @@
       },
       "unusedBitsQuote": "Each of these two Flag registers contains 6 bits of status information that are set or cleared by CPU operations; bits 3 and 5 are not used.",
       "note": "The manual calls bits 3 and 5 not used and gives them no behaviour. The part drives them anyway, and what it drives them with is settled by the recording rather than by this file. That is an absence in the document, not a contradiction of it.",
-      "manualPage": 65
+      "manualPage": 65,
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "interruptModes": {
       "count": 3,
@@ -334,7 +338,8 @@
       "page": 6,
       "document": "userManual",
       "nmiVector": 102,
-      "nmiVectorQuote": "NMI is always recognized at the end of the current instruction, independent of the status of the interrupt enable flip-flop, and automatically forces the CPU to restart at location 0066h."
+      "nmiVectorQuote": "NMI is always recognized at the end of the current instruction, independent of the status of the interrupt enable flip-flop, and automatically forces the CPU to restart at location 0066h.",
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "instructionTiming": {
       "note": "Every per-instruction timing table in the manual, one row per printed row, each carrying the page it was read from. machineCycles is the manual's own parenthesised breakdown, which sums to tStates on every one of these rows. printedMCycles is the manual's M Cycles column, kept because it is what the page says even where it is wrong.",
@@ -1873,7 +1878,8 @@
       },
       "howItWasRead": "Read twice, from the two descriptions of the same pages, and the record is what both agree on. The first reading rendered each page at 300 dots per inch and took the column boundaries from the header cells. The second parsed the document's own text layer, which carries all 152 tables. Neither is clean on its own: the recogniser drops a lone digit, and the text layer prints SBC A, (lY+d) and RRC (lY+d) with a lowercase L for the index register. Where one dropped a cell the other supplied it, and where a value could be had from neither it was re-rendered alone until two crops agreed.",
       "reReadOn": "2026-08-23",
-      "whyItWasReadAgain": "An earlier reading took the text nearest each table as the instruction name, which is what put words like Description and Register r in 43 rows. Two layouts explain it: a page describing one instruction prints three columns and names the instruction only in its heading, sometimes on the previous page, while a group page prints a fourth column naming each member. Keying on the plural M Cycles also walked past pages 152 and 154, which head the column MCycle and M Cycle, so ADC A, s and SUB s were absent from the record entirely."
+      "whyItWasReadAgain": "An earlier reading took the text nearest each table as the instruction name, which is what put words like Description and Register r in 43 rows. Two layouts explain it: a page describing one instruction prints three columns and names the instruction only in its heading, sometimes on the previous page, while a group page prints a fourth column naming each member. Keying on the plural M Cycles also walked past pages 152 and 154, which head the column MCycle and M Cycle, so ADC A, s and SUB s were absent from the record entirely.",
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "interruptResponse": {
       "note": "What the part does once it accepts an interrupt. Every total below is printed or is stated as an addition to a printed one, and the derivation is named in each case.",
@@ -1930,8 +1936,11 @@
         "readOn": "2026-08-21",
         "readVia": "the rendered page image, because the scan's text layer breaks the passage across columns",
         "filePage": 417,
-        "documentTitle": "Zilog Z80 Family Data Book, 1989-01, document 00-2490-01, printed page 412"
-      }
+        "documentTitle": "Zilog Z80 Family Data Book, 1989-01, document 00-2490-01, printed page 412",
+        "appliesTo": ["z80"],
+        "whyOnlyThatPart": "The quote names the split itself: the CMOS part had it fixed, so z84c00 is out. The NEC second source is NMOS and does not clear the flag either, which is a difference this package already models as interrupt_clears_parity, true on z80 alone. So the defect is the Zilog NMOS part's, and naming all three NMOS-or-not would contradict the model."
+      },
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "halt": {
       "note": "What a halted part does, which is not nothing.",
@@ -1939,35 +1948,40 @@
       "tStatesPerCycle": 4,
       "sampledQuote": "The two interrupt lines are sampled with the rising clock edge during each T4 state as depicted in Figure 11. If a nonmaskable interrupt is received or a maskable interrupt is received and the interrupt enable flip-flop is set, then the HALT state is exited on the next rising clock edge.",
       "repeatsQuote": "The HALT instruction is repeated during the memory cycle shown in Figure 11.",
-      "manualPage": 14
+      "manualPage": 14,
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "technicalManualAmended": {
       "document": "familyDataBook",
       "section": "Questions and Answers, printed page 413",
       "quote": "In the Z80 CPU Technical Manual (Pages 70 and 72, footnote B), it is stated that \"All control signals are internally synchronized so that they are totally asynchronous with respect to the clock.\" This statement should be amended to say \"When interfacing the Z80 CPU to the Z80 family peripherals, the interface control signals are internally synchronized with the system clock by the peripherals themselves. When interfacing to the Z80 CPU with other devices, these control signals should be synchronized with respect to the system clock.\" Note that the former statement has been removed from the data book and the CPU product specification, but has not been removed from the technical manual yet.",
       "note": "The publisher amending itself in print, and saying which of its own documents still carries the withdrawn sentence. Nothing here models pin synchronisation, so it changes no behaviour, but it is the proof that an official correction to an official document exists for this part, which is worth knowing before assuming a printed sentence is final.",
-      "filePage": 418
+      "filePage": 418,
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "modeZeroGeneratesOneAcknowledge": {
       "document": "familyDataBook",
       "section": "Questions and Answers, printed page 414",
       "quote": "The 8080 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
       "note": "The User Manual says the device supplies the instruction and stops there. This says the part generates exactly one acknowledge, where the 8080 it is source compatible with generates three, which answers where the later bytes of a longer response come from: not from further acknowledges. It also says what the normal case is, a one byte restart, which is the case this package can express.",
-      "filePage": 419
+      "filePage": 419,
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "nonmaskableDuringReset": {
       "document": "familyDataBook",
       "section": "Questions and Answers, printed page 412",
       "quote": "Since NMI input is \"edge-triggered\" input, if the CPU has active NMI \"during\" reset, CPU won't detect NMI and will execute the instruction at 0000h. If NMI goes low after RESET goes inactive, then CPU will process NMI.",
       "note": "A line held low across a reset is not an edge, so it is not seen. This package takes a non-maskable request as a call rather than as a level, so it has no way to express a line already low when reset ends, and it does not need one.",
-      "filePage": 417
+      "filePage": 417,
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "m1IsNotTristatedDuringReset": {
       "document": "familyDataBook",
       "section": "Questions and Answers, printed page 412",
       "quote": "Q: Does the CPU tristate M1 during reset? A: No.",
       "note": "One of the few statements anywhere about what the pins do while reset is held. Nothing here models a pin during reset, so it changes no behaviour and is recorded because the question was asked and answered by the publisher.",
-      "filePage": 417
+      "filePage": 417,
+      "appliesTo": ["upd780c", "z80", "z84c00"]
     }
   },
   "documentContradictions": [
@@ -2034,5 +2048,25 @@
     "internalCyclePlacement": "The manual gives how many T states each machine cycle takes and how many machine cycles an instruction has. It does not say, for a machine cycle longer than its bus access needs, where within that cycle the bus is idle. A cycle-by-cycle model needs that ordering and has to take it from the recording.",
     "undocumentedOpcodes": "The manual describes the documented instruction set. The prefixed forms that reach the halves of the index registers, and the ED opcodes that are not listed, are not in it at all.",
     "acknowledgeInternalState": "The printed totals for mode 1 and mode 2 both give the interrupt acknowledge cycle seven T states, which is a five state M1 plus the two wait states the manual adds. Figure 9 draws six states and stops. Where the seventh falls within the cycle is not drawn and not stated."
+  },
+  "modelDifferences": {
+    "note": "Three names, one core, and three option sets rather than three builders. What separates them is the carry rule, the byte an output with no source leaves on the bus, and whether an accepted interrupt clears the parity flag. A fact names the models it governs, and almost all of them govern every model, because the instruction set and the bus are the same part.",
+    "models": {
+      "upd780c": {
+        "carryRule": "nec",
+        "floatingOutput": 0,
+        "interruptClearsParity": false
+      },
+      "z80": {
+        "carryRule": "zilog",
+        "floatingOutput": 0,
+        "interruptClearsParity": true
+      },
+      "z84c00": {
+        "carryRule": "zilog",
+        "floatingOutput": 255,
+        "interruptClearsParity": false
+      }
+    }
   }
 }

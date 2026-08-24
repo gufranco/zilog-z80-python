@@ -21,6 +21,7 @@ from typing import Any, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import z80
 from z80 import Cpu, bus, core, flags, memory, opcodes
 
 HELD = json.loads((Path(__file__).resolve().parent / "hardware.json").read_text())
@@ -1287,6 +1288,67 @@ class DivergenceTest(unittest.TestCase):
         ]
 
         self.assertTrue(found[0]["wouldReopenIt"])
+
+
+class ModelScopeTest(unittest.TestCase):
+    """That every fact says which of the three parts it governs.
+
+    Three names share one core here and differ by option: the carry rule, the
+    byte an output with no source leaves on the bus, and whether an accepted
+    interrupt clears the parity flag. Most facts govern all three, which is worth
+    saying rather than leaving to be assumed, because the one that does not is
+    the defect the publisher fixed in the CMOS part.
+
+    The model list comes from the package, so a name added or removed there is a
+    failure here rather than a record that quietly disagrees with the code.
+    """
+
+    def test_every_fact_names_the_models_it_governs(self) -> None:
+        unscoped = [
+            name
+            for name, fact in HELD["facts"].items()
+            if not isinstance(fact.get("appliesTo"), list) or not fact["appliesTo"]
+        ]
+
+        self.assertEqual(unscoped, [])
+
+    def test_and_every_model_it_names_is_one_the_package_builds(self) -> None:
+        invented = sorted(
+            {
+                model
+                for fact in HELD["facts"].values()
+                for model in fact["appliesTo"]
+                if model not in z80.MODELS
+            }
+        )
+
+        self.assertEqual(invented, [])
+
+    def test_the_recorded_differences_match_the_models(self) -> None:
+        for name, one in HELD["modelDifferences"]["models"].items():
+            described = z80.describe(name)
+
+            self.assertEqual(one["carryRule"], described.carry_rule, name)
+            self.assertEqual(one["floatingOutput"], described.floating_output, name)
+            self.assertEqual(one["interruptClearsParity"], described.interrupt_clears_parity, name)
+
+    def test_and_cover_every_model_the_package_builds(self) -> None:
+        self.assertEqual(sorted(HELD["modelDifferences"]["models"]), sorted(z80.MODELS))
+
+    def test_the_parity_defect_is_the_one_fact_that_is_not_every_part(self) -> None:
+        """The quote names the split, and the model already carries it.
+
+        A fact scoped to fewer parts than the rest is the interesting case, so it
+        is checked by name: the flag it describes is set on one model here and the
+        record has to agree with that rather than with the word NMOS.
+        """
+        defect = HELD["facts"]["interruptResponse"]["nmosParityDefect"]
+
+        clearing = [
+            name for name in sorted(z80.MODELS) if z80.describe(name).interrupt_clears_parity
+        ]
+
+        self.assertEqual(defect["appliesTo"], clearing)
 
 
 if __name__ == "__main__":
