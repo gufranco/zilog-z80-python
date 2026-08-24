@@ -55,7 +55,18 @@
           "howToBuild": "python3 conformance/regenerate.py <directory> --full"
         },
         "howToRun": "python3 conformance/regenerate.py <directory> [--full]"
-      }
+      },
+      "emptyFiles": 0
     }
-  ]
+  ],
+  "counted": {
+    "note": "What the numbers in the readme are, and where each comes from. Counted on 2026-08-25 against the pins above.",
+    "conformanceCases": {
+      "value": 1604000,
+      "howItIsKnown": "Derived, not measured: the suite's file count times its cases per opcode, less the files the publisher ships empty. A test checks the readme against that sum, so neither can drift from the pin without the other."
+    },
+    "tStates": {
+      "howItIsKnown": "Measured, because it cannot be derived: how many T states a case carries is a property of the instruction it runs, not of the file count."
+    }
+  }
 }

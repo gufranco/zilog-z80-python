@@ -3,13 +3,14 @@ import importlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import override
+from typing import Any, override
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -43,6 +44,42 @@ class DefinitionTest(unittest.TestCase):
             path.write_text(json.dumps({"suites": [A_SUITE]}))
 
             self.assertEqual(fetch.definitions(path)[0]["name"], "65816")
+
+
+class ClaimedCaseCountTest(unittest.TestCase):
+    """That the case count the readme advertises is the one the pins imply.
+
+    A figure in a readme that nothing derives is a figure that drifts. This one
+    is derivable, so holding the readme to it means the claim cannot outlive a
+    change to the pin.
+    """
+
+    def held(self) -> Any:
+        return json.loads(fetch.DEFINITION.read_text())
+
+    def test_the_readme_advertises_the_number_the_pins_imply(self) -> None:
+        derived = sum(
+            (one["files"] - one["emptyFiles"]) * one["tests_per_opcode"]
+            for one in self.held()["suites"]
+        )
+        readme = (fetch.DEFINITION.parent.parent / "README.md").read_text()
+        claimed = re.search(r"\*\*([\d,]+)\*\* conformance cases", readme)
+
+        assert claimed is not None
+        self.assertEqual(int(claimed.group(1).replace(",", "")), derived)
+
+    def test_every_suite_says_how_many_files_it_ships_empty(self) -> None:
+        """Zero is an answer and has to be written, because absent is not."""
+        missing = [one["name"] for one in self.held()["suites"] if "emptyFiles" not in one]
+
+        self.assertEqual(missing, [])
+
+    def test_the_record_says_how_each_advertised_figure_is_known(self) -> None:
+        """One is derived and one is measured, and a reader cannot tell by looking."""
+        counted = self.held()["counted"]
+
+        for name in ("conformanceCases", "tStates"):
+            self.assertIn("howItIsKnown", counted[name])
 
 
 class CheckoutTest(unittest.TestCase):
