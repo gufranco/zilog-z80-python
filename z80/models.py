@@ -46,13 +46,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, override
 
+from .errors import UnknownCarryRule, UnknownModelError
+
 if TYPE_CHECKING:
     from .core import Cpu
     from .memory import SparseMemory
-
-
-class UnknownModelError(Exception):
-    pass
 
 
 ZILOG_CARRY = "zilog"
@@ -62,10 +60,6 @@ NEC_CARRY = "nec"
 """They come from the accumulator alone, and the latch does not reach them."""
 
 CARRY_RULES = (ZILOG_CARRY, NEC_CARRY)
-
-
-class UnknownCarryRule(Exception):
-    """A model asked for a carry flag rule nobody has measured."""
 
 
 class Model:

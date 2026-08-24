@@ -31,6 +31,8 @@ import threading
 from types import TracebackType
 from typing import Any
 
+from .errors import ClockClosed
+
 
 class Clock:
     """One part, advanced a cycle at a time rather than an instruction at a time.
@@ -141,10 +143,6 @@ class Clock:
         trace: TracebackType | None,
     ) -> None:
         self.close()
-
-
-class ClockClosed(Exception):
-    """A clock that has been closed cannot be ticked again."""
 
 
 class _Closed(BaseException):

@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import bus
+from z80 import bus, errors
 
 
 def recorder() -> bus.Bus:
@@ -25,11 +25,11 @@ class ShapeTest(unittest.TestCase):
         self.assertFalse(bus.Bus(shape=bus.RECORDING).follows_the_manual)
 
     def test_a_shape_that_is_neither_is_refused_rather_than_guessed(self) -> None:
-        with self.assertRaises(bus.UnknownShape):
+        with self.assertRaises(errors.UnknownShape):
             bus.Bus(shape="invented")
 
     def test_and_the_refusal_names_the_shapes_there_are(self) -> None:
-        with self.assertRaises(bus.UnknownShape) as raised:
+        with self.assertRaises(errors.UnknownShape) as raised:
             bus.Bus(shape="invented")
 
         self.assertIn(bus.MANUAL, str(raised.exception))

@@ -37,6 +37,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from . import blocks, bus, flags, models
+from .errors import RunLimit
 from .memory import UNSET_SEED
 from .registers import Registers
 
@@ -77,16 +78,6 @@ reports the opposite, and ``conformance/divergences.json`` carries both. Zilog's
 sentence is sound advice to whoever builds the table, because an odd pointer makes
 the two bytes straddle two entries. It is not what the silicon does with the byte.
 """
-
-
-class RunLimit(Exception):
-    """A bounded run reached its bound before the caller's condition held.
-
-    Only `run_until` raises this, and only when a caller asked for a bound. A
-    part has no such limit: given a program that never satisfies the condition
-    it runs until the power goes. The bound is a courtesy to whoever is driving,
-    not a property of the silicon.
-    """
 
 
 class Cpu:

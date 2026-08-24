@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import opcodes
+from z80 import errors, opcodes
 
 
 def render(program: list[int], at: int = 0x8000) -> str:
@@ -128,11 +128,11 @@ class LengthTest(unittest.TestCase):
         self.assertEqual(opcodes.decode(bytes([0xDD, 0xCB, 0x05, 0x46]), 0, 0).size, 4)
 
     def test_an_instruction_cut_short_by_the_end_of_the_data_is_refused(self) -> None:
-        with self.assertRaises(opcodes.Truncated):
+        with self.assertRaises(errors.Truncated):
             opcodes.decode(bytes([0x21, 0x34]), 0, 0)
 
     def test_a_prefix_with_nothing_after_it_is_refused_too(self) -> None:
-        with self.assertRaises(opcodes.Truncated):
+        with self.assertRaises(errors.Truncated):
             opcodes.decode(bytes([0xDD]), 0, 0)
 
 

@@ -5,7 +5,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import Ports, SparseMemory, core, flags
+from z80 import Ports, SparseMemory, core, errors, flags
 from z80.core import Cpu
 
 
@@ -302,7 +302,7 @@ class ClockTest(unittest.TestCase):
     def test_a_bounded_run_gives_up_rather_than_hanging(self) -> None:
         cpu, _ = machine([0xC3, 0x00, 0x80])
 
-        with self.assertRaises(core.RunLimit):
+        with self.assertRaises(errors.RunLimit):
             cpu.run_until(lambda _: False, limit=50)
 
     def test_a_bounded_run_that_reaches_its_condition_does_not_raise(self) -> None:

@@ -23,13 +23,19 @@ real silicon.
 
 from typing import Any
 
-from . import blocks, bus, core, flags, memory, models, opcodes, registers
-from .bus import UnknownShape
-from .clock import Clock, ClockClosed
-from .core import RunLimit
+from . import blocks, bus, core, errors, flags, memory, models, opcodes, registers
+from .clock import Clock
+from .errors import (
+    ClockClosed,
+    RunLimit,
+    Truncated,
+    UnknownCarryRule,
+    UnknownModelError,
+    UnknownShape,
+)
 from .memory import UNSET_SEED, Memory, Ports, SparseMemory
-from .models import MODELS, Model, UnknownCarryRule, UnknownModelError, describe
-from .opcodes import Truncated, decode, disassemble
+from .models import MODELS, Model, describe
+from .opcodes import decode, disassemble
 from .registers import Registers
 from .version import VERSION
 
@@ -75,6 +81,7 @@ __all__ = [
     "decode",
     "describe",
     "disassemble",
+    "errors",
     "flags",
     "memory",
     "models",

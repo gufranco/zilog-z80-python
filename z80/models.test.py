@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import Cpu, Ports, SparseMemory, bus, models
+from z80 import Cpu, Ports, SparseMemory, bus, errors, models
 from z80.core import Cpu as Part
 
 
@@ -24,7 +24,7 @@ class CatalogueTest(unittest.TestCase):
         self.assertLessEqual(rules, set(models.CARRY_RULES))
 
     def test_a_carry_rule_nobody_measured_is_refused(self) -> None:
-        with self.assertRaises(models.UnknownCarryRule):
+        with self.assertRaises(errors.UnknownCarryRule):
             models.Model("invented", "a part nobody made", 0x00, carry_rule="guessed")
 
     def test_every_model_says_whether_a_suite_stands_behind_it(self) -> None:
@@ -74,15 +74,15 @@ class NameTest(unittest.TestCase):
 
     def test_a_part_this_core_does_not_implement_is_refused(self) -> None:
         for name in ("z180", "ez80"):
-            with self.assertRaises(models.UnknownModelError):
+            with self.assertRaises(errors.UnknownModelError):
                 models.describe(name)
 
     def test_a_name_no_part_answers_to_is_refused(self) -> None:
-        with self.assertRaises(models.UnknownModelError):
+        with self.assertRaises(errors.UnknownModelError):
             models.describe("6502")
 
     def test_and_the_refusal_lists_what_there_is(self) -> None:
-        with self.assertRaises(models.UnknownModelError) as caught:
+        with self.assertRaises(errors.UnknownModelError) as caught:
             models.describe("nothing")
 
         self.assertIn("z80", str(caught.exception))

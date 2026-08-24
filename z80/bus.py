@@ -66,6 +66,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import override
 
+from .errors import UnknownShape
+
 READ = "r"
 
 WRITE = "w"
@@ -166,10 +168,6 @@ RECORDING = "recording"
 """One strobe per transfer, which is what the pinned corpus contains."""
 
 SHAPES = (MANUAL, RECORDING)
-
-
-class UnknownShape(Exception):
-    """A bus asked for a pin shape that is neither documented nor recorded."""
 
 
 class Bus:

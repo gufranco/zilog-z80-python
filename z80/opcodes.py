@@ -16,6 +16,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import override
 
+from .errors import Truncated
+
 REGISTERS = ("b", "c", "d", "e", "h", "l", "(hl)", "a")
 
 PAIRS_SP = ("bc", "de", "hl", "sp")
@@ -39,10 +41,6 @@ BLOCKS = (
 INTERRUPT_MODES = (0, 0, 1, 2, 0, 0, 1, 2)
 
 INDEX_PREFIX = {0xDD: "ix", 0xFD: "iy"}
-
-
-class Truncated(Exception):
-    pass
 
 
 class Instruction:
