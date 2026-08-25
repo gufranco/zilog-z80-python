@@ -63,11 +63,16 @@ class MemoryTest(unittest.TestCase):
 
         self.assertNotEqual(held.data, bytearray(0x100))
 
-    def test_no_caller_can_ask_for_a_cleared_one(self) -> None:
-        with self.assertRaises(TypeError):
-            Memory(0x100, fill=0)  # type: ignore[call-arg]
+    def test_a_cleared_one_has_to_be_asked_for_in_writing(self) -> None:
+        """The rule is the default, not the absence of an option.
 
-    def test_nor_is_it_one_byte_repeated(self) -> None:
+        A caller who genuinely wants zeroes says so, and the request is the same
+        word in every member of this family. What must never happen is getting
+        them without asking.
+        """
+        self.assertEqual(set(Memory(0x100, fill=0).data), {0})
+
+    def test_and_the_default_is_not_one_byte_repeated(self) -> None:
         held = Memory(0x100)
 
         self.assertGreater(len(set(held.data)), 1)

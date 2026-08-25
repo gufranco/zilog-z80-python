@@ -188,26 +188,6 @@ def store_attribute() -> str:
     return found[0]
 
 
-def a_store_of_zeroes() -> Any:
-    """A store the part will run through rather than halt in.
-
-    Taken off a part the member built and written through the part, so no store
-    type has to be named and no constructor keyword has to be guessed. Left in
-    scrambled memory a part reaches an undocumented opcode within a few dozen
-    instructions and stops, which is correct behaviour and useless for testing a
-    limit.
-
-    A page is enough: the checks that use this run a few dozen instructions from
-    address zero, and zeroing the whole space on a part with a sixteen megabyte
-    one costs seconds for nothing.
-    """
-    part = PACKAGE.Cpu(PACKAGE.DEFAULT_MODEL)
-    held = getattr(part, store_attribute())
-    for address in range(0x100):
-        part.write8(address, 0x00)
-    return held
-
-
 def accounts_for_one_interrupt(node: Any) -> bool:
     """Whether a record says anything about the part having one interrupt line.
 
@@ -239,11 +219,14 @@ def at_the_start(part: Any) -> None:
 def a_running_part() -> Part:
     """A part pointed at a field of no-operations, so a bound is what is tested.
 
-    Left in scrambled memory a part reaches an undocumented opcode within a few
-    dozen instructions and halts, which is correct behaviour and useless for
-    testing a limit.
+    `fill` is the one spelling across this family for a store holding one byte
+    everywhere. It exists for exactly this: left in scrambled memory a part
+    reaches an undocumented opcode within a few dozen instructions and stops,
+    which is correct behaviour and useless for testing a limit. Three of the four
+    clocked members did not have it and each needed a different keyword, so a
+    check written against any one of them reported the other three as broken.
     """
-    part = PACKAGE.Cpu(PACKAGE.DEFAULT_MODEL, a_store_of_zeroes())
+    part = PACKAGE.Cpu(PACKAGE.DEFAULT_MODEL, fill=0)
     at_the_start(part)
     checked: Part = part
     return checked
