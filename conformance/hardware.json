@@ -6,7 +6,11 @@
       "the recording named in suites.json, for behaviour the manual does not specify: the undocumented flag bits, WZ, Q, and the order of internal cycles",
       "neither overrides the other, because they answer different questions"
     ],
-    "why": "The recording was produced by translating an emulator's core, which its own README states. That is a good source for behaviour nobody documented and a poor one for a figure the manufacturer printed. Where the two disagree the manual wins and the disagreement is recorded in divergences.json rather than settled quietly."
+    "why": "The recording was produced by translating an emulator's core, which its own README states. That is a good source for behaviour nobody documented and a poor one for a figure the manufacturer printed. Where the two disagree the manual wins and the disagreement is recorded in divergences.json rather than settled quietly.",
+    "comparedAgainst": {
+      "runner": "conformance/singlestep.py",
+      "what": "A per-opcode suite recorded from an independent implementation, and conformance/cycles.py beside it for every T state of the bus."
+    }
   },
   "part": "Zilog Z80 CPU",
   "verified": true,
