@@ -98,7 +98,12 @@ class Part(Protocol):
 
 
 def a_part() -> Part:
-    part: Part = z80.Cpu(z80.DEFAULT_MODEL)
+    """One part, built the way the standard says every member builds one.
+
+    A member that is not a clocked part has no `Cpu` at all, and the checks
+    that call this are skipped there.
+    """
+    part: Part = PACKAGE.Cpu(PACKAGE.DEFAULT_MODEL)
     return part
 
 
@@ -109,7 +114,7 @@ def a_running_part() -> Part:
     dozen instructions and halts, which is correct behaviour and useless for
     testing a limit.
     """
-    part = z80.Cpu("z80", z80.Memory(image=bytes([0x00] * 256)))
+    part = PACKAGE.Cpu(PACKAGE.DEFAULT_MODEL, PACKAGE.Memory(image=bytes([0x00] * 256)))
     part.registers.pc = 0x0000
     checked: Part = part
     return checked
@@ -202,7 +207,7 @@ class PromisedBehaviourTest(unittest.TestCase):
     def test_a_bounded_run_gives_up_rather_than_hanging(self) -> None:
         part = a_running_part()
 
-        with self.assertRaises(z80.RunLimit):
+        with self.assertRaises(PACKAGE.RunLimit):
             part.run_until(lambda _: False, limit=32)
 
     def test_a_running_part_is_not_held(self) -> None:
@@ -297,12 +302,21 @@ class PublishedSurfaceTest(unittest.TestCase):
         self.assertEqual([name for name in public if name not in PACKAGE.__all__], [])
 
     def test_nothing_is_promised_that_is_not_there(self) -> None:
-        absent = [name for name in z80.__all__ if not hasattr(z80, name)]
+        absent = [name for name in PACKAGE.__all__ if not hasattr(PACKAGE, name)]
 
         self.assertEqual(absent, [])
 
 
-PACKAGE = z80
+PACKAGE: Any = z80
+"""The package under test, deliberately untyped.
+
+What a member publishes depends on what it models: a clocked part has a `Cpu`,
+a `Memory` and a `RunLimit`, and a board, a format or a tool has none of them.
+A checker cannot know which of those it is looking at, so naming the attributes
+here would make it refuse a repository the standard never asked for one from.
+The checks that reach for those attributes are skipped on members without them,
+and every assertion below is made against the value at run time.
+"""
 
 
 class OneDefinitionTest(unittest.TestCase):
@@ -420,7 +434,7 @@ class DocumentedModelTest(unittest.TestCase):
     def test_every_model_has_a_worked_construction(self) -> None:
         readme = (ROOT / "README.md").read_text()
 
-        undocumented = [name for name in z80.MODELS if f'Cpu("{name}")' not in readme]
+        undocumented = [name for name in PACKAGE.MODELS if f'Cpu("{name}")' not in readme]
 
         self.assertEqual(undocumented, [])
 
@@ -428,7 +442,10 @@ class DocumentedModelTest(unittest.TestCase):
         readme = (ROOT / "README.md").read_text()
 
         unnamed = [
-            alias for model in z80.MODELS.values() for alias in model.aliases if alias not in readme
+            alias
+            for model in PACKAGE.MODELS.values()
+            for alias in model.aliases
+            if alias not in readme
         ]
 
         self.assertEqual(unnamed, [])
