@@ -1,23 +1,10 @@
-<div align="center">
+# Zilog Z80
 
-<h1>Zilog Z80</h1>
-
-<strong>A Z80 you can drive from a clock, held to Zilog's own manual for the shape of every machine cycle and to a per-opcode suite for every T state of every opcode.</strong>
-
-<br>
-<br>
+A Z80 you can drive from a clock, held to Zilog's own manual for the shape of every machine cycle and to a per-opcode suite for every T state of every opcode.
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
-[![Conformance](https://img.shields.io/badge/conformance-1%2C604%2C000%20%2F%201%2C604%2C000-brightgreen)](#is-it-right)
-[![Cycles](https://img.shields.io/badge/T%20states-22%2C005%2C372%20compared-brightgreen)](#is-it-right)
-[![Coverage](https://img.shields.io/badge/coverage-100%25%20statement%20%2B%20branch-brightgreen)](#working-on-it)
-[![Types](https://img.shields.io/badge/mypy-strict-blue)](pyproject.toml)
-[![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)](pyproject.toml)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-</div>
-
-**3** parts · **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures · **1,116** tests · **100%** statement and branch coverage · no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,116** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
