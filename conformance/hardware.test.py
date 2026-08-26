@@ -1326,7 +1326,7 @@ class ModelScopeTest(unittest.TestCase):
 
     def test_the_recorded_differences_match_the_models(self) -> None:
         for name, one in HELD["modelDifferences"]["models"].items():
-            described = z80.describe(name)
+            described = z80.models.lookup(name)
 
             self.assertEqual(one["carryRule"], described.carry_rule, name)
             self.assertEqual(one["floatingOutput"], described.floating_output, name)
@@ -1345,7 +1345,7 @@ class ModelScopeTest(unittest.TestCase):
         defect = HELD["facts"]["interruptResponse"]["nmosParityDefect"]
 
         clearing = [
-            name for name in sorted(z80.MODELS) if z80.describe(name).interrupt_clears_parity
+            name for name in sorted(z80.MODELS) if z80.models.lookup(name).interrupt_clears_parity
         ]
 
         self.assertEqual(defect["appliesTo"], clearing)

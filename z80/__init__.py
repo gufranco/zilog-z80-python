@@ -42,23 +42,26 @@ from .errors import (
     UnknownShape,
 )
 from .memory import UNSET_SEED, Memory, Ports, SparseMemory
-from .models import MODELS, Model, describe
+from .models import MODELS, Model
 from .opcodes import decode, disassemble
 from .registers import Registers
 from .version import VERSION
 
 __version__ = VERSION
 
-DEFAULT_MODEL = "z80"
-
 
 def Cpu(  # noqa: N802
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     memory: Any = None,
     fill: int | None = None,
     **options: Any,
 ) -> core.Cpu:
     """A processor of the named model, sharing one interface across the family.
+
+    There is no default model. This package covers three parts that differ in
+    ways a caller can be caught by, and choosing one of them quietly would hide
+    that. Naming nothing raises and lists every model there is, which is a better
+    first meeting with this package than a part somebody did not pick.
 
     The model comes first because it is the thing a caller always knows and
     memory is the thing they often do not care about yet. Omitting it hands back
@@ -74,11 +77,10 @@ def Cpu(  # noqa: N802
     """
     if fill is not None and memory is None:
         memory = Memory(fill=fill)
-    return describe(model).build(SparseMemory() if memory is None else memory, **options)
+    return models.lookup(model).build(SparseMemory() if memory is None else memory, **options)
 
 
 __all__ = [
-    "DEFAULT_MODEL",
     "MODELS",
     "UNSET_SEED",
     "Clock",
@@ -96,6 +98,5 @@ __all__ = [
     "UnknownShape",
     "__version__",
     "decode",
-    "describe",
     "disassemble",
 ]

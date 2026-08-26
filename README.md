@@ -4,7 +4,7 @@ A Z80 you can drive from a clock, held to Zilog's own manual for the shape of ev
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,116** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,123** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -37,7 +37,7 @@ Everything a caller touches. Nothing else is public.
 
 | Call | Does | Returns |
 |:--|:--|:--|
-| `Cpu(model="z80", memory=None, **options)` | Builds a part, powered and not yet reset. Memory of its own if none is given | a `Cpu` |
+| `Cpu(model, memory=None, **options)` | Builds a part, powered and not yet reset. The model is required and there is no default; naming none raises and lists every model. Memory of its own if none is given | a `Cpu` |
 | `cpu.reset()` | Drives RESET. Costs the three T states Zilog names as the minimum the pin must be held | the `Cpu` |
 | `cpu.step()` | Runs one instruction | T states it cost |
 | `cpu.run_for(cycles)` | Runs whole instructions until at least that many T states have passed | T states actually spent, usually a little over |
@@ -45,7 +45,7 @@ Everything a caller touches. Nothing else is public.
 | `cpu.held()` | Whether the part has stopped advancing the program | `bool` |
 | `cpu.irq(vector=0xFF)` / `cpu.nmi()` | Offers a line and acts on it now. `vector` may be a callable, which is how a device supplies an instruction longer than one byte in mode zero | `True` if taken / nothing |
 | `disassemble(data, address)` | Reads bytes with no machine to run them in | `Instruction` objects with `.text` |
-| `describe(model)` | The part behind a name, before building one | a `Model` |
+| `MODELS` | Every model this package covers, by the name it goes by | a mapping |
 
 | Pin or attribute | Is |
 |:--|:--|

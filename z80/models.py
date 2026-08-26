@@ -195,8 +195,23 @@ def _normalise(name: str) -> str:
     return str(name).strip().lower().replace("-", "").replace("_", "")
 
 
-def describe(name: str) -> Model:
-    """The model of that name, however it happens to be written."""
+def lookup(name: str | None) -> Model:
+    """The model of that name, however it happens to be written.
+
+    Naming nothing is refused rather than filled in. This package covers more
+    than one part, they differ in ways a caller can be caught by, and a default
+    would pick one of them quietly. The refusal names every model there is, so a
+    caller who did not know what to pass finds out from the error.
+
+    Not exported from the package. What a caller needs is the part, and the part
+    carries its own model; a lookup that hands back a description of a part
+    nobody built reads like a test fixture rather than an interface.
+    """
+    if name is None:
+        raise UnknownModelError(
+            "no model was named, and this package will not choose one for you."
+            f" Name one of: {', '.join(sorted(MODELS))}"
+        )
     found = _BY_ALIAS.get(_normalise(name))
     if found is None:
         raise UnknownModelError(
