@@ -1,5 +1,5 @@
 {
-  "note": "What Zilog's own user manual says this processor is. Every figure here was read out of the document named below rather than taken from an implementation of it, and the timing table carries the manual page each row came from so a later reader can check the reading rather than trusting it. This file is the authority on what the part IS. The recording named in suites.json is the authority on what the part DOES where the manual is silent, which for this part is a great deal: the two undocumented flag bits, the internal WZ register, and the exact placement of internal cycles within an instruction are all things Zilog never printed.",
+  "note": "What Zilog's own user manual says this processor IS. The recording named in suites.json is the authority on what the part DOES where the manual is silent, which for this part is a great deal: the two undocumented flag bits, the internal WZ register, and the exact placement of internal cycles within an instruction are all things Zilog never printed.",
   "authority": {
     "order": [
       "hardware.json, for anything Zilog printed: pin function, machine cycle shape, T states per instruction, what reset does, which bit of the flag register is which",

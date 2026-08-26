@@ -882,3 +882,34 @@ is claiming to know things nobody knows.
 *Everything above this line is identical in every member. A member may add
 sections below it about its own state, and nothing may be added above it that
 the others do not also get.*
+
+## The state of this repository
+
+**Three parts, NMOS and CMOS, and they are not revisions of one behaviour.** The
+NMOS part has a defect that copies the interrupt latch into the parity flag too
+early, and it is modelled rather than corrected, because a model that quietly
+fixes a hardware bug is wrong for every machine that shipped one.
+
+**Zilog printed a great deal, and stopped short where it matters.** Every timing
+table, every flag table and the shape of every machine cycle came out of
+the manual and carries the page it was read from. What the manual does not print
+is the two undocumented flag bits, the internal WZ register, Q, and where the
+internal cycles of an instruction actually fall. Those come from a recording, and
+the recording was produced by translating an emulator's core, which its own
+readme states. The manual wins wherever the two overlap.
+
+**Nothing here rests on a measurement of real silicon.** That is the reason
+seventeen questions in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) are still open, and
+the reason the timing figures carry the reading that produced them rather than
+only the number.
+
+**Its second lineage is worth more than a second copy.** Beside the per-opcode
+suite sits independent research recorded in
+[`conformance/independent.json`](conformance/independent.json). Two lineages that
+never consulted each other is stronger than either alone, and it is still not a
+measurement.
+
+**The pin shapes are a decision, and it is written down rather than assumed.**
+The manual draws control-pin edges on half-T-state boundaries and a model whose
+smallest column is a whole T state has to pick a rule. This one names a real
+instant, and the rule sits in the record beside the figures it was read from.
