@@ -67,6 +67,29 @@ jobs:
       - name: Types, as the newest checker sees them
         run: mypy
 
+      # The netlist is licensed CC BY-NC-SA, so this repository carries its
+      # identity and never the files, and the die tests skip when it is absent.
+      # A check that only ever skips reports success by not running, so it is
+      # fetched here from the commit netlist.json pins. The loader refuses
+      # anything whose digest is not the one that was read, which makes a moved
+      # file fail here rather than be simulated as though it were the part.
+      - name: Bring down the die netlist
+        run: |
+          python - <<'FETCH'
+          import json, subprocess
+          from pathlib import Path
+          held = json.loads(Path("conformance/netlist.json").read_text())
+          where = Path("docs/independent/z80explorer")
+          where.mkdir(parents=True, exist_ok=True)
+          for entry in held["files"]:
+              subprocess.run(
+                  ["curl", "-sSL", "--fail", "-o", str(where / entry["file"]), entry["retrievedFrom"]],
+                  check=True,
+                  timeout=120,
+              )
+          FETCH
+        shell: bash
+
       - name: Every test file, under coverage
         run: |
           python -m coverage erase
