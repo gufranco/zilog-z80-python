@@ -119,14 +119,21 @@ def _default_build(name: str) -> Cpu:
 
 
 def _processor(name: str, build: Callable[[str], Cpu]) -> Finding:
-    """Whether that part builds, saying exactly what stopped it if not.
+    """Whether that part builds and resets, saying what stopped it if not.
 
     The three differences reported are the three that change what an instruction
     leaves behind, so two people disagreeing about a result are usually holding
     two different parts rather than two different opinions.
+
+    The reset is driven rather than described. A part built here comes up
+    scrambled, so the counter it holds before the pin is pulled is rubbish that
+    changes every run, and it is not where execution begins either. Driving the
+    pin is also the only way this report says anything about the path every
+    caller takes first.
     """
     try:
         cpu = build(name)
+        cpu.reset()
     except Exception as trouble:
         return Finding(
             name,
@@ -142,7 +149,7 @@ def _processor(name: str, build: Callable[[str], Cpu]) -> Finding:
         f"{described.carry_rule} carry rule, floating output"
         f" ${described.floating_output:02X}, interrupt"
         f" {'clears' if described.interrupt_clears_parity else 'keeps'} parity,"
-        f" starts at ${cpu.registers.pc:04X}",
+        f" resets to ${cpu.registers.pc:04X}",
     )
 
 
