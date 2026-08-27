@@ -499,10 +499,10 @@
       ]
     },
     {
-      "id": "die-netlist-not-yet-runnable-here",
+      "id": "die-netlist-runs-here",
       "severity": "unchecked",
       "status": "open",
-      "topic": "The one source that could settle most of the entries above, and why it is not being used.",
+      "topic": "The one source that could settle most of the entries above, now that it runs.",
       "documentSays": {
         "rung": 1,
         "claim": "Nothing. This is about a source, not about the part.",
@@ -510,18 +510,19 @@
       },
       "referenceDoes": {
         "rung": 2,
-        "claim": "A transistor level netlist of the die exists and is public: 6813 transistors, 3593 nets, 2059 of them pulled up, and every control pad named. Simulating it would answer the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.",
+        "claim": "A transistor level netlist of the die exists and is public. Read here on 2026-08-27 it is 6,781 transistors plus 32 entries that are pull-ups rather than transistors, 3,544 nets that anything connects to, 2,059 of them pulled up, and 740 named. Running it answers the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.",
         "source": "https://github.com/gdevic/Z80Explorer, resource/transdefs.js, segdefs.js and nodenames.js",
         "licence": "CC BY-NC-SA 4.0, so it can be pinned and fetched but never carried here"
       },
       "packageFollows": "neither",
-      "consequence": "Every entry above that says a logic capture would settle it still says so. This would have been the nearest thing to one that does not need a bench.",
-      "why": "A port of the netlist's own resolver was written and does not work yet. What is established: the three files parse to the counts the reference expects, the transistors switch, and the chip holds the reset address for the first several half clocks. What is not: the netlist does not come to rest on a falling clock edge, a ring of about eight nets flips forever, and the state degrades over tens of half clocks until the pins read as a chip no silicon could be. The reference has a loop limiter for the same non convergence, so tolerating it is not the difference. Shipping a simulator that does not run the part would be worse than not having one.",
+      "consequence": "The entries above that say a logic capture would settle them can now be asked of the die instead, one at a time. None has been yet, so none of them has changed. What has changed is that asking is possible without a bench.",
+      "why": "conformance/netlist.py runs it. An earlier port did not and was not carried; this one is written from scratch against the reference's behaviour, and it comes to rest on every edge across the runs made so far. Driven from reset with a program that loads three registers and increments one, it fetches from 0x0000, executes, and lands on register values that only executing that program produces. Nothing in this package is held to it: it sits at rung 3, below the manufacturer's documents and below a recording taken off a real part, because a netlist is an extraction and an extraction can be wrong.",
       "wouldSettleIt": [
-        "Finding what the port does differently on a falling edge. The resolver, the group walk, the queueing, the pull-up parse and the transistor orientation were each checked against the reference and match, so the difference is somewhere finer than those.",
-        "Driving the reference application itself, which is a Qt program rather than a library, and reading its waveform export."
+        "Taking one entry above at a time, asking the die, and recording the answer as the netlist's rather than as the part's.",
+        "A logic capture from a real part, which is still what would settle any of them outright, because it would agree or disagree with the extraction."
       ],
-      "measuredOn": "2026-08-21"
+      "measuredOn": "2026-08-27",
+      "notStated": "What the earlier port did differently. Its source is gone and only its compiled form survives, so the two candidate differences visible in that were tried against this one: deciding a rail by membership in the joined set rather than by which reached the front of it, and starting the connection weight at minus one rather than zero. Both run the part to the same registers, separately and together, so neither was the cause and the cause is not known."
     },
     {
       "id": "block-transfer-flags-the-manual-gets-wrong",

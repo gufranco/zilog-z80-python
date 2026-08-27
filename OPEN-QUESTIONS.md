@@ -208,13 +208,19 @@ Source: Zilog UM008011-0816, manual page 12.
 
 **What would settle or reopen it.** A logic capture of a real Z80 answering an interrupt, which would give the pins and the length together.; A corpus that contains acknowledge cycles, which this one does not.
 
-### The one source that could settle most of the entries above, and why it is not being used.
+### The one source that could settle most of the entries above, now that it runs.
 
 **What this project follows.** neither
 
-**Why.** A port of the netlist's own resolver was written in a session and is not carried here: nothing in this repository simulates a netlist, so the port has to be written again before any of what follows can be picked up. It did not work. What is established: the three files parse to the counts the reference expects, the transistors switch, and the chip holds the reset address for the first several half clocks. What is not: the netlist does not come to rest on a falling clock edge, a ring of about eight nets flips forever, and the state degrades over tens of half clocks until the pins read as a chip no silicon could be. The reference has a loop limiter for the same non convergence, so tolerating it is not the difference. Shipping a simulator that does not run the part would be worse than not having one.
+**Why.** conformance/netlist.py runs it. An earlier port did not and was not carried; this one is written from scratch against the reference's behaviour, and it comes to rest on every edge across the runs made so far. Driven from reset with a program that loads three registers and increments one, it fetches from 0x0000, executes, and lands on register values that only executing that program produces. Nothing in this package is held to it: it sits at rung 3, below the manufacturer's documents and below a recording taken off a real part, because a netlist is an extraction and an extraction can be wrong.
 
-**What would settle or reopen it.** Rebuilding the port, and then finding what it does differently on a falling edge. The resolver, the group walk, the queueing, the pull-up parse and the transistor orientation were each checked against the reference and match, so the difference is somewhere finer than those.; Driving the reference application itself, which is a Qt program rather than a library, and reading its waveform export.
+**What it is.** A transistor level netlist of the die exists and is public. Read here on 2026-08-27 it is 6,781 transistors plus 32 entries that are pull-ups rather than transistors, 3,544 nets that anything connects to, 2,059 of them pulled up, and 740 named. Running it answers the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.
+
+**What has changed for the entries above.** The entries above that say a logic capture would settle them can now be asked of the die instead, one at a time. None has been yet, so none of them has changed. What has changed is that asking is possible without a bench.
+
+**What is not known.** What the earlier port did differently. Its source is gone and only its compiled form survives, so the two candidate differences visible in that were tried against this one: deciding a rail by membership in the joined set rather than by which reached the front of it, and starting the connection weight at minus one rather than zero. Both run the part to the same registers, separately and together, so neither was the cause and the cause is not known.
+
+**What would settle or reopen it.** Taking one entry above at a time, asking the die, and recording the answer as the netlist's rather than as the part's.; A logic capture from a real part, which is still what would settle any of them outright, because it would agree or disagree with the extraction.
 
 ## What is not in question
 

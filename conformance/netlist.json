@@ -1,0 +1,46 @@
+{
+  "note": "What the switch-level run in netlist.py reads, so a copy you already own can be confirmed before it is trusted. Nothing here is any part of the files: a digest identifies one, and no set of digests reconstructs anything.",
+  "why": "This is a netlist extracted from die photographs of a real part, so it answers questions no document and no recording can: what is inside the package. It is licensed CC BY-NC-SA 4.0, which is a licence this repository cannot carry files under, and it is somebody else's work either way. What is carried is the identity and the program that reads it.",
+  "rung": 3,
+  "whyRungThree": "Independent research. Below the manufacturer's own documents and below a recording taken off a real part, because a netlist is an extraction and an extraction can be wrong. Nothing in this package is held to it; it is used to ask questions, and an answer it gives is recorded as coming from it.",
+  "obtaining": "The four files are in the resource folder of the Z80Explorer repository. Clone it, or take the four named files from it, and put them in docs/independent/z80explorer. The digests below decide whether what arrived is what was read.",
+  "source": "https://github.com/gdevic/Z80Explorer",
+  "commit": "867ad38a013862d1de6b0fb33fd77594823f40c3",
+  "licence": "Creative Commons BY-NC-SA 4.0",
+  "readOn": "2026-08-27",
+  "decides": "sha256 decides. crc32 is published beside it so a copy can be cross-checked against a catalogue that keys on it, and it decides nothing on its own: it is a 32-bit error code.",
+  "files": [
+    {
+      "file": "nodenames.js",
+      "what": "The fixed net names, including vss, vcc and clk, whose numbers every rule in netlist.py is written against.",
+      "bytes": 9149,
+      "sha256": "b0f4dd6041e35ae0e87727a4bed5222e4e00caf52db926ee2ff37fe6c8f0c0cf",
+      "crc32": "1d170716",
+      "retrievedFrom": "https://github.com/gdevic/Z80Explorer/raw/867ad38a013862d1de6b0fb33fd77594823f40c3/resource/nodenames.js"
+    },
+    {
+      "file": "netnames.js",
+      "what": "Custom names and bus definitions layered over the fixed ones, which is where reg_a, reg_pcl and the rest come from.",
+      "bytes": 7543,
+      "sha256": "bff66005da8461086ff11354af9c089bcd90b734926732b6ac3790dc4b44ac07",
+      "crc32": "b79cce60",
+      "retrievedFrom": "https://github.com/gdevic/Z80Explorer/raw/867ad38a013862d1de6b0fb33fd77594823f40c3/resource/netnames.js"
+    },
+    {
+      "file": "transdefs.js",
+      "what": "Every transistor: its gate and its two channel connections. The circuit itself.",
+      "bytes": 439144,
+      "sha256": "7cd64e86bb8936c3fad93253b4d354f837a5fdd671c7bc1606075f281d181ec9",
+      "crc32": "ff0a9da9",
+      "retrievedFrom": "https://github.com/gdevic/Z80Explorer/raw/867ad38a013862d1de6b0fb33fd77594823f40c3/resource/transdefs.js"
+    },
+    {
+      "file": "segdefs.js",
+      "what": "The polygons, read here only for the one column that marks a net as permanently pulled up.",
+      "bytes": 2368769,
+      "sha256": "40b4856f9a4d2453f5cb4f724bdf5a698575311c651d74812ae74765c9c53b6d",
+      "crc32": "63a72f1b",
+      "retrievedFrom": "https://github.com/gdevic/Z80Explorer/raw/867ad38a013862d1de6b0fb33fd77594823f40c3/resource/segdefs.js"
+    }
+  ]
+}

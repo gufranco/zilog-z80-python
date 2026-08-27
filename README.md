@@ -4,7 +4,7 @@ A Z80 you can drive from a clock, held to Zilog's own manual for the shape of ev
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,159** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,217** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -192,6 +192,18 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 The suite commit is pinned so a build is reproducible, and a weekly job runs against whatever upstream holds now and opens a pull request or an issue. A runner reports what it checked rather than a bare pass, because a run that parsed nothing and found no failures exits zero and looks identical to one that checked everything.
 
 Where the manual and the recordings disagree, both are kept. [`conformance/hardware.json`](conformance/hardware.json) holds every fact taken from a document with the sentence it came from and the page. [`conformance/divergences.json`](conformance/divergences.json) holds every place two sources part, with what would settle it. That reading found four places where the manual contradicts itself, three of them in its own timing tables.
+
+### Asking the die
+
+A document says what the part does and a recording says what one part did. Neither says what is inside the package, and most of the questions left over are about what is inside.
+
+[`conformance/netlist.py`](conformance/netlist.py) runs the part as a net of transistors, from a netlist extracted from die photographs. Driven from reset it fetches from `0x0000`, executes, and comes to rest on every clock edge.
+
+```bash
+python3 -m conformance.netlist
+```
+
+The netlist is Z80Explorer's and is licensed CC BY-NC-SA 4.0, so this repository carries its identity and the program that reads it, never the files. [`conformance/netlist.json`](conformance/netlist.json) names all four, where they come from and what they hash to; put them in `docs/independent/z80explorer` and a load refuses anything that is not what was read. Nothing in this package is held to what it says. It sits below the manufacturer's documents and below a recording taken off a real part, because a netlist is an extraction and an extraction can be wrong.
 
 **Seventeen questions remain** where being faithful is a claim rather than a measurement, and each names the measurement that would close it: [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md). Some cannot be closed by anyone. Bits 3 and 5 of the flag register have gone undocumented through eleven revisions in forty years, and the internal register the recordings call `WZ` appears nowhere in 780 pages of Zilog's own paper.
 
