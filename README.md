@@ -4,7 +4,7 @@ A Z80 you can drive from a clock, held to Zilog's own manual for the shape of ev
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,127** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,159** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -257,6 +257,17 @@ Independent research, used only where two lineages that never consulted each oth
 | [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git) | The generator that produced it, so it can be rebuilt rather than only downloaded |
 | [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer) | The netlist whose behaviour is recorded in [`conformance/divergences.json`](conformance/divergences.json) |
 
+
+Fetching them is a command rather than an exercise. [`conformance/documents.json`](conformance/documents.json) carries the full digest and the byte count for each, and an address where one is recorded, and [`conformance/documents.py`](conformance/documents.py) brings down what can be fetched into `docs/`, which git ignores, and refuses anything whose digest does not match.
+
+```bash
+python3 -m conformance.documents          # fetch what can be fetched and verify every digest
+python3 -m conformance.documents --check  # verify what is already here
+```
+
+Four of the eight have no address recorded anywhere here, and three more were printed from a web page rather than downloaded, so a fetch would replace them with markup. The manifest marks each of those and verifies them instead of replacing them.
+
+The MEMPTR paper is pinned above as text and the copy in that folder is a print of the same writing, so the two have different digests. Neither is the other, and checking one against the other's digest finds a mismatch that means nothing.
 ## Citing this
 
 [CITATION.cff](CITATION.cff) is kept in step with the released version by the same script that stamps the package, so the version it names is the version that shipped. GitHub renders it as a Cite this repository button.
