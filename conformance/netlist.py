@@ -18,8 +18,10 @@ resolver that settles differently is a different chip, and the file formats, whi
 are the ones the Visual 6502 team defined. Read against Z80Explorer at commit
 867ad38a013862d1de6b0fb33fd77594823f40c3.
 
-Authority rung 3, die simulation. Below a manufacturer document and below the part
-itself, above a recording taken from somebody else's model.
+Authority rung 3. Below a manufacturer document and below a recording taken off a
+real part, because a netlist is an extraction and an extraction can be wrong.
+Nothing in this package is held to what it says; it is used to ask questions, and
+an answer it gives is recorded as coming from it.
 
 Usage:
     python3 -m conformance.netlist [--half-cycles N]
