@@ -110,7 +110,7 @@ jobs:
       - name: Install coverage
         run: python -m pip install --disable-pip-version-check coverage==7.6.10
 
-      # The netlist is licensed CC BY-NC-SA, so this repository carries its
+      # The netlist is somebody else's work, so this repository carries its
       # identity and never the files, and the die tests skip when it is absent.
       # A check that only ever skips reports success by not running, so it is
       # fetched here from the commit netlist.json pins. The loader refuses
@@ -122,7 +122,7 @@ jobs:
           import json, subprocess
           from pathlib import Path
           held = json.loads(Path("conformance/netlist.json").read_text())
-          where = Path("docs/independent/z80explorer")
+          where = Path("docs/independent/visual6502")
           where.mkdir(parents=True, exist_ok=True)
           for entry in held["files"]:
               subprocess.run(

@@ -510,19 +510,18 @@
       },
       "referenceDoes": {
         "rung": 2,
-        "claim": "A transistor level netlist of the die exists and is public. Read here on 2026-08-27 it is 6,781 transistors plus 32 entries that are pull-ups rather than transistors, 3,544 nets that anything connects to, 2,059 of them pulled up, and 740 named. Running it answers the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.",
-        "source": "https://github.com/gdevic/Z80Explorer, resource/transdefs.js, segdefs.js and nodenames.js",
-        "licence": "CC BY-NC-SA 4.0, so it can be pinned and fetched but never carried here"
+        "claim": "A transistor level netlist of the die exists and is public. Read here on 2026-08-27 it is 6,781 transistors, plus 32 entries that are pull-ups rather than transistors, and 2,059 nets carrying a permanent pull-up. Running it answers the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.",
+        "source": "https://github.com/trebonian/visual6502, chip-z80/transdefs.js, segdefs.js and nodenames.js"
       },
       "packageFollows": "neither",
       "consequence": "The entries above that say a logic capture would settle them can now be asked of the die instead, one at a time. None has been yet, so none of them has changed. What has changed is that asking is possible without a bench.",
-      "why": "conformance/netlist.py runs it. An earlier port did not and was not carried; this one is written from scratch against the reference's behaviour, and it comes to rest on every edge across the runs made so far. Driven from reset with a program that loads three registers and increments one, it fetches from 0x0000, executes, and lands on register values that only executing that program produces. Nothing in this package is held to it: it sits at rung 3, below the manufacturer's documents and below a recording taken off a real part, because a netlist is an extraction and an extraction can be wrong.",
+      "why": "conformance/netlist.py runs it. Its resolver follows chipsim.js and wires.js from the same project, which are MIT licensed, and the notice they ask for is in THIRD-PARTY-NOTICES.md. Driven from reset with a program that loads three registers and increments one, it fetches from 0x0000, executes, comes to rest on every edge, and lands on register values that only executing that program produces.",
       "wouldSettleIt": [
         "Taking one entry above at a time, asking the die, and recording the answer as the netlist's rather than as the part's.",
         "A logic capture from a real part, which is still what would settle any of them outright, because it would agree or disagree with the extraction."
       ],
       "measuredOn": "2026-08-27",
-      "notStated": "What the earlier port did differently. Its source is gone and only its compiled form survives, so the two candidate differences visible in that were tried against this one: deciding a rail by membership in the joined set rather than by which reached the front of it, and starting the connection weight at minus one rather than zero. Both run the part to the same registers, separately and together, so neither was the cause and the cause is not known."
+      "notStated": "Two things had to be established here rather than taken from anyone, and both were measured. Thirty-two entries in the transistor file carry a flag marking them pull-ups; loading them anyway leaves 36 propagations hitting the limiter over a 130 half cycle run and no register reaches a correct value, and skipping them leaves none. And the doubled net names hold the register set an instruction writes while the single-letter ones hold the shadow set, which is the opposite of what the names suggest; that was settled by executing LD r,n for each of A, B, C, D, E, H and L across all eight bit positions and recording which nets followed the loaded value."
     },
     {
       "id": "block-transfer-flags-the-manual-gets-wrong",

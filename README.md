@@ -4,7 +4,7 @@ A Z80 you can drive from a clock, held to Zilog's own manual for the shape of ev
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,217** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,218** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -203,7 +203,11 @@ A document says what the part does and a recording says what one part did. Neith
 python3 -m conformance.netlist
 ```
 
-The netlist is Z80Explorer's and is licensed CC BY-NC-SA 4.0, so this repository carries its identity and the program that reads it, never the files. [`conformance/netlist.json`](conformance/netlist.json) names all four, where they come from and what they hash to; put them in `docs/independent/z80explorer` and a load refuses anything that is not what was read. Nothing in this package is held to what it says. It sits below the manufacturer's documents and below a recording taken off a real part, because a netlist is an extraction and an extraction can be wrong.
+The resolver follows `chipsim.js` and `wires.js` from the Visual 6502 project, which are MIT licensed; the notice they ask for is in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). The three data files are not carried here. [`conformance/netlist.json`](conformance/netlist.json) names them, says where they come from and records what each one hashes to; put them in `docs/independent/visual6502` and a load refuses anything that is not what was read.
+
+Two things had to be established here rather than taken from anyone. Thirty-two entries in the transistor file are pull-ups rather than transistors, and loading them is the difference between a netlist that comes to rest and one that never does. And the doubled net names hold the register set an instruction writes, while the single-letter ones hold the shadow set, which is the opposite of what the names suggest; that was measured by executing `LD r,n` across every register and every bit position and watching where the value landed.
+
+Nothing in this package is held to what the netlist says. It sits below the manufacturer's documents and below a recording taken off a real part, because a netlist is an extraction and an extraction can be wrong.
 
 **Seventeen questions remain** where being faithful is a claim rather than a measurement, and each names the measurement that would close it: [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md). Some cannot be closed by anyone. Bits 3 and 5 of the flag register have gone undocumented through eleven revisions in forty years, and the internal register the recordings call `WZ` appears nowhere in 780 pages of Zilog's own paper.
 

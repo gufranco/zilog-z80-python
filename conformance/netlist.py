@@ -6,17 +6,18 @@ recording says what one part did, and neither says what is inside. A switch-leve
 run of the netlist answers a third kind of question, which is the one most of the
 open questions in this repository turn out to be.
 
-What this reads is not carried here. The netlist is Z80Explorer's, extracted from
-die photographs of a real part and published under Creative Commons BY-NC-SA 4.0,
-so the repository carries its identity and this program, never the files.
-`netlist.json` names all four, where they come from and what they hash to, and a
-load refuses anything that is not what was read.
+The resolver, the group walk, the propagation loop and the file readers follow
+`chipsim.js` and `wires.js` from the Visual 6502 project, which are MIT licensed.
+This is a Python implementation rather than a translation, and what it is faithful
+to is their behaviour, because a resolver that settles differently is a different
+chip. The notice they require is in `THIRD-PARTY-NOTICES.md`.
 
-This is an independent implementation in Python rather than a translation of the
-reference's C++. What it is faithful to is the reference's behaviour, because a
-resolver that settles differently is a different chip, and the file formats, which
-are the ones the Visual 6502 team defined. Read against Z80Explorer at commit
-867ad38a013862d1de6b0fb33fd77594823f40c3.
+The three files it reads are not carried here. `netlist.json` names them, says
+where they come from and records what each one hashes to, and a load refuses
+anything that is not what was read.
+
+Two things had to be established here rather than taken from anyone, and both were
+measured. They are in `TRANSISTORS_THAT_ARE_PULLUPS` and `MAIN_REGISTERS`.
 
 Authority rung 3. Below a manufacturer document and below a recording taken off a
 real part, because a netlist is an extraction and an extraction can be wrong.
@@ -31,13 +32,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parent.parent / "docs" / "independent" / "z80explorer"
-"""Where the four files land, which is the folder git ignores.
+ROOT = Path(__file__).resolve().parent.parent / "docs" / "independent" / "visual6502"
+"""Where the three files land, which is the folder git ignores.
 
 Same reasoning as `conformance.documents`: the record lives beside the code and
 the files it identifies do not live in the repository at all.
@@ -45,21 +47,20 @@ the files it identifies do not live in the repository at all.
 
 MANIFEST = Path(__file__).resolve().parent / "netlist.json"
 
-FILES = ("nodenames.js", "netnames.js", "transdefs.js", "segdefs.js")
+FILES = ("nodenames.js", "segdefs.js", "transdefs.js")
 
 USAGE = "usage: netlist.py [--half-cycles N]"
 
 MAX_NETS = 4000
 MAX_TRANS = 10000
-"""Bounds the reference states for this netlist, carried so the arrays can be flat
-lists rather than dictionaries. A netlist needing more is not this one, and the
-load says so rather than growing silently.
+"""Bounds this netlist states, carried so the arrays can be flat lists rather than
+dictionaries. A netlist needing more is not this one, and the load says so rather
+than growing silently.
 """
 
 GROUND = 1
 POWER = 2
-CLOCK = 3
-"""The three nets whose numbers the format fixes. Checked on load rather than
+"""The two nets whose numbers the format fixes. Checked on load rather than
 trusted, because every rule below is written in terms of them.
 """
 
@@ -69,23 +70,46 @@ limiter. Reaching it is recorded rather than raised: a netlist that will not res
 is a finding about the run, and stopping mid-edge would hide it.
 """
 
-RESET_HALF_CYCLES = 8
-"""Half cycles the reference holds reset low for before releasing it."""
-
-FLOATING = ("_mreq", "_iorq", "_rd", "_wr", "dbus0", "ubus0", "vbus0")
-"""Nets read for their high-impedance state rather than for a level.
-
-A net nothing is driving has no level, and reading its last one as though it were
-current is how a bus that has been released reads as though it were still held.
+RESET_HALF_CYCLES = 31
+"""Half cycles reset is held low for, which is what the reference's own Z80 setup
+does before releasing it.
 """
 
-DEFAULT_HALF_CYCLES = 130
+TRANSISTORS_THAT_ARE_PULLUPS = 32
+"""Entries in the transistor file that are pull-ups rather than transistors.
+
+Each carries a flag saying so, and loading them anyway is not a small inaccuracy.
+It is the difference between a netlist that comes to rest and one that never
+does. Measured on 2026-08-27 over a run of 130 half cycles: loading them leaves
+36 propagations hitting the limiter and no register reaches a correct value,
+skipping them leaves none.
+
+The count is checked rather than assumed, because a file where a different number
+of entries carry that flag is a different file.
+"""
+
+MAIN_REGISTERS = {"b": "bb", "c": "cc", "d": "dd", "e": "ee", "h": "hh", "l": "ll"}
+"""Where the main register set actually lives, against the names the file gives.
+
+The doubled names hold the registers an instruction writes and the single-letter
+ones hold the shadow set, which is the opposite of what the names suggest. So it
+was measured rather than read: `LD r,n` was executed for each of A, B, C, D, E, H
+and L across all eight bit positions, and the nets that followed the loaded value
+were recorded. A is the exception and is under its own name.
+
+The authority for this is Zilog's definition of `LD r,n` together with the
+netlist, never anybody's naming file.
+"""
 
 SAMPLE = bytes([0x3E, 0x42, 0x06, 0x99, 0x0E, 0x17, 0x04, 0x00])
 """Load, load, load, increment. Chosen so the registers afterwards hold values
 that only executing it produces, rather than values a part doing nothing would
 also show.
 """
+
+DEFAULT_HALF_CYCLES = 130
+
+_NAME = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(\d+)\s*,", re.M)
 
 
 class Missing(Exception):
@@ -101,10 +125,10 @@ def identity(manifest: Path | str | None = None) -> dict[str, Any]:
 def check(path: Path, entry: dict[str, Any]) -> None:
     """That one file is the one the manifest names, by size and then by digest.
 
-    Size first because it is one call and it rejects almost every wrong file,
-    and the digest because size alone rejects nothing that was edited in place.
-    A refusal names where the file comes from, since a reader who has the wrong
-    one needs the address more than the reason.
+    Size first because it is one call and it rejects almost every wrong file, and
+    the digest because size alone rejects nothing that was edited in place. A
+    refusal names where the file comes from, since a reader holding the wrong one
+    needs the address more than the reason.
     """
     if not path.is_file():
         raise Missing(f"{path.name} is not in {path.parent}. Take it from {entry['retrievedFrom']}")
@@ -117,7 +141,7 @@ def check(path: Path, entry: dict[str, Any]) -> None:
 
 
 class Netlist:
-    """The four files, parsed into nets and transistors.
+    """The three files, parsed into nets and transistors.
 
     Kept apart from the run below because parsing is where a netlist is rejected
     and running is where it is used, and a fault in the first should never be
@@ -131,14 +155,9 @@ class Netlist:
             check(root / str(entry["file"]), entry)
 
         self.names: dict[str, int] = {}
-        self.named: list[str] = [""] * MAX_NETS
-        self.buses: dict[str, tuple[int, ...]] = {}
-
         self.state = bytearray(MAX_NETS)
-        self.floats = bytearray(MAX_NETS)
-        self.high = bytearray(MAX_NETS)
-        self.low = bytearray(MAX_NETS)
-        self.pulled_up = bytearray(MAX_NETS)
+        self.pullup = bytearray(MAX_NETS)
+        self.pulldown = bytearray(MAX_NETS)
 
         self.gates: list[list[int]] = [[] for _ in range(MAX_NETS)]
         self.channels: list[list[int]] = [[] for _ in range(MAX_NETS)]
@@ -152,80 +171,79 @@ class Netlist:
         self.skipped_pullups = 0
         self.pullups = 0
 
-        self._read_names(root / "nodenames.js", custom=False)
-        self._read_names(root / "netnames.js", custom=True)
+        self._read_names(root / "nodenames.js")
         self._check_fixed_nets()
-        self._read_transistors(root / "transdefs.js")
         self._read_pullups(root / "segdefs.js")
+        self._read_transistors(root / "transdefs.js")
+        self._check_pullup_entries()
 
     def _check_fixed_nets(self) -> None:
-        for name, wanted in (("vss", GROUND), ("vcc", POWER), ("clk", CLOCK)):
+        for name, wanted in (("vss", GROUND), ("vcc", POWER)):
             found = self.names.get(name)
             if found != wanted:
                 raise Missing(f"{name} is net {found}, and every rule here assumes {wanted}")
 
-    def _read_names(self, path: Path, custom: bool) -> None:
-        """One name per line, with the custom file overriding and adding buses.
+    def _check_pullup_entries(self) -> None:
+        if self.skipped_pullups != TRANSISTORS_THAT_ARE_PULLUPS:
+            raise Missing(
+                f"{self.skipped_pullups} entries are marked pull-ups, not"
+                f" {TRANSISTORS_THAT_ARE_PULLUPS}, so this is a different file"
+            )
 
-        An override deletes the old name rather than shadowing it. A name left
-        pointing at a net nobody uses is worse than an absent name, because it
-        answers.
+    def _read_names(self, path: Path) -> None:
+        for name, number in _NAME.findall(path.read_text()):
+            wanted = int(number)
+            if wanted >= MAX_NETS:
+                raise Missing(f"net {wanted} is past the {MAX_NETS} this netlist was read at")
+            self.names[name] = wanted
+
+    def _read_pullups(self, path: Path) -> None:
+        """A pull-up is a property of a net here rather than a transistor of its own.
+
+        It is one of the three things the resolver weighs, and it is weighed
+        inside the joined set rather than ahead of it, which is why a net can be
+        pulled up and still read low.
         """
         for raw in path.read_text().splitlines():
-            comment = raw.find("/")
-            line = raw[:comment].strip() if comment != -1 else raw.strip()
-            if ":" not in line:
+            if not raw.startswith("["):
                 continue
-            line = line[:-1] if line.endswith(",") else line
-            head, _, tail = line.partition(":")
-            name = head.strip()
-            body = tail.strip()
-            if custom and body.startswith("["):
-                members = [one.strip() for one in body.strip("[] ").split(",") if one.strip()]
-                if len(members) > 1:
-                    self.buses[name] = tuple(int(one) for one in members)
-                    continue
-                body = members[0]
-            if not body.isdigit():
+            fields = raw[1:].split(",")
+            if len(fields) <= 4:
                 continue
-            number = int(body)
+            number = int(fields[0])
             if number >= MAX_NETS:
                 raise Missing(f"net {number} is past the {MAX_NETS} this netlist was read at")
-            if custom:
-                if name in self.names:
-                    self.named[self.names[name]] = ""
-                    del self.names[name]
-            elif name in self.names or self.named[number]:
-                continue
-            self.named[number] = name
-            self.names[name] = number
+            self.pullup[number] = 1 if "+" in fields[1] else 0
+        self.pullups = sum(self.pullup)
 
     def _read_transistors(self, path: Path) -> None:
         """Gate, then the two channel connections, then a flag marking a pull-up.
 
         The two channel connections are ordered rather than symmetric. A
-        transistor tied to a rail or to the clock carries that connection second,
-        because closing one queues both of its ends and opening one queues only
-        the first, and queueing a rail is work that decides nothing.
+        transistor tied to a rail carries that connection second, because closing
+        one queues only the first end and opening one queues both, and queueing a
+        rail is work that decides nothing.
         """
         for raw in path.read_text().splitlines():
             if not raw.startswith("["):
                 continue
-            flat = raw.replace("[", " ").replace("]", " ")[:-2]
+            flat = raw.replace("[", " ").replace("]", " ")
             fields = [one for one in flat.split(",") if one.strip()]
-            if len(fields) != 14 or len(fields[0]) <= 2:
+            if len(fields) < 4:
                 continue
-            if fields[13].strip() == "true":
+            if fields[-1].strip() == "true":
                 self.skipped_pullups += 1
                 continue
-            number = int(fields[0].strip().strip("'")[1:])
-            if number >= MAX_TRANS:
-                raise Missing(f"transistor {number} is past the {MAX_TRANS} this was read at")
+            if self.transistors >= MAX_TRANS:
+                raise Missing(f"more than the {MAX_TRANS} transistors this was read at")
             gate = int(fields[1])
             first = int(fields[2])
             second = int(fields[3])
-            if first <= CLOCK:
-                first, second = second, first
+            if first == GROUND:
+                first, second = second, GROUND
+            if first == POWER:
+                first, second = second, POWER
+            number = self.transistors
             self.gate_of[number] = gate
             self.first_of[number] = first
             self.second_of[number] = second
@@ -234,39 +252,11 @@ class Netlist:
             self.channels[second].append(number)
             self.transistors += 1
 
-    def _read_pullups(self, path: Path) -> None:
-        """A pull-up is a property of a net here rather than a transistor of its own.
-
-        It sets the net high on load and it stays that way until something drives
-        it, so it resolves as a pull and not as a rail. That distinction is the
-        whole of why a net can be pulled up and still read low.
-        """
-        for raw in path.read_text().splitlines():
-            if not raw.startswith("["):
-                continue
-            fields = raw[2:-2].split(",")
-            if len(fields) <= 4:
-                continue
-            number = int(fields[0])
-            if number >= MAX_NETS:
-                raise Missing(f"net {number} is past the {MAX_NETS} this netlist was read at")
-            up = 1 if "+" in fields[1] else 0
-            self.pulled_up[number] = up
-            self.high[number] = up
-        self.pullups = sum(self.pulled_up)
-
     def number(self, name: str) -> int:
         return self.names.get(name, 0)
 
     def read(self, name: str) -> int:
-        """A net's level, or 2 when it floats and nothing is driving it."""
-        n = self.number(name)
-        if self.floats[n]:
-            for t in self.channels[n]:
-                if self.on[t]:
-                    return 1 if self.state[n] else 0
-            return 1 if self.pulled_up[n] else 2
-        return 1 if self.state[n] else 0
+        return self.state[self.number(name)]
 
     def bus(self, name: str, width: int) -> int:
         value = 0
@@ -289,10 +279,6 @@ class Simulation(Netlist):
         self.ports = bytearray(0x10000)
         self.state[GROUND] = 0
         self.state[POWER] = 1
-        for name in FLOATING:
-            self.floats[self.number(name)] = 1
-        for i in range(16):
-            self.floats[self.number(f"ab{i}")] = 1
 
     def connected(self) -> list[int]:
         return [
@@ -304,18 +290,8 @@ class Simulation(Netlist):
     def _collect(self, start: int) -> None:
         """Every net joined to this one through transistors that are closed.
 
-        A rail found on the way is moved to the front, and the last one found
-        stays there, which is what makes `_value` able to decide on the front of
-        the group alone.
-
-        Whether that ordering matters was measured rather than assumed. Groups
-        reaching both rails at once are common, 2,098 of 167,115 resolutions
-        across a short run, and the front differs from a plain "is a rail
-        present" test on 82 of them. Deciding those 82 the other way runs the
-        part to the same registers, so the ordering is faithful to the reference
-        without being load-bearing on this netlist. It is kept because a rule
-        that happens not to matter here is not a rule that is known not to
-        matter.
+        The walk stops at a rail rather than crossing it, so a group holds the
+        rails it touches and everything joined between them.
         """
         group = self._group
         seen = self._grouped
@@ -327,15 +303,12 @@ class Simulation(Netlist):
             seen[n] = 1
             group.append(n)
             if n in (GROUND, POWER):
-                if len(group) > 1:
-                    group[0], group[-1] = group[-1], group[0]
                 continue
             joined: list[int] = []
             for t in self.channels[n]:
                 if not self.on[t]:
                     continue
-                other = self.second_of[t] if self.first_of[t] == n else self.first_of[t]
-                joined.append(other)
+                joined.append(self.second_of[t] if self.first_of[t] == n else self.first_of[t])
             stack.extend(reversed(joined))
 
     def _regroup(self, n: int) -> None:
@@ -347,30 +320,22 @@ class Simulation(Netlist):
     def _value(self) -> int:
         """What the joined set settles to.
 
-        Three rules in order, and the order is the whole of it. A rail at the
-        front decides outright. Failing that, anything being pulled decides, high
-        before low. Failing that, nothing is driving the set at all and it keeps
-        the level of whichever net has the most gates hanging off it, which is the
-        reference's stand-in for the largest capacitance.
+        Ground beats power, power beats everything else, and failing both the set
+        is decided by the first net in it that says anything: pulled up, pulled
+        down, or already high. A set where nothing says anything settles low.
         """
-        group = self._group
-        if group[0] == GROUND:
+        if self._grouped[GROUND]:
             return 0
-        if group[0] == POWER:
+        if self._grouped[POWER]:
             return 1
-        for n in group:
-            if self.high[n]:
+        for n in self._group:
+            if self.pullup[n]:
                 return 1
-            if self.low[n]:
+            if self.pulldown[n]:
                 return 0
-        level = 0
-        weight = 0
-        for n in group:
-            count = len(self.gates[n])
-            if count > weight:
-                weight = count
-                level = self.state[n]
-        return level
+            if self.state[n]:
+                return 1
+        return 0
 
     def _queue(self, n: int, into: list[int]) -> None:
         if n in (GROUND, POWER):
@@ -424,10 +389,8 @@ class Simulation(Netlist):
 
     def drive(self, level: int, name: str) -> None:
         n = self.number(name)
-        if self.high[n] == level:
-            return
-        self.high[n] = level
-        self.low[n] = 0 if level else 1
+        self.pullup[n] = level
+        self.pulldown[n] = 0 if level else 1
         self.settle([n])
 
     def put(self, value: int) -> None:
@@ -437,10 +400,13 @@ class Simulation(Netlist):
     def half_cycle(self) -> None:
         """One clock edge, with the pins serviced just before the rise.
 
-        The part drives its address and its control lines through the low half and
-        samples the data bus on the rise, so anything answering it has to have
-        answered by then. A refresh cycle is left alone: the address on the bus
-        during refresh is not one anybody is asking about.
+        Which machine cycle the part is in is decided from the control pins the
+        way Zilog's manual defines them rather than from any other implementation.
+        An opcode fetch drives MREQ and RD low with M1 low, a memory read does the
+        same one T state later with M1 high, a write drives WR in place of RD, and
+        the two port cycles drive IORQ in place of MREQ. A refresh cycle is left
+        alone, because the address on the bus during refresh is not one anybody is
+        asking about.
         """
         clock = self.read("clk")
         if not clock and self.read("_rfsh"):
@@ -463,12 +429,14 @@ class Simulation(Netlist):
         self.half_cycles += 1
 
     def reset(self) -> Simulation:
-        """Hold reset low across eight half cycles, then release it.
+        """Hold reset low across the documented number of half cycles, then release.
 
         Everything is settled once from every connected net before the first edge,
         because a transistor that has never been resolved is open, and a netlist
         where every transistor is open is not a state the part powers up in.
         """
+        for t in range(self.transistors):
+            self.on[t] = 0
         self.drive(0, "_reset")
         self.drive(1, "clk")
         self.drive(1, "_busrq")
@@ -489,7 +457,12 @@ class Simulation(Netlist):
         return self.bus("db", 8)
 
     def register(self, name: str) -> int:
-        return self.bus(f"reg_{name}", 8)
+        """One eight-bit register, under the name an instruction would call it.
+
+        MAIN_REGISTERS is applied here rather than at every call site, so a caller
+        asks for `b` and gets what `LD B,n` writes.
+        """
+        return self.bus(f"reg_{MAIN_REGISTERS.get(name, name)}", 8)
 
     def pc(self) -> int:
         return (self.register("pch") << 8) | self.register("pcl")

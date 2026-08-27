@@ -1,14 +1,14 @@
 """That the switch-level run is the reference's, and that it runs the part.
 
 The netlist itself is not carried, so every check here is driven against a
-synthetic one built in the fixture: four files in the published formats
+synthetic one built in the fixture: three files in the published formats
 describing a circuit small enough to reason about by hand. That is not a
-convenience. A check that only runs when a two megabyte file happens to be on
-the machine is a check that reports success by being skipped.
+convenience. A check that only runs when a two megabyte file happens to be on the
+machine is a check that reports success by being skipped.
 
-The real netlist is used when it is present, and only for the one thing a
-synthetic circuit cannot show: that the part fetches, executes and lands on a
-register value nothing else would produce.
+The real netlist is used when it is present, and only for the things a synthetic
+circuit cannot show: that the part fetches, executes, comes to rest on every edge,
+and lands on register values nothing else would produce.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from conformance import netlist  # noqa: E402
 
-NAMES = [
+NAMES: list[tuple[str, int]] = [
     ("vss", 1),
     ("vcc", 2),
     ("clk", 3),
@@ -51,32 +51,29 @@ NAMES = [
 ]
 NAMES += [(f"ab{i}", 20 + i) for i in range(16)]
 NAMES += [(f"db{i}", 40 + i) for i in range(8)]
-NAMES += [(f"reg_a{i}", 50 + i) for i in range(8)]
-NAMES += [(f"reg_b{i}", 60 + i) for i in range(8)]
-NAMES += [(f"reg_c{i}", 70 + i) for i in range(8)]
-NAMES += [(f"reg_pcl{i}", 80 + i) for i in range(8)]
-NAMES += [(f"reg_pch{i}", 90 + i) for i in range(8)]
+for _base, _at in (("a", 50), ("bb", 60), ("cc", 70), ("pcl", 80), ("pch", 90)):
+    NAMES += [(f"reg_{_base}{i}", _at + i) for i in range(8)]
 
-TRANSISTORS = [(1, 3, 17, 1), (2, 18, 18, 1), (3, 19, 2, 19), (4, 15, 17, 19)]
+TRANSISTORS: list[tuple[int, int, int]] = [(3, 17, 1), (2, 19, 2), (15, 17, 19)]
 
-PULLED_UP = (17, 18)
+PULLED_UP: tuple[int, ...] = (17,)
 
 
-def transistor_line(number: int, gate: int, first: int, second: int, pullup: str) -> str:
-    return f"['t{number}',{gate},{first},{second},[1,2,3,4],[1,1,1,1,5],{pullup},]"
+def transistor_line(gate: int, first: int, second: int, pullup: str = "false") -> str:
+    return f"['t0',{gate},{first},{second},[1,2,3,4],[1,1,1,1,5],{pullup},]"
 
 
 def segment_line(number: int, mark: str) -> str:
-    return f"[ {number},'{mark}',0,1,2,3,4,5,6,7,8]"
+    return f"[{number},'{mark}',0,1,2,3,4,5,6,7,8]"
 
 
 def build(
     where: Path,
     names: list[tuple[str, int]] | None = None,
-    transistors: list[tuple[int, int, int, int]] | None = None,
+    transistors: list[tuple[int, int, int]] | None = None,
     pulled_up: tuple[int, ...] = PULLED_UP,
+    pullup_entries: int = netlist.TRANSISTORS_THAT_ARE_PULLUPS,
     extra_names: str = "",
-    extra_custom: str = "",
     extra_transistors: str = "",
     extra_segments: str = "",
 ) -> Path:
@@ -85,14 +82,9 @@ def build(
     (where / "nodenames.js").write_text(
         "// a synthetic netlist\nvar nodenames = {\n" + body + "\n" + extra_names + "\n}\n"
     )
-    (where / "netnames.js").write_text(
-        "// overrides\nvar nodenames_override = {\n" + extra_custom + "\n}\n"
-    )
     wanted = TRANSISTORS if transistors is None else transistors
-    lines = [
-        transistor_line(number, gate, first, second, "false")
-        for number, gate, first, second in wanted
-    ]
+    lines = [transistor_line(gate, first, second) for gate, first, second in wanted]
+    lines += [transistor_line(1, 1, 1, "true") for _ in range(pullup_entries)]
     (where / "transdefs.js").write_text(
         "var transdefs = [\nskipped\n" + "\n".join(lines) + "\n" + extra_transistors + "\n]\n"
     )
@@ -117,6 +109,7 @@ def stamp(where: Path) -> Path:
     manifest.write_text(
         json.dumps(
             {
+                "algorithm": {"licence": "MIT"},
                 "files": [
                     {
                         "file": name,
@@ -125,7 +118,7 @@ def stamp(where: Path) -> Path:
                         "retrievedFrom": f"https://example.invalid/{name}",
                     }
                     for name in netlist.FILES
-                ]
+                ],
             }
         )
     )
@@ -146,14 +139,13 @@ class Fixture(unittest.TestCase):
         return netlist.Simulation(self.where, self.where / "netlist.json")
 
 
-class LoadingTest(Fixture):
+class IdentityTest(Fixture):
     def test_a_missing_file_names_itself_and_where_it_comes_from(self) -> None:
         (self.where / "transdefs.js").unlink()
 
         with self.assertRaises(netlist.Missing) as raised:
             self.parsed()
 
-        self.assertIn("transdefs.js", str(raised.exception))
         self.assertIn("https://example.invalid/transdefs.js", str(raised.exception))
 
     def test_a_file_of_the_wrong_size_is_refused_before_it_is_hashed(self) -> None:
@@ -173,12 +165,37 @@ class LoadingTest(Fixture):
 
         self.assertIn("a different file", str(raised.exception))
 
-    def test_the_identity_carried_here_names_the_four_files(self) -> None:
+    def test_the_identity_carried_here_names_the_three_files(self) -> None:
         held = netlist.identity()
 
         self.assertEqual([one["file"] for one in held["files"]], list(netlist.FILES))
 
-    def test_the_three_fixed_nets_are_checked_rather_than_trusted(self) -> None:
+    def test_the_identity_carried_here_names_the_licence_the_resolver_follows(self) -> None:
+        held = netlist.identity()
+
+        self.assertEqual(held["algorithm"]["licence"], "MIT")
+
+
+class LoadingTest(Fixture):
+    def test_the_transistors_and_the_pullups_are_the_ones_written(self) -> None:
+        held = self.parsed()
+
+        self.assertEqual((held.transistors, held.pullups), (3, 1))
+
+    def test_the_entries_that_are_pullups_are_counted_and_not_loaded(self) -> None:
+        held = self.parsed()
+
+        self.assertEqual(held.skipped_pullups, netlist.TRANSISTORS_THAT_ARE_PULLUPS)
+
+    def test_a_file_with_a_different_number_of_pullup_entries_is_refused(self) -> None:
+        build(self.where, pullup_entries=netlist.TRANSISTORS_THAT_ARE_PULLUPS - 1)
+
+        with self.assertRaises(netlist.Missing) as raised:
+            self.parsed()
+
+        self.assertIn("different file", str(raised.exception))
+
+    def test_the_two_fixed_nets_are_checked_rather_than_trusted(self) -> None:
         moved = [(name, 5 if name == "vss" else number) for name, number in NAMES]
         build(self.where, names=moved)
 
@@ -187,35 +204,22 @@ class LoadingTest(Fixture):
 
         self.assertIn("vss", str(raised.exception))
 
-    def test_the_transistors_and_the_pullups_are_the_ones_written(self) -> None:
-        held = self.parsed()
-
-        self.assertEqual((held.transistors, held.pullups), (4, 2))
-
-    def test_a_transistor_marked_a_pullup_is_counted_and_not_loaded(self) -> None:
-        build(self.where, extra_transistors=transistor_line(9, 3, 17, 1, "true"))
+    def test_a_ground_connection_is_moved_to_the_second_place(self) -> None:
+        build(self.where, transistors=[(3, 1, 17)])
 
         held = self.parsed()
 
-        self.assertEqual((held.transistors, held.skipped_pullups), (4, 1))
+        self.assertEqual((held.first_of[0], held.second_of[0]), (17, netlist.GROUND))
 
-    def test_a_rail_connection_is_moved_to_the_second_place(self) -> None:
-        build(self.where, transistors=[(1, 3, 1, 17)])
+    def test_a_power_connection_is_moved_to_the_second_place(self) -> None:
+        build(self.where, transistors=[(3, 2, 17)])
 
         held = self.parsed()
 
-        self.assertEqual((held.first_of[1], held.second_of[1]), (17, 1))
+        self.assertEqual((held.first_of[0], held.second_of[0]), (17, netlist.POWER))
 
     def test_a_net_past_the_bound_this_was_read_at_is_refused(self) -> None:
         build(self.where, extra_names="beyond: 99999,")
-
-        with self.assertRaises(netlist.Missing) as raised:
-            self.parsed()
-
-        self.assertIn("99999", str(raised.exception))
-
-    def test_a_transistor_past_the_bound_this_was_read_at_is_refused(self) -> None:
-        build(self.where, extra_transistors=transistor_line(99999, 3, 17, 1, "false"))
 
         with self.assertRaises(netlist.Missing) as raised:
             self.parsed()
@@ -230,72 +234,30 @@ class LoadingTest(Fixture):
 
         self.assertIn("99999", str(raised.exception))
 
+    def test_more_transistors_than_this_was_read_at_is_refused(self) -> None:
+        crowd = "\n".join(transistor_line(3, 17, 1) for _ in range(netlist.MAX_TRANS))
+        build(self.where, extra_transistors=crowd)
+
+        with self.assertRaises(netlist.Missing) as raised:
+            self.parsed()
+
+        self.assertIn(str(netlist.MAX_TRANS), str(raised.exception))
+
     def test_lines_that_are_not_entries_are_passed_over(self) -> None:
         build(
             self.where,
-            extra_names="not an entry\nweird: abc,",
             extra_transistors="not an entry\n['t8',1,2]",
-            extra_segments="not an entry\n[ 5,'-']",
+            extra_segments="not an entry\n[5,'-']",
         )
 
         held = self.parsed()
 
-        self.assertEqual(held.transistors, 4)
-
-    def test_a_duplicate_name_keeps_the_first_one(self) -> None:
-        build(self.where, extra_names="out: 150,\nfresh: 17,")
-
-        held = self.parsed()
-
-        self.assertEqual((held.number("out"), held.number("fresh")), (17, 0))
-
-    def test_the_custom_file_renames_rather_than_shadowing(self) -> None:
-        build(self.where, extra_custom="out: 150,")
-
-        held = self.parsed()
-
-        self.assertEqual((held.number("out"), held.named[17]), (150, ""))
-
-    def test_the_custom_file_carries_buses(self) -> None:
-        build(self.where, extra_custom="pair: [17,18],\nlone: [19],")
-
-        held = self.parsed()
-
-        self.assertEqual((held.buses["pair"], held.number("lone")), ((17, 18), 19))
+        self.assertEqual(held.transistors, 3)
 
     def test_an_unknown_name_is_net_zero_rather_than_an_error(self) -> None:
         held = self.parsed()
 
         self.assertEqual(held.number("nothing_is_called_this"), 0)
-
-
-class ReadoutTest(Fixture):
-    def test_a_net_that_is_not_floating_reads_its_level(self) -> None:
-        held = self.parsed()
-        held.state[17] = 1
-
-        self.assertEqual(held.read("out"), 1)
-
-    def test_a_floating_net_nothing_drives_reads_as_high_impedance(self) -> None:
-        held = self.parsed()
-        held.floats[19] = 1
-        held.pulled_up[19] = 0
-
-        self.assertEqual(held.read("quiet"), 2)
-
-    def test_a_floating_net_with_a_pullup_reads_high(self) -> None:
-        held = self.parsed()
-        held.floats[17] = 1
-
-        self.assertEqual(held.read("out"), 1)
-
-    def test_a_floating_net_something_drives_reads_its_level(self) -> None:
-        held = self.parsed()
-        held.floats[17] = 1
-        held.on[1] = 1
-        held.state[17] = 0
-
-        self.assertEqual(held.read("out"), 0)
 
     def test_a_bus_reads_least_significant_net_first(self) -> None:
         held = self.parsed()
@@ -309,7 +271,7 @@ class ResolutionTest(Fixture):
     def test_a_group_that_reaches_ground_settles_low(self) -> None:
         part = self.part()
         part.state[17] = 1
-        part.on[1] = 1
+        part.on[0] = 1
 
         part.settle([17])
 
@@ -317,64 +279,59 @@ class ResolutionTest(Fixture):
 
     def test_a_group_that_reaches_power_settles_high(self) -> None:
         part = self.part()
-        part.on[3] = 1
+        part.on[1] = 1
         part.state[19] = 0
 
         part.settle([19])
 
         self.assertEqual(part.state[19], 1)
 
-    def test_a_net_being_pulled_low_settles_low(self) -> None:
+    def test_a_net_being_pulled_up_settles_high(self) -> None:
         part = self.part()
-        part.high[17] = 0
-        part.low[17] = 1
+        part.state[17] = 0
+
+        part.settle([17])
+
+        self.assertEqual(part.state[17], 1)
+
+    def test_a_net_being_pulled_down_settles_low(self) -> None:
+        part = self.part()
+        part.pullup[17] = 0
+        part.pulldown[17] = 1
         part.state[17] = 1
 
         part.settle([17])
 
         self.assertEqual(part.state[17], 0)
 
-    def test_a_group_nothing_drives_takes_the_best_connected_level(self) -> None:
+    def test_a_group_nothing_drives_keeps_a_level_one_of_its_nets_already_held(self) -> None:
         part = self.part()
-        part.high[17] = 0
-        part.on[4] = 1
+        part.pullup[17] = 0
         part.state[17] = 0
         part.state[19] = 1
+        part.on[2] = 1
 
         part.settle([17])
 
         self.assertEqual(part.state[17], 1)
 
-    def test_a_net_nobody_gates_settles_low_rather_than_keeping_its_level(self) -> None:
-        """The reference starts its weight at zero, so a net with no gates loses.
-
-        Starting it at minus one instead lets such a net keep whatever level it
-        happened to hold, which is a different chip. Both run the real netlist to
-        the same registers, and the reference's choice is the one carried.
-        """
+    def test_a_group_where_nothing_says_anything_settles_low(self) -> None:
         part = self.part()
-        part.high[17] = 0
-        part.state[17] = 1
+        part.pullup[17] = 0
+        part.state[17] = 0
+        part.state[19] = 1
 
         part.settle([17])
 
         self.assertEqual(part.state[17], 0)
 
     def test_a_ring_that_never_rests_is_recorded_rather_than_raised(self) -> None:
+        build(self.where, transistors=[(18, 18, 1)], pulled_up=(18,))
         part = self.part()
 
         part.settle([18])
 
         self.assertEqual(part.unsettled, 1)
-
-    def test_driving_a_net_to_the_level_it_already_holds_does_nothing(self) -> None:
-        part = self.part()
-        part.high[17] = 1
-        before = part.unsettled
-
-        part.drive(1, "out")
-
-        self.assertEqual(part.unsettled, before)
 
     def test_the_rails_are_never_queued_for_resolution(self) -> None:
         part = self.part()
@@ -383,14 +340,6 @@ class ResolutionTest(Fixture):
         part._queue(netlist.GROUND, queued)
 
         self.assertEqual(queued, [])
-
-    def test_resolving_a_rail_does_nothing(self) -> None:
-        part = self.part()
-        before = bytes(part.state)
-
-        part._resolve(netlist.POWER, [])
-
-        self.assertEqual(bytes(part.state), before)
 
     def test_a_net_is_queued_once_however_many_times_it_is_reached(self) -> None:
         part = self.part()
@@ -401,13 +350,20 @@ class ResolutionTest(Fixture):
 
         self.assertEqual(queued, [17])
 
+    def test_resolving_a_rail_does_nothing(self) -> None:
+        part = self.part()
+        before = bytes(part.state)
+
+        part._resolve(netlist.POWER, [])
+
+        self.assertEqual(bytes(part.state), before)
+
     def test_a_group_seeded_on_a_rail_is_just_that_rail(self) -> None:
-        """The swap to the front has nothing to swap when the rail arrives first.
+        """The walk stops at a rail rather than crossing it.
 
         Nothing reaches this through a normal propagation, because resolution
         refuses a rail before it ever collects a group. It is reached here so the
-        ordering rule is stated for every case rather than for the ones that
-        happen to come up.
+        rule is stated for every case rather than for the ones that come up.
         """
         part = self.part()
 
@@ -415,16 +371,24 @@ class ResolutionTest(Fixture):
 
         self.assertEqual(part._group, [netlist.GROUND])
 
+    def test_a_net_reached_through_the_far_end_of_a_transistor_joins_the_group(self) -> None:
+        part = self.part()
+        part.on[2] = 1
+
+        part._regroup(19)
+
+        self.assertIn(17, part._group)
+
     def test_a_net_going_low_leaves_an_already_open_transistor_alone(self) -> None:
         part = self.part()
-        part.high[19] = 0
-        part.low[19] = 1
+        part.pullup[19] = 0
+        part.pulldown[19] = 1
         part.state[19] = 1
-        part.on[3] = 0
+        part.on[1] = 0
 
         part.settle([19])
 
-        self.assertEqual((part.state[19], part.on[3]), (0, 0))
+        self.assertEqual((part.state[19], part.on[1]), (0, 0))
 
     def test_the_connected_nets_leave_out_the_rails(self) -> None:
         part = self.part()
@@ -436,19 +400,8 @@ class ResolutionTest(Fixture):
 
 class ClockTest(Fixture):
     def quiet(self) -> netlist.Simulation:
-        """A synthetic part whose control nets are read as levels rather than as buses.
-
-        Every net the reference marks floating is cleared here, because a
-        floating net with nothing attached reads as high impedance, and high
-        impedance is truthy. Leaving them floating would make every condition in
-        `half_cycle` read as though the line were released.
-        """
         part = self.part()
-        for number in (17, 18):
-            part.high[number] = 0
-            part.pulled_up[number] = 0
-        for number in range(len(part.floats)):
-            part.floats[number] = 0
+        part.pullup[17] = 0
         part.drive(1, "clk")
         return part
 
@@ -556,12 +509,24 @@ class ClockTest(Fixture):
 
         self.assertEqual(part.address(), 0x8001)
 
+    def test_a_main_register_is_read_under_the_name_an_instruction_uses(self) -> None:
+        part = self.quiet()
+        self.arrange(part, reg_bb0=1, reg_bb3=1)
+
+        self.assertEqual(part.register("b"), 0x09)
+
+    def test_a_register_with_no_shadow_is_read_under_its_own_name(self) -> None:
+        part = self.quiet()
+        self.arrange(part, reg_a7=1)
+
+        self.assertEqual(part.register("a"), 0x80)
+
 
 class CommandLineTest(Fixture):
     def test_no_arguments_asks_for_the_default_run(self) -> None:
         found = netlist.options([])
 
-        self.assertEqual(found, 130)
+        self.assertEqual(found, netlist.DEFAULT_HALF_CYCLES)
 
     def test_a_run_length_is_taken_from_the_arguments(self) -> None:
         found = netlist.options(["--half-cycles", "12"])
@@ -586,6 +551,7 @@ class CommandLineTest(Fixture):
         self.assertEqual((code, "REFUSED" in held.getvalue()), (1, True))
 
     def test_a_run_that_never_settles_is_reported_as_a_failure(self) -> None:
+        build(self.where, transistors=[(18, 18, 1)], pulled_up=(18,))
         held = io.StringIO()
 
         with redirect_stdout(held):
@@ -594,23 +560,22 @@ class CommandLineTest(Fixture):
         self.assertEqual(code, 1)
 
 
-REAL = netlist.ROOT
-PRESENT = all((REAL / name).is_file() for name in netlist.FILES)
+PRESENT = all((netlist.ROOT / name).is_file() for name in netlist.FILES)
 
 
-@unittest.skipUnless(PRESENT, "the Z80Explorer netlist is not on this machine")
+@unittest.skipUnless(PRESENT, "the Visual 6502 netlist is not on this machine")
 class AgainstTheDieTest(unittest.TestCase):
-    """The one thing a synthetic circuit cannot show: that it runs the part."""
+    """The things a synthetic circuit cannot show: that it runs the part."""
 
     part: ClassVar[netlist.Simulation]
 
     @classmethod
     @override
     def setUpClass(cls) -> None:
-        cls.part = netlist.Simulation(REAL)
+        cls.part = netlist.Simulation()
         cls.part.reset()
-        cls.part.load(bytes([0x3E, 0x42, 0x06, 0x99, 0x0E, 0x17, 0x04, 0x00]))
-        for _ in range(130):
+        cls.part.load(netlist.SAMPLE)
+        for _ in range(netlist.DEFAULT_HALF_CYCLES):
             cls.part.half_cycle()
 
     def test_the_netlist_is_the_one_that_was_read(self) -> None:
@@ -627,6 +592,49 @@ class AgainstTheDieTest(unittest.TestCase):
 
     def test_it_carries_on_past_the_program(self) -> None:
         self.assertEqual((self.part.register("c"), self.part.pc()), (0x17, 0x0011))
+
+
+@unittest.skipUnless(PRESENT, "the Visual 6502 netlist is not on this machine")
+class MeasuredRatherThanTakenTest(unittest.TestCase):
+    """The two things this package established for itself, driven against the die.
+
+    Both look like details and neither is. The first decides whether the netlist
+    ever comes to rest; the second decides whether a register read means anything.
+    """
+
+    def test_the_single_letter_names_hold_the_shadow_set_rather_than_the_main_one(self) -> None:
+        """`LD B,0x99` then `INC B` puts 0x9A somewhere, and not under `reg_b`."""
+        part = netlist.Simulation()
+        part.reset()
+        part.load(netlist.SAMPLE)
+        for _ in range(netlist.DEFAULT_HALF_CYCLES):
+            part.half_cycle()
+
+        self.assertNotEqual(part.bus("reg_b", 8), 0x9A)
+
+    def test_loading_the_pullup_entries_stops_the_netlist_ever_resting(self) -> None:
+        """The one thing that changes is whether those 32 entries are loaded.
+
+        They are written with their gate tied to power, so each one joins a net
+        to the power rail and never opens. Loaded, they fight whatever pulls
+        those nets down and the netlist never comes to rest.
+        """
+        held = (netlist.ROOT / "transdefs.js").read_text().splitlines()
+        flagged = [line for line in held if line.rstrip().endswith("true,],")]
+        with tempfile.TemporaryDirectory() as hold:
+            spare = Path(hold) / "transdefs.js"
+            spare.write_text("\n".join(line.replace("true,", "false,") for line in flagged) + "\n")
+            part = netlist.Simulation()
+            part._read_transistors(spare)
+
+        part.reset()
+        part.load(netlist.SAMPLE)
+        for _ in range(netlist.DEFAULT_HALF_CYCLES):
+            part.half_cycle()
+
+        self.assertEqual(
+            (len(flagged), part.unsettled > 0), (netlist.TRANSISTORS_THAT_ARE_PULLUPS, True)
+        )
 
 
 if __name__ == "__main__":
