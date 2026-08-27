@@ -1219,22 +1219,6 @@ class DivergenceTest(unittest.TestCase):
 
         self.assertEqual(len(admitted), 2)
 
-    def test_every_entry_carries_a_severity_the_record_uses_elsewhere(self) -> None:
-        found = {entry["severity"] for entry in self.entries}
-
-        self.assertLessEqual(
-            found,
-            {
-                "documentContradiction",
-                "contradiction",
-                "convention",
-                "unstated",
-                "unmodelled",
-                "unchecked",
-                "outOfScope",
-            },
-        )
-
     def test_every_timing_chapter_cycle_is_modelled_or_written_up(self) -> None:
         named = {entry["id"] for entry in self.entries}
 

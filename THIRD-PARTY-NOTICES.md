@@ -41,7 +41,7 @@ THE SOFTWARE.
 ## The netlist itself
 
 The three data files that resolver reads are not in this repository and never
-will be. [`conformance/netlist.json`](conformance/netlist.json) names them, says
+will be. [`conformance/netlist.manifest.json`](conformance/netlist.manifest.json) names them, says
 where they come from and records what each one hashes to, so a copy can be
 confirmed before it is trusted. The Visual 6502 repository states that licences
 and copyright are per file, and those three carry no header of their own, so this

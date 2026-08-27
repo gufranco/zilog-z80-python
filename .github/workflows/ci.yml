@@ -113,7 +113,7 @@ jobs:
       # The netlist is somebody else's work, so this repository carries its
       # identity and never the files, and the die tests skip when it is absent.
       # A check that only ever skips reports success by not running, so it is
-      # fetched here from the commit netlist.json pins. The loader refuses
+      # fetched here from the commit netlist.manifest.json pins. The loader refuses
       # anything whose digest is not the one that was read, which makes a moved
       # file fail here rather than be simulated as though it were the part.
       - name: Bring down the die netlist
@@ -121,7 +121,7 @@ jobs:
           python - <<'FETCH'
           import json, subprocess
           from pathlib import Path
-          held = json.loads(Path("conformance/netlist.json").read_text())
+          held = json.loads(Path("conformance/netlist.manifest.json").read_text())
           where = Path("docs/independent/visual6502")
           where.mkdir(parents=True, exist_ok=True)
           for entry in held["files"]:

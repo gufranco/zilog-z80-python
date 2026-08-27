@@ -12,7 +12,7 @@ This is a Python implementation rather than a translation, and what it is faithf
 to is their behaviour, because a resolver that settles differently is a different
 chip. The notice they require is in `THIRD-PARTY-NOTICES.md`.
 
-The three files it reads are not carried here. `netlist.json` names them, says
+The three files it reads are not carried here. `netlist.manifest.json` names them, says
 where they come from and records what each one hashes to, and a load refuses
 anything that is not what was read.
 
@@ -45,7 +45,7 @@ Same reasoning as `conformance.documents`: the record lives beside the code and
 the files it identifies do not live in the repository at all.
 """
 
-MANIFEST = Path(__file__).resolve().parent / "netlist.json"
+MANIFEST = Path(__file__).resolve().parent / "netlist.manifest.json"
 
 FILES = ("nodenames.js", "segdefs.js", "transdefs.js")
 
@@ -151,7 +151,7 @@ class Netlist:
     def __init__(self, where: Path | str | None = None, manifest: Path | str | None = None) -> None:
         root = Path(where or ROOT)
         self.identity = identity(manifest)
-        for entry in self.identity["files"]:
+        for entry in self.identity["netlist"]:
             check(root / str(entry["file"]), entry)
 
         self.names: dict[str, int] = {}

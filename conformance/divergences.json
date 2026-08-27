@@ -5,7 +5,7 @@
   "divergences": [
     {
       "id": "manual-m-cycle-column-misprints",
-      "severity": "documentContradiction",
+      "severity": "contradiction",
       "status": "closed",
       "topic": "Three rows where the manual's own M Cycles column contradicts its own T states breakdown.",
       "documentSays": {
@@ -14,14 +14,14 @@
         "source": "Zilog UM008011-0816, manual pages 99, 260 and 269"
       },
       "problem": "In each case the parenthesised breakdown has a different number of groups than the M Cycles column claims, while summing correctly to the stated total. A count of machine cycles cannot disagree with the number of T state groups those machine cycles are made of.",
-      "packageFollows": "the breakdown",
+      "packageFollows": "document",
       "why": "The breakdown is the column closest to the silicon and it is internally consistent on all 184 rows in the document. The M Cycles column is a summary, and on the JR row it has plainly been copied from the T States column beside it. Prose and summary columns are written last and reviewed least.",
       "howItWasFound": "Mechanically. Every row was checked twice, once that its breakdown sums to its total and once that the number of groups equals the M Cycles column. The first check passes on every row; the second fails on exactly these three. Each was then read off the rendered page image to confirm the document really prints it, rather than the extraction having damaged it.",
       "wouldReopenIt": "A Zilog erratum, or a later revision of the manual printing different figures."
     },
     {
       "id": "recording-single-state-strobe",
-      "severity": "convention",
+      "severity": "low",
       "status": "open",
       "topic": "How many T states a strobe occupies, when a T state is the smallest column there is.",
       "documentSays": {
@@ -38,7 +38,7 @@
         "source": "suites.json",
         "generatorSaysSoItself": "Use simplified memory access T-states. With this ON, MRQ/RD and MRQ/WR will only pulse for 1 T-state, whereas the docs have them pulse for 2. This simplifies emulator development and speeds up execution at no cost to accuracy."
       },
-      "packageFollows": "document by default, reference in the comparison runner",
+      "packageFollows": "document",
       "consequence": "A bus built without arguments draws a pin in every T state the manual's figures show it asserted in. conformance/cycles.py builds its bus in the recorded shape instead, so the corpus still checks this core cycle for cycle without either shape being bent to fit the other.",
       "why": "A four character string per T state cannot express a waveform whose edges land between states, so any per-state model applies a rule the manual never states. Calling the recording wrong would be treating one such rule as a fact. Calling it right would be treating a documented simplification as a measurement. Both shapes are kept, named, and produced from the same edge table.",
       "wouldSettleIt": [
@@ -67,7 +67,7 @@
         "source": "suites.json",
         "generatorSaysSoItself": "Put REFRESH values on address pins during opcode fetch"
       },
-      "packageFollows": "reference, in both shapes",
+      "packageFollows": "reference",
       "consequence": "The address on the last two states of every fetch is the vector register above the refresh counter as it stood before the fetch advanced it. Both pin shapes put it there, because the question is what is on the pins rather than how a waveform becomes a column.",
       "why": "The manual guarantees only seven bits, so the rest is not a figure it prints. The recording supplies a whole address and this core reproduces it. A model that put something else in the upper nine bits would disagree on every instruction and would have no document behind it either.",
       "wouldSettleIt": ["A logic capture reading all sixteen address lines during T3 of a fetch."]
@@ -193,7 +193,7 @@
         "document": "userManual",
         "source": "Zilog UM008011-0816, manual page 14"
       },
-      "packageFollows": "document, for the cycle; neither, for the address",
+      "packageFollows": "document",
       "consequence": "A halted step now spends a whole four state fetch with the pins of one, and advances the refresh counter. The address it fetches from is the program counter, which has already passed the halt instruction.",
       "why": "The manual says outright that the halted part keeps performing M1 cycles, so emitting none was reporting a machine cycle the part performs as one it does not. It does not say which address those cycles carry: the note under Figure 11 says the halt instruction is repeated, which would put the previous address on the bus, and the counter is where a part that simply stopped advancing would fetch from.",
       "wouldSettleIt": [
@@ -240,7 +240,7 @@
           "dd 36, fd 36: the internal states fall in a different place, with the same total."
         ]
       },
-      "packageFollows": "the pinned corpus",
+      "packageFollows": "corpus",
       "consequence": "This core reproduces the corpus as pinned. A future bump to a corpus regenerated from the current head would change eleven opcodes, and none of the changes could be checked against a document.",
       "why": "The pin exists so a run is reproducible. Following the head instead would be swapping one undocumented opinion for a newer one with nothing to prefer it by.",
       "wouldReopenIt": [
@@ -380,7 +380,7 @@
         "claim": "Three rules have been reported. Patrik Rak worked out in 2012 that on Zilog parts, NMOS and CMOS alike, the two bits are bits 5 and 3 of (Q ^ F) | A. David Banks reported in 2018 that NEC's NMOS part takes them from A alone, and that ST's CMOS part takes one from each rule.",
         "source": "Banks, Undocumented Z80 Flags rev 1.0 and Sainz de Baranda y Goni, Brewer and Helcmanovsky, Z80 CCF SCF Outcome Stability"
       },
-      "packageFollows": "reference, and only for the two of the three rules that are not disputed",
+      "packageFollows": "reference",
       "consequence": "The z80 and z84c00 models take Rak's formula and the upd780c model takes the accumulator alone. No ST model exists, because the evidence for a third rule is contested.",
       "why": "The NEC part was previously another name for the Zilog model, which made this package answer for a part whose measured behaviour it does not reproduce. A part number that resolves to the wrong behaviour is worse than an absent one, because it answers.",
       "wouldSettleIt": [
@@ -435,7 +435,7 @@
     },
     {
       "id": "mode-two-vector-low-bit",
-      "severity": "documentContradiction",
+      "severity": "contradiction",
       "status": "open",
       "topic": "Whether the lowest bit of the byte a device supplies reaches the pointer.",
       "documentSays": {
@@ -561,7 +561,7 @@
         "source": "Zilog UM008011-0816, the instruction descriptions"
       },
       "problem": "Of the 184 rows the record then held, 43 carried an instruction field that is not an instruction: Register r, Description, Condition Bits Affected, see page, Relevant, Example, If B = 0: and Sign Flag. Those are words sitting near the table on the same page. The group pages were also short, page 156 printing five rows for SBC A,s where the record held two. Two groups were missing altogether: ADC A, s on page 152 and SUB s on page 154.",
-      "packageFollows": "neither, because nothing reads the label",
+      "packageFollows": "neither",
       "why": "No behaviour rests on this. The checks that use the table read the numbers, and those are internally consistent: every breakdown sums to its total, which is what found three of the four places the manual contradicts itself. The core's timing is separately verified against 22,005,372 recorded T states. What is wrong is the record as a description of the document, and a reader looking up what the manual says about an instruction can be misled by a row labelled 'Description'.",
       "howItWasFound": "A review checked every row's instruction field against the mnemonics the package implements and found 43 that match none of them.",
       "measuredOn": "2026-08-23",

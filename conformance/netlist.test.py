@@ -105,12 +105,12 @@ def stamp(where: Path) -> Path:
     that the loader refuses a file the identity does not name, and a synthetic
     identity exercises that exactly as a real one does.
     """
-    manifest = where / "netlist.json"
+    manifest = where / "netlist.manifest.json"
     manifest.write_text(
         json.dumps(
             {
                 "algorithm": {"licence": "MIT"},
-                "files": [
+                "netlist": [
                     {
                         "file": name,
                         "bytes": (where / name).stat().st_size,
@@ -133,10 +133,10 @@ class Fixture(unittest.TestCase):
         self.where = build(Path(self.hold.name))
 
     def parsed(self) -> netlist.Netlist:
-        return netlist.Netlist(self.where, self.where / "netlist.json")
+        return netlist.Netlist(self.where, self.where / "netlist.manifest.json")
 
     def part(self) -> netlist.Simulation:
-        return netlist.Simulation(self.where, self.where / "netlist.json")
+        return netlist.Simulation(self.where, self.where / "netlist.manifest.json")
 
 
 class IdentityTest(Fixture):
@@ -168,7 +168,7 @@ class IdentityTest(Fixture):
     def test_the_identity_carried_here_names_the_three_files(self) -> None:
         held = netlist.identity()
 
-        self.assertEqual([one["file"] for one in held["files"]], list(netlist.FILES))
+        self.assertEqual([one["file"] for one in held["netlist"]], list(netlist.FILES))
 
     def test_the_identity_carried_here_names_the_licence_the_resolver_follows(self) -> None:
         held = netlist.identity()
@@ -546,7 +546,7 @@ class CommandLineTest(Fixture):
         held = io.StringIO()
 
         with redirect_stdout(held):
-            code = netlist.main([], self.where, self.where / "netlist.json")
+            code = netlist.main([], self.where, self.where / "netlist.manifest.json")
 
         self.assertEqual((code, "REFUSED" in held.getvalue()), (1, True))
 
@@ -555,7 +555,9 @@ class CommandLineTest(Fixture):
         held = io.StringIO()
 
         with redirect_stdout(held):
-            code = netlist.main(["--half-cycles", "2"], self.where, self.where / "netlist.json")
+            code = netlist.main(
+                ["--half-cycles", "2"], self.where, self.where / "netlist.manifest.json"
+            )
 
         self.assertEqual(code, 1)
 

@@ -16,7 +16,7 @@
   },
   "readOn": "2026-08-27",
   "decides": "sha256 decides. crc32 is published beside it so a copy can be cross-checked against a catalogue that keys on it, and it decides nothing on its own: it is a 32-bit error code.",
-  "files": [
+  "netlist": [
     {
       "file": "nodenames.js",
       "what": "Every named net, including vss, vcc and clk, whose numbers 1, 2 and 3 every rule in netlist.py is written against.",

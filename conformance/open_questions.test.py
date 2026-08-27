@@ -75,9 +75,10 @@ class RecordTest(unittest.TestCase):
         self.assertEqual(len(closed), 7)
 
     def test_every_severity_the_record_uses_has_a_place_in_the_document(self) -> None:
+        """The vocabulary itself is checked once, for the whole family, in family.test.py."""
         severities = {one["severity"] for one in opened()}
 
-        self.assertEqual(len(severities), 5)
+        self.assertEqual(sorted(severities), ["contradiction", "low", "unchecked", "unstated"])
 
 
 if __name__ == "__main__":

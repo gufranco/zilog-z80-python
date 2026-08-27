@@ -4,7 +4,7 @@ A Z80 you can drive from a clock, held to Zilog's own manual for the shape of ev
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,218** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,225** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -203,7 +203,7 @@ A document says what the part does and a recording says what one part did. Neith
 python3 -m conformance.netlist
 ```
 
-The resolver follows `chipsim.js` and `wires.js` from the Visual 6502 project, which are MIT licensed; the notice they ask for is in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). The three data files are not carried here. [`conformance/netlist.json`](conformance/netlist.json) names them, says where they come from and records what each one hashes to; put them in `docs/independent/visual6502` and a load refuses anything that is not what was read.
+The resolver follows `chipsim.js` and `wires.js` from the Visual 6502 project, which are MIT licensed; the notice they ask for is in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). The three data files are not carried here. [`conformance/netlist.manifest.json`](conformance/netlist.manifest.json) names them, says where they come from and records what each one hashes to; put them in `docs/independent/visual6502` and a load refuses anything that is not what was read.
 
 Two things had to be established here rather than taken from anyone. Thirty-two entries in the transistor file are pull-ups rather than transistors, and loading them is the difference between a netlist that comes to rest and one that never does. And the doubled net names hold the register set an instruction writes, while the single-letter ones hold the shadow set, which is the opposite of what the names suggest; that was measured by executing `LD r,n` across every register and every bit position and watching where the value landed.
 
