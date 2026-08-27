@@ -165,6 +165,34 @@ class IdentityTest(Fixture):
 
         self.assertIn("a different file", str(raised.exception))
 
+    def test_every_entry_publishes_the_whole_digest_ladder(self) -> None:
+        held = netlist.identity()
+
+        missing = [
+            (one["file"], key)
+            for one in held["netlist"]
+            for key in ("bytes", "crc32", "md5", "sha1", "sha256")
+            if key not in one
+        ]
+
+        self.assertEqual(missing, [])
+
+    def test_and_says_which_of_them_decides(self) -> None:
+        held = netlist.identity()
+
+        self.assertIn("sha256 decides", held["decides"])
+
+    def test_the_published_digests_agree_with_each_other(self) -> None:
+        held = netlist.identity()
+
+        wrong = [
+            one["file"]
+            for one in held["netlist"]
+            if len(str(one["sha256"])) != 64 or len(str(one["sha1"])) != 40
+        ]
+
+        self.assertEqual(wrong, [])
+
     def test_the_identity_carried_here_names_the_three_files(self) -> None:
         held = netlist.identity()
 

@@ -15,30 +15,36 @@
     "text": "THIRD-PARTY-NOTICES.md"
   },
   "readOn": "2026-08-27",
-  "decides": "sha256 decides. crc32 is published beside it so a copy can be cross-checked against a catalogue that keys on it, and it decides nothing on its own: it is a 32-bit error code.",
+  "decides": "sha256 decides. The size rejects a wrong file for one stat call, and crc32, md5 and sha1 are published beside it so a copy can be cross-checked against a catalogue that keys on any of them. None of the three decides anything on its own: crc32 is a 32-bit error code, and md5 and sha1 are both collision-broken.",
   "netlist": [
     {
       "file": "nodenames.js",
       "what": "Every named net, including vss, vcc and clk, whose numbers 1, 2 and 3 every rule in netlist.py is written against.",
       "bytes": 7469,
-      "sha256": "d8cea80c6d61e543c1a47112d2fcece46ac4947ec9abf1ebc2e51d32e74a369b",
       "crc32": "5527549f",
+      "md5": "45e75311d2a678e8fc5c3ed6c3cbc1b1",
+      "sha1": "b488b84a45b5d8f330c5ffb91bdbd0415508f59b",
+      "sha256": "d8cea80c6d61e543c1a47112d2fcece46ac4947ec9abf1ebc2e51d32e74a369b",
       "retrievedFrom": "https://github.com/trebonian/visual6502/raw/d8ecc129b34e0eaf320e0400fcf33329475bdb1e/chip-z80/nodenames.js"
     },
     {
       "file": "segdefs.js",
       "what": "The polygons, read here only for the one column that marks a net as permanently pulled up.",
       "bytes": 2368769,
-      "sha256": "40b4856f9a4d2453f5cb4f724bdf5a698575311c651d74812ae74765c9c53b6d",
       "crc32": "63a72f1b",
+      "md5": "f99da25b5812b33168eef582b771104b",
+      "sha1": "120ffa695c2f2732ce0677a20b64a1a22e3e36b4",
+      "sha256": "40b4856f9a4d2453f5cb4f724bdf5a698575311c651d74812ae74765c9c53b6d",
       "retrievedFrom": "https://github.com/trebonian/visual6502/raw/d8ecc129b34e0eaf320e0400fcf33329475bdb1e/chip-z80/segdefs.js"
     },
     {
       "file": "transdefs.js",
       "what": "Every transistor: its gate and its two channel connections. The circuit itself.",
       "bytes": 439144,
-      "sha256": "7cd64e86bb8936c3fad93253b4d354f837a5fdd671c7bc1606075f281d181ec9",
       "crc32": "ff0a9da9",
+      "md5": "1d2a34495adfb19adb841d33be398a7c",
+      "sha1": "d126bd84b914e084d33c312f251fc1b85b566f51",
+      "sha256": "7cd64e86bb8936c3fad93253b4d354f837a5fdd671c7bc1606075f281d181ec9",
       "retrievedFrom": "https://github.com/trebonian/visual6502/raw/d8ecc129b34e0eaf320e0400fcf33329475bdb1e/chip-z80/transdefs.js"
     }
   ]
