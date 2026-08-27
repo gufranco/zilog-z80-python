@@ -124,7 +124,7 @@ jobs:
           held = json.loads(Path("conformance/netlist.manifest.json").read_text())
           where = Path("docs/independent/visual6502")
           where.mkdir(parents=True, exist_ok=True)
-          for entry in held["files"]:
+          for entry in held["netlist"]:
               subprocess.run(
                   ["curl", "-sSL", "--fail", "-o", str(where / entry["file"]), entry["retrievedFrom"]],
                   check=True,
