@@ -54,7 +54,7 @@
       ],
       "whichPagesAreTheCpu": "Two separate places. File pages 8 to 29 are the Z8400/Z84C00 NMOS/CMOS Z80 CPU product specification, which covers the NMOS and the CMOS part together and ends where the Z84C01 specification begins at file page 30. File pages 416 to 424 are the Questions and Answers section, which covers the whole family a few entries per part: 416 to 419 and 424 answer questions about the CPU, and 421 to 423 answer questions about the PIO, the CTC, the SIO and the DART, which are different chips. The ranges above are the CPU pages, and a fact citing this document has to name one of them.",
       "howItWasFound": "The Questions and Answers pages were found by reading each file page from 416 to 424 for which part it names. The gap at 420 carries no part at all, and 424 returns to the CPU after the peripheral entries, which is why those are two ranges rather than one. The product specification was found later, by searching the text layer for a sentence a scanned second-source sheet turned out to carry, and its boundaries by reading the running heads until the next product begins.",
-      "whatHasBeenReadOfIt": "The Questions and Answers pages, in full. Of the product specification, the CPU Timing pages, file pages 19 to 20, which is where the reset cycle is described. The rest of file pages 8 to 29 has not been read, and the reset finding is the reason to think it is worth reading: this document had been treated as a corrective appendix to the user manual, and it turned out to carry a full specification of the same parts that states at least one thing the user manual does not.",
+      "whatHasBeenReadOfIt": "The Questions and Answers pages, in full. Of the product specification, file pages 8 to 29 in full on 2026-08-27. Three things came out of it: the two internal T cycles a reset spends after the pin releases, which the user manual never mentions and which this model was short by; the CMOS power-down mode, which is a board stopping the clock rather than anything the part executes; and the deadline a non-maskable edge has to land before, which is the only statement in either document of what a board must do for this model's own assumption to hold. The rest of those pages restates the user manual.",
       "file": "z80-family-data-book-1989.pdf"
     }
   },
@@ -2001,6 +2001,25 @@
       "quote": "Q: Does the CPU tristate M1 during reset? A: No.",
       "note": "One of the few statements anywhere about what the pins do while reset is held. Nothing here models a pin during reset, so it changes no behaviour and is recorded because the question was asked and answered by the publisher.",
       "filePage": 417,
+      "appliesTo": ["upd780c", "z80", "z84c00"]
+    },
+    "powerDownIsTheClockStopping": {
+      "document": "familyDataBook",
+      "section": "Z8400/Z84C00 NMOS/CMOS Z80 CPU product specification, Power-Down mode of operation",
+      "filePage": 21,
+      "quote": "When the clock input to the CPU is stopped at either a High or Low level, the CPU stops its operation and maintains all registers and control signals.",
+      "appliesToNote": "The section heads itself \"Only applies to CMOS Z80 CPU\", so it is the z84c00 alone among the parts here.",
+      "notModelled": "Nothing, and there is nothing to model. Power down is entered by a board stopping the clock, not by the part executing anything, and this model has no oscillator to stop: it advances when a caller drives it and stands still when nobody does. A caller who stops calling has already reproduced every effect the sentence describes, registers and control signals included.",
+      "whyItIsRecordedAnyway": "It is documented behaviour of a part this package ships, and an absent entry reads as an unread page rather than as a decision. The data book also ties it to the HALT instruction in Figure 13, which is a different thing from the HALT state this record models above.",
+      "appliesTo": ["z84c00"]
+    },
+    "nonmaskableEdgeMustLandBeforeTheLastState": {
+      "document": "familyDataBook",
+      "section": "Z8400/Z84C00 NMOS/CMOS Z80 CPU product specification, Non-Maskable Interrupt Request Cycle",
+      "filePage": 18,
+      "quote": "Although NMI is an asynchronous input, to guarantee its being recognized on the following machine cycle, NMI's falling edge must occur no later than the rising edge of the clock cycle preceding the last state of any instruction cycle.",
+      "notModelled": "The deadline, because there is no line to miss it. This package takes a non-maskable request as a call rather than as a level, so a request either arrived before the instruction boundary or it did not, and there is no half state in between for an edge to land in.",
+      "whyItIsRecordedAnyway": "It is the sentence that says what a board has to do for the model's own assumption to hold. A caller wiring real timing against this model needs it, and it is the only place either document states the deadline.",
       "appliesTo": ["upd780c", "z80", "z84c00"]
     }
   },
