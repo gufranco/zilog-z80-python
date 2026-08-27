@@ -40,6 +40,10 @@
       "pinnedIn": "the References section of README.md",
       "sectionPages": [
         {
+          "from": 8,
+          "to": 29
+        },
+        {
           "from": 416,
           "to": 419
         },
@@ -48,8 +52,9 @@
           "to": 424
         }
       ],
-      "whichPagesAreTheCpu": "The Questions and Answers section runs from file page 416 to 424 and covers the whole family, a few entries per part. File pages 416 to 419 and 424 answer questions about the CPU; 421 to 423 answer questions about the PIO, the CTC, the SIO and the DART, which are different chips. The ranges above are the CPU pages, and a fact citing this document has to name one of them.",
-      "howItWasFound": "Each file page from 416 to 424 was read for which part it names. The gap at 420 carries no part at all, and 424 returns to the CPU after the peripheral entries, which is why this is two ranges rather than one.",
+      "whichPagesAreTheCpu": "Two separate places. File pages 8 to 29 are the Z8400/Z84C00 NMOS/CMOS Z80 CPU product specification, which covers the NMOS and the CMOS part together and ends where the Z84C01 specification begins at file page 30. File pages 416 to 424 are the Questions and Answers section, which covers the whole family a few entries per part: 416 to 419 and 424 answer questions about the CPU, and 421 to 423 answer questions about the PIO, the CTC, the SIO and the DART, which are different chips. The ranges above are the CPU pages, and a fact citing this document has to name one of them.",
+      "howItWasFound": "The Questions and Answers pages were found by reading each file page from 416 to 424 for which part it names. The gap at 420 carries no part at all, and 424 returns to the CPU after the peripheral entries, which is why those are two ranges rather than one. The product specification was found later, by searching the text layer for a sentence a scanned second-source sheet turned out to carry, and its boundaries by reading the running heads until the next product begins.",
+      "whatHasBeenReadOfIt": "The Questions and Answers pages, in full. Of the product specification, the CPU Timing pages, file pages 19 to 20, which is where the reset cycle is described. The rest of file pages 8 to 29 has not been read, and the reset finding is the reason to think it is worth reading: this document had been treated as a corrective appendix to the user manual, and it turned out to carry a full specification of the same parts that states at least one thing the user manual does not.",
       "file": "z80-family-data-book-1989.pdf"
     }
   },
@@ -316,6 +321,17 @@
       "leavesEverythingElse": "The manual names what reset defines. Every other register keeps what it held, which is why this model seeds them rather than clearing them.",
       "minimumClockCycles": 3,
       "manualPage": 6,
+      "afterThePinReleases": {
+        "quote": "Once RESET goes inactive, two internal T cycles are consumed before the CPU resumes normal processing operation. RESET clears the PC register, so the first opcode fetch will be location 0000H.",
+        "document": "familyDataBook",
+        "section": "Z8400/Z84C00 NMOS/CMOS Z80 CPU product specification, CPU Timing, Reset Cycle",
+        "filePage": 20,
+        "printedPage": 15,
+        "states": 2,
+        "note": "The user manual stops at the pin and never mentions these two, so a reset built from it alone is two T states short. The product specification heads the section covering the NMOS and the CMOS part together, so it settles both models this package ships under Zilog names.",
+        "necIsSilent": "NEC's own sheet for the upd780c states the three-cycle pulse width and says execution then begins from address zero, and says nothing about internal cycles either way. The same two are charged for that model because it is a second source for the same design, and this line records that the claim rests on the Zilog sheet rather than on NEC's.",
+        "appliesTo": ["upd780c", "z80", "z84c00"]
+      },
       "appliesTo": ["upd780c", "z80", "z84c00"]
     },
     "flagRegister": {

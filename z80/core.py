@@ -55,12 +55,31 @@ INTERRUPT_MODES = (0, 0, 1, 2, 0, 0, 1, 2)
 INDEX_PREFIX = {0xDD: "ix", 0xFD: "iy"}
 
 RESET_STATES = 3
-"""The minimum a reset costs, which is how long the pin has to be held.
+"""How long the pin has to be held, which is the first half of what a reset costs.
 
 Zilog states it rather than leaving it to be inferred: "RESET must be active for
 a minimum of three full clock cycles before a reset operation is complete." It is
 a floor and not a figure, because how long a board actually holds the pin is the
 board's decision and nothing here can know it.
+"""
+
+RESUME_STATES = 2
+"""What the part spends after the pin releases, before it fetches anything.
+
+The user manual stops at the pin, so this was missing here until the Z8400 and
+Z84C00 product specification was read: "Once RESET goes inactive, two internal T
+cycles are consumed before the CPU resumes normal processing operation." That
+sheet covers the NMOS and the CMOS part together, which is both of the Zilog
+models this package ships.
+
+Unlike the three above this is not a floor. It is what the part does once the
+board has let go, so a board holding the pin longer does not change it.
+
+NEC's sheet for its own part is silent on it, saying only that the pulse must be
+at least three clock cycles and that execution then begins from address zero.
+Silence is not a denial, and the part is a second source for the same design, so
+the same two are charged and the record says the NEC document does not state
+them.
 """
 
 NONMASKABLE_RESTART = 0x0066
@@ -242,15 +261,19 @@ class Cpu:
         answering it, and a host pacing against real time still owes the wall
         every one of them.
 
-        Three of those are charged, which is the minimum Zilog states the pin
-        must be held for. A board that holds it longer spends longer, and this
-        model has no way to know that it did, so the floor is what it charges.
-        The bus is not recorded across them: the manual says the address and data
-        lines are in a high impedance state for the duration, which is a thing
-        the trace has no way to write down, since it records accesses rather than
-        line states.
+        Five of those are charged, and they are two different things. Three are
+        the minimum Zilog states the pin must be held for: a board that holds it
+        longer spends longer, and this model has no way to know that it did, so
+        the floor is what it charges. Two more follow the pin's release, and the
+        product specification is where they are stated rather than the user
+        manual, which stops at the pin. Those two are not a floor.
+
+        The bus is not recorded across any of them: the manual says the address
+        and data lines are in a high impedance state for the duration, which is a
+        thing the trace has no way to write down, since it records accesses
+        rather than line states.
         """
-        for _ in range(RESET_STATES):
+        for _ in range(RESET_STATES + RESUME_STATES):
             self.spend()
         self.registers.reset()
         self.halted = False
