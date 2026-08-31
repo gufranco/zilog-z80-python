@@ -122,7 +122,7 @@
     {
       "id": "internal-register-wz",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "The internal register the recording calls WZ, and the flags latch it calls Q.",
       "documentSays": {
         "rung": 1,
@@ -134,9 +134,17 @@
         "claim": "Names both, gives their value before and after every case, and makes two instructions read their undocumented flag bits out of them.",
         "source": "suites.json"
       },
-      "packageFollows": "reference",
-      "consequence": "A programmer cannot name either register and a program can observe both.",
-      "wouldSettleIt": ["A die analysis, or Zilog documenting the internal register file."]
+      "packageFollows": "recording",
+      "consequence": "A programmer cannot name either register and a program can observe both. The register is no longer unmeasured here: eight of the nine cases probed agree with the recording, and the ninth is a difference between the die and what the recording says about two stores.",
+      "wouldSettleIt": [
+        "Zilog documenting the internal register file.",
+        "A logic capture of a real part running ld (nn),a, which is the one case where the die and the recording disagree. The die is one photograph and the recording is one author's measurement, so neither settles the other."
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "The netlist names reg_w and reg_z and both follow instructions the way the recording says, with one exception. Measured on 2026-08-30 by conformance/wz.py: ld a,(nn) and ld hl,(nn) and ld (nn),hl leave the address plus one; jp nn leaves the destination; in a,(n) leaves the accumulator over the port plus one. nop and ld a,n leave the pair at the power-up pattern, which is the control that makes the rest readable. The exception is that ld (nn),a and out (n),a end with the high byte at zero rather than at the accumulator. A trace of the half cycles shows the pair passing through the address and then the address plus one before the byte goes to zero, so the die clears it rather than never loading it, and ld (nn),hl keeps it, so it is not the harness releasing a bus.",
+        "source": "conformance/wz.json"
+      }
     },
     {
       "id": "undocumented-opcodes",
@@ -501,7 +509,7 @@
     {
       "id": "die-netlist-runs-here",
       "severity": "unchecked",
-      "status": "open",
+      "status": "narrowed",
       "topic": "The one source that could settle most of the entries above, now that it runs.",
       "documentSays": {
         "rung": 1,
@@ -514,11 +522,11 @@
         "source": "https://github.com/trebonian/visual6502, chip-z80/transdefs.js, segdefs.js and nodenames.js"
       },
       "packageFollows": "neither",
-      "consequence": "The entries above that say a logic capture would settle them can now be asked of the die instead, one at a time. None has been yet, so none of them has changed. What has changed is that asking is possible without a bench.",
+      "consequence": "The entries above that say a logic capture would settle them can be asked of the die instead, one at a time. One has been: internal-register-wz now carries what the netlist answers for nine instructions, in conformance/wz.json. The rest have not, so they have not changed.",
       "why": "conformance/netlist.py runs it. Its resolver follows chipsim.js and wires.js from the same project, which are MIT licensed, and the notice they ask for is in THIRD-PARTY-NOTICES.md. Driven from reset with a program that loads three registers and increments one, it fetches from 0x0000, executes, comes to rest on every edge, and lands on register values that only executing that program produces.",
       "wouldSettleIt": [
-        "Taking one entry above at a time, asking the die, and recording the answer as the netlist's rather than as the part's.",
-        "A logic capture from a real part, which is still what would settle any of them outright, because it would agree or disagree with the extraction."
+        "Taking the remaining entries one at a time and recording each answer as the netlist's rather than as the part's, the way conformance/wz.py does.",
+        "A logic capture from a real part, which is still what would settle any of them about a Z80 somebody owns."
       ],
       "measuredOn": "2026-08-27",
       "notStated": "Two things had to be established here rather than taken from anyone, and both were measured. Thirty-two entries in the transistor file carry a flag marking them pull-ups; loading them anyway leaves 36 propagations hitting the limiter over a 130 half cycle run and no register reaches a correct value, and skipping them leaves none. And the doubled net names hold the register set an instruction writes while the single-letter ones hold the shadow set, which is the opposite of what the names suggest; that was settled by executing LD r,n for each of A, B, C, D, E, H and L across all eight bit positions and recording which nets followed the loaded value."

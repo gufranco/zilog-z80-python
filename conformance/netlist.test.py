@@ -667,5 +667,55 @@ class MeasuredRatherThanTakenTest(unittest.TestCase):
         )
 
 
+EVERY_REGISTER = bytes([0x01, 0xC1, 0xC2, 0x11, 0xE3, 0xE4, 0x21, 0x1A, 0x1B, 0x3E, 0xAF, 0x76])
+"""Load BC, DE, HL and A with values no two of which are equal.
+
+None of them is the power-up pattern either. A register that still reads `0x55`
+was never written, so a probe value of `0x55` cannot tell a correct mapping from
+a net nothing touched, which is how the first version of `MAIN_REGISTERS` passed
+while it had D and H the wrong way round.
+"""
+
+
+@unittest.skipUnless(PRESENT, "the Visual 6502 netlist is not on this machine")
+class EveryRegisterTest(unittest.TestCase):
+    """That each register name reaches the net the die actually writes."""
+
+    part: ClassVar[netlist.Simulation]
+
+    @classmethod
+    @override
+    def setUpClass(cls) -> None:
+        cls.part = netlist.Simulation()
+        cls.part.reset()
+        cls.part.load(EVERY_REGISTER)
+        for _ in range(340):
+            cls.part.half_cycle()
+
+    def test_the_program_ran_to_the_halt(self) -> None:
+        self.assertEqual(self.part.pc(), 0x000C)
+
+    def test_every_register_holds_what_was_loaded_into_it(self) -> None:
+        found = {name: self.part.register(name) for name in "abcdehl"}
+
+        self.assertEqual(
+            found,
+            {"a": 0xAF, "b": 0xC2, "c": 0xC1, "d": 0xE4, "e": 0xE3, "h": 0x1B, "l": 0x1A},
+        )
+
+    def test_no_two_registers_were_given_the_same_value(self) -> None:
+        loaded = [0xAF, 0xC2, 0xC1, 0xE4, 0xE3, 0x1B, 0x1A]
+
+        self.assertEqual(len(set(loaded)), len(loaded))
+
+    def test_and_none_of_them_is_the_power_up_pattern(self) -> None:
+        self.assertNotIn(0x55, [self.part.register(name) for name in "abcdehl"])
+
+    def test_the_shadow_set_was_not_written(self) -> None:
+        shadows = [self.part.bus(f"reg_{name}", 8) for name in ("b", "c", "d", "e", "h", "l")]
+
+        self.assertEqual(set(shadows), {0x55})
+
+
 if __name__ == "__main__":
     unittest.main()

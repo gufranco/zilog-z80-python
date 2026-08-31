@@ -1,0 +1,72 @@
+{
+  "note": "What the die leaves in the undocumented WZ pair after one instruction. Zilog names the register nowhere, so nothing above a die answers this. Read off the Visual 6502 netlist, which is rung three: above any write-up and below a capture of a real part.",
+  "rung": 3,
+  "unwritten": "0x5555",
+  "calibration": "nop and ld a,n must leave the pair unwritten, and ld a,(nn) must give the address plus one. A run failing the first is reading the wrong nets; one failing the second is reading at the wrong instant.",
+  "probes": [
+    {
+      "instruction": "nop",
+      "group": "control",
+      "pair": "0x5555",
+      "written": false,
+      "a": "0x55"
+    },
+    {
+      "instruction": "ld a,n",
+      "group": "control",
+      "pair": "0x5555",
+      "written": false,
+      "a": "0x7e"
+    },
+    {
+      "instruction": "ld a,(nn)",
+      "group": "reads",
+      "pair": "0x1235",
+      "written": true,
+      "a": "0x00"
+    },
+    {
+      "instruction": "ld hl,(nn)",
+      "group": "reads",
+      "pair": "0x1235",
+      "written": true,
+      "a": "0x55"
+    },
+    {
+      "instruction": "ld (nn),hl",
+      "group": "writes",
+      "pair": "0x1235",
+      "written": true,
+      "a": "0x55"
+    },
+    {
+      "instruction": "ld (nn),a",
+      "group": "writes",
+      "pair": "0x0035",
+      "written": true,
+      "a": "0x9c"
+    },
+    {
+      "instruction": "in a,(n)",
+      "group": "ports",
+      "pair": "0x9c57",
+      "written": true,
+      "a": "0x00"
+    },
+    {
+      "instruction": "out (n),a",
+      "group": "ports",
+      "pair": "0x0057",
+      "written": true,
+      "a": "0x9c"
+    },
+    {
+      "instruction": "jp nn",
+      "group": "jumps",
+      "pair": "0x0010",
+      "written": true,
+      "a": "0x55"
+    }
+  ],
+  "clearedHighByte": "ld (nn),a and out (n),a end with the high byte at zero. The trace shows the pair passing through the address and then the address plus one first, so the byte is cleared rather than never loaded. ld (nn),hl, which is the same kind of store, keeps it."
+}

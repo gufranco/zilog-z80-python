@@ -112,7 +112,24 @@ Source: Zilog UM008011-0816, manual page 66.
 
 **What this project follows.** reference
 
-**What would settle or reopen it.** A die analysis, or Zilog documenting the internal register file.
+**What the die says.** The netlist names `reg_w` and `reg_z`, and
+[`conformance/wz.py`](conformance/wz.py) executes one instruction and reads them.
+Eight of the nine cases probed agree with the recording: `ld a,(nn)`,
+`ld hl,(nn)` and `ld (nn),hl` leave the address plus one, `jp nn` leaves the
+destination, and `in a,(n)` leaves the accumulator over the port plus one. `nop`
+and `ld a,n` leave the pair at the pattern the netlist powers up in, which is the
+control that makes the rest worth reading.
+
+The ninth disagrees. `ld (nn),a` and `out (n),a` end with the high byte at zero
+rather than at the accumulator. A trace of the half cycles shows the pair passing
+through the address and then the address plus one before the byte goes to zero,
+so the die clears it rather than never loading it, and `ld (nn),hl` keeps it, so
+it is not the harness releasing a bus.
+
+**What would settle or reopen it.** Zilog documenting the internal register file.
+A logic capture of a real part running `ld (nn),a`, which is the case where the
+die and the recording disagree: the die is one photograph and the recording is
+one author's measurement, so neither settles the other.
 
 ### The opcodes the manual does not list.
 

@@ -88,14 +88,23 @@ The count is checked rather than assumed, because a file where a different numbe
 of entries carry that flag is a different file.
 """
 
-MAIN_REGISTERS = {"b": "bb", "c": "cc", "d": "dd", "e": "ee", "h": "hh", "l": "ll"}
+MAIN_REGISTERS = {"b": "bb", "c": "cc", "d": "hh", "e": "ll", "h": "dd", "l": "ee"}
 """Where the main register set actually lives, against the names the file gives.
 
-The doubled names hold the registers an instruction writes and the single-letter
-ones hold the shadow set, which is the opposite of what the names suggest. So it
-was measured rather than read: `LD r,n` was executed for each of A, B, C, D, E, H
-and L across all eight bit positions, and the nets that followed the loaded value
-were recorded. A is the exception and is under its own name.
+Two things differ from the names, and only the first was noticed at first. The
+doubled names hold the registers an instruction writes and the single-letter ones
+hold the shadow set, which is the opposite of what the names suggest. And D, E, H
+and L are not where their doubled names put them: `reg_dd` holds H, `reg_hh`
+holds D, `reg_ee` holds L and `reg_ll` holds E. A, B and C are under the names
+they look like.
+
+This was measured, and the first version of it was not. It claimed a measurement
+across all seven registers and had only ever been checked against A, B and C,
+which are the three the sample program happens to write and the three the mapping
+had right. Loading `BC`, `DE` and `HL` with distinct values in one program is
+what showed it: `LD HL,1B1Ah` put `0x1B` in `reg_dd`. A value that reads as the
+power-up pattern `0x55` proves nothing either way, so every probe value has to
+avoid it.
 
 The authority for this is Zilog's definition of `LD r,n` together with the
 netlist, never anybody's naming file.
