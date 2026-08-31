@@ -25,8 +25,19 @@ def divergences() -> list[dict[str, Any]]:
     return held
 
 
+LIVE = ("open", "narrowed")
+"""The statuses a question is still open under.
+
+`narrowed` is one of them. A question that has been cut down to a smaller
+question is still a question, and the document has to keep naming it. It is kept
+apart from `open` so a reader can tell an entry nobody has touched from one that
+has been measured and got smaller, which is the family vocabulary in
+family.test.py rather than a word invented here.
+"""
+
+
 def opened() -> list[dict[str, Any]]:
-    return [one for one in divergences() if one["status"] == "open"]
+    return [one for one in divergences() if one["status"] in LIVE]
 
 
 class RecordTest(unittest.TestCase):
@@ -35,9 +46,7 @@ class RecordTest(unittest.TestCase):
         self.text = DOCUMENT.read_text()
 
     def test_every_divergence_says_whether_it_is_open(self) -> None:
-        missing = [
-            one["id"] for one in divergences() if one.get("status") not in ("open", "closed")
-        ]
+        missing = [one["id"] for one in divergences() if one.get("status") not in (*LIVE, "closed")]
 
         self.assertEqual(missing, [])
 
