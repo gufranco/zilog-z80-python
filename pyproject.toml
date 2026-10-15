@@ -35,9 +35,6 @@ packages = ["z80"]
 [tool.setuptools.dynamic]
 version = { attr = "z80.version.VERSION" }
 
-[tool.setuptools.exclude-package-data]
-z80 = ["*.test.py"]
-
 [tool.ruff]
 target-version = "py312"
 line-length = 100
