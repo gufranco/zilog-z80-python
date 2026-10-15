@@ -1,16 +1,3 @@
-"""That the switch-level run is the reference's, and that it runs the part.
-
-The netlist itself is not carried, so every check here is driven against a
-synthetic one built in the fixture: three files in the published formats
-describing a circuit small enough to reason about by hand. That is not a
-convenience. A check that only runs when a two megabyte file happens to be on the
-machine is a check that reports success by being skipped.
-
-The real netlist is used when it is present, and only for the things a synthetic
-circuit cannot show: that the part fetches, executes, comes to rest on every edge,
-and lands on register values nothing else would produce.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -98,13 +85,6 @@ def build(
 
 
 def stamp(where: Path) -> Path:
-    """An identity file for the synthetic netlist, so the real check runs on it.
-
-    The digests are taken from the files that were just written, which would be
-    circular if the point were to prove the files right. It is not: the point is
-    that the loader refuses a file the identity does not name, and a synthetic
-    identity exercises that exactly as a real one does.
-    """
     manifest = where / "netlist.manifest.json"
     manifest.write_text(
         json.dumps(
@@ -387,12 +367,6 @@ class ResolutionTest(Fixture):
         self.assertEqual(bytes(part.state), before)
 
     def test_a_group_seeded_on_a_rail_is_just_that_rail(self) -> None:
-        """The walk stops at a rail rather than crossing it.
-
-        Nothing reaches this through a normal propagation, because resolution
-        refuses a rail before it ever collects a group. It is reached here so the
-        rule is stated for every case rather than for the ones that come up.
-        """
         part = self.part()
 
         part._collect(netlist.GROUND)
@@ -595,8 +569,6 @@ PRESENT = all((netlist.ROOT / name).is_file() for name in netlist.FILES)
 
 @unittest.skipUnless(PRESENT, "the Visual 6502 netlist is not on this machine")
 class AgainstTheDieTest(unittest.TestCase):
-    """The things a synthetic circuit cannot show: that it runs the part."""
-
     part: ClassVar[netlist.Simulation]
 
     @classmethod
@@ -626,14 +598,7 @@ class AgainstTheDieTest(unittest.TestCase):
 
 @unittest.skipUnless(PRESENT, "the Visual 6502 netlist is not on this machine")
 class MeasuredRatherThanTakenTest(unittest.TestCase):
-    """The two things this package established for itself, driven against the die.
-
-    Both look like details and neither is. The first decides whether the netlist
-    ever comes to rest; the second decides whether a register read means anything.
-    """
-
     def test_the_single_letter_names_hold_the_shadow_set_rather_than_the_main_one(self) -> None:
-        """`LD B,0x99` then `INC B` puts 0x9A somewhere, and not under `reg_b`."""
         part = netlist.Simulation()
         part.reset()
         part.load(netlist.SAMPLE)
@@ -643,12 +608,6 @@ class MeasuredRatherThanTakenTest(unittest.TestCase):
         self.assertNotEqual(part.bus("reg_b", 8), 0x9A)
 
     def test_loading_the_pullup_entries_stops_the_netlist_ever_resting(self) -> None:
-        """The one thing that changes is whether those 32 entries are loaded.
-
-        They are written with their gate tied to power, so each one joins a net
-        to the power rail and never opens. Loaded, they fight whatever pulls
-        those nets down and the netlist never comes to rest.
-        """
         held = (netlist.ROOT / "transdefs.js").read_text().splitlines()
         flagged = [line for line in held if line.rstrip().endswith("true,],")]
         with tempfile.TemporaryDirectory() as hold:
@@ -668,19 +627,10 @@ class MeasuredRatherThanTakenTest(unittest.TestCase):
 
 
 EVERY_REGISTER = bytes([0x01, 0xC1, 0xC2, 0x11, 0xE3, 0xE4, 0x21, 0x1A, 0x1B, 0x3E, 0xAF, 0x76])
-"""Load BC, DE, HL and A with values no two of which are equal.
-
-None of them is the power-up pattern either. A register that still reads `0x55`
-was never written, so a probe value of `0x55` cannot tell a correct mapping from
-a net nothing touched, which is how the first version of `MAIN_REGISTERS` passed
-while it had D and H the wrong way round.
-"""
 
 
 @unittest.skipUnless(PRESENT, "the Visual 6502 netlist is not on this machine")
 class EveryRegisterTest(unittest.TestCase):
-    """That each register name reaches the net the die actually writes."""
-
     part: ClassVar[netlist.Simulation]
 
     @classmethod

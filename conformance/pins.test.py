@@ -1,12 +1,3 @@
-"""That the interrupt inputs behave as lines rather than as events.
-
-The distinction is the whole content of these tests. A request that is raised
-and withdrawn before the part looks must produce nothing, and a non-maskable
-line held low after its transition must not interrupt twice. Neither is
-reachable without a clock that can stop between two cycles, which is why these
-live beside it rather than with the instruction tests.
-"""
-
 from __future__ import annotations
 
 import sys
@@ -113,13 +104,6 @@ class NonMaskableLineTest(unittest.TestCase):
 
 
 class WaitLineTest(unittest.TestCase):
-    """That memory can ask for more time, and that the part asks where it asks.
-
-    "The CPU samples the WAIT input with the falling edge of clock state T2", so
-    the question is put once per machine cycle and every state it adds repeats
-    T2: same address, no value yet, strobes still down.
-    """
-
     def running(self) -> Any:
         space = z80.Memory(image=bytes([0x00] * 8))
         cpu = z80.Cpu("z80", space, recording=True)
@@ -172,13 +156,6 @@ class WaitLineTest(unittest.TestCase):
 
 
 class DeviceResponseTest(unittest.TestCase):
-    """That a device can put a whole instruction on the bus, not just one byte.
-
-    "With Mode 0, the interrupting device can place any instruction on the data
-    bus and the CPU executes it." Any instruction is wider than a restart, and a
-    caller that could only answer one byte could not say so.
-    """
-
     def interrupted(self) -> Any:
         space = z80.Memory(image=bytes([0x00] * 16))
         cpu = z80.Cpu("z80", space, recording=True)

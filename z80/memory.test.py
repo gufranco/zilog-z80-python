@@ -56,20 +56,12 @@ class SparseTest(unittest.TestCase):
 
 
 class MemoryTest(unittest.TestCase):
-    """The dense one, which is where a ROM image goes."""
-
     def test_it_holds_a_pattern_rather_than_zeroes(self) -> None:
         held = Memory(0x100)
 
         self.assertNotEqual(held.data, bytearray(0x100))
 
     def test_a_cleared_one_has_to_be_asked_for_in_writing(self) -> None:
-        """The rule is the default, not the absence of an option.
-
-        A caller who genuinely wants zeroes says so, and the request is the same
-        word in every member of this family. What must never happen is getting
-        them without asking.
-        """
         self.assertEqual(set(Memory(0x100, fill=0).data), {0})
 
     def test_and_the_default_is_not_one_byte_repeated(self) -> None:

@@ -16,8 +16,6 @@ def recorder_as_recorded() -> bus.Bus:
 
 
 class ShapeTest(unittest.TestCase):
-    """Two shapes, and the manual is the one a caller gets without asking."""
-
     def test_a_bus_follows_the_manual_unless_told_otherwise(self) -> None:
         self.assertTrue(bus.Bus().follows_the_manual)
 
@@ -39,8 +37,6 @@ class ShapeTest(unittest.TestCase):
 
 
 class EdgeTest(unittest.TestCase):
-    """The columns are derived from the measured edges, not written out by hand."""
-
     def test_every_machine_cycle_kind_has_a_measured_edge_table(self) -> None:
         self.assertEqual(
             set(bus.EDGES),
@@ -130,8 +126,6 @@ class EdgeTest(unittest.TestCase):
 
 
 class CountingTest(unittest.TestCase):
-    """Counting is always on, because a cycle count nobody can read is not a claim."""
-
     def test_a_fresh_bus_has_spent_nothing(self) -> None:
         self.assertEqual(len(bus.Bus()), 0)
 
@@ -390,8 +384,6 @@ class PortTest(unittest.TestCase):
 
 
 class AcknowledgeTest(unittest.TestCase):
-    """The special fetch that answers an interrupt, with its two added waits."""
-
     def test_it_draws_the_six_states_the_figure_draws(self) -> None:
         line = bus.Bus()
 
@@ -464,8 +456,6 @@ class AcknowledgeTest(unittest.TestCase):
 
 
 class IdleTest(unittest.TestCase):
-    """An internal cycle drives nothing and invents no address."""
-
     def test_an_internal_cycle_asserts_no_pin(self) -> None:
         line = recorder()
         line.read(0x2000, 0x42)

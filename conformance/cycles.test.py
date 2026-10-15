@@ -44,16 +44,9 @@ WIDE: dict[str, Any] = {
         [0xA610, None, "----"],
     ],
 }
-"""The same case as the corpus draws it with the full memory cycle flag on.
-
-Its first state is idle where the manual's shape strobes, which is the state the
-generator writes without consulting that flag and the one the runner skips.
-"""
 
 
 class ShapeTest(unittest.TestCase):
-    """The manual shape, against a corpus drawn the way that shape draws."""
-
     def test_the_recorded_shape_is_what_a_run_gets_without_asking(self) -> None:
         self.assertEqual(cycles.options(["somewhere"])[3], bus.RECORDING)
 
@@ -208,8 +201,6 @@ class RunTest(unittest.TestCase):
 
 
 class ReportingTest(unittest.TestCase):
-    """What a run says when it finds something, which is the half nobody reads."""
-
     def wrong_case(self, at: int = 2) -> dict[str, Any]:
         wrong: dict[str, Any] = json.loads(json.dumps(NOP))
         wrong["cycles"][at][1] = 0xFF
@@ -252,13 +243,6 @@ class EntryTest(unittest.TestCase):
 
 
 def opcodes_that_disagree(directory: Path, sample: int) -> list[str]:
-    """Which opcode files in a directory this core does not reproduce.
-
-    A named function rather than a body inside the suite-gated test, because a
-    body that only runs where the suite is present is a body that goes unmeasured
-    on every machine and every job where it is not, and an unmeasured sweep is
-    the one part of a gate nobody would notice breaking.
-    """
     return [
         path.stem
         for path in sorted(directory.glob("*.json"))
@@ -267,8 +251,6 @@ def opcodes_that_disagree(directory: Path, sample: int) -> list[str]:
 
 
 class SweepTest(unittest.TestCase):
-    """The sweep the gate runs, on a suite small enough to build here."""
-
     def test_a_suite_the_model_reproduces_names_nothing(self) -> None:
         self.assertEqual(opcodes_that_disagree(suite_of([NOP, NOP]), 2), [])
 
@@ -287,16 +269,6 @@ class SweepTest(unittest.TestCase):
 
 @unittest.skipUnless(HAS_SUITE, "the conformance suite is not on this machine")
 class AgainstSuiteTest(unittest.TestCase):  # pragma: no cover
-    """The gate proper, on a sample. The full sweep is a workflow job, not a test.
-
-    Outside the coverage gate, and the only thing in this file that is. A skipped
-    test contributes no coverage, so on a machine or a job without the corpus this
-    would read as uncovered for a reason that has nothing to do with the code. The
-    sweep it runs is a named function tested above against a suite built here, so
-    what is outside the gate is the corpus this machine happens to hold rather
-    than any logic.
-    """
-
     def test_every_opcode_reproduces_its_recorded_bus_activity(self) -> None:
         self.assertEqual(opcodes_that_disagree(SUITE, 2), [])
 

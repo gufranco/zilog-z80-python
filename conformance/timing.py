@@ -1,22 +1,3 @@
-"""Run every instruction the manual prints a timing for, and count the T states.
-
-hardware.json holds all 217 rows of the manual's per-instruction timing tables.
-Until this file existed, 54 of them were compared against a run and the other 163
-were a record nothing executed: correct as a transcription and inert as a check.
-
-The gap mattered. Driving all of them found OUT (C),r spending eight T states
-where the manual prints twelve, because the write was guarded on a port device
-being attached and dropped its machine cycle when one was not. No suite saw it,
-because a suite always attaches ports.
-
-Nothing here is looked up. A printed row names a family, such as SBC A, r, so the
-family is expanded into the concrete instructions it covers, each is assembled,
-stepped, and the bus is asked what it spent. The expansion comes from the package
-disassembler, which walks an opcode the way the part walks it, so an instruction
-this names and an instruction the core executes cannot disagree about which one
-it is.
-"""
-
 from __future__ import annotations
 
 import itertools
@@ -34,14 +15,8 @@ from z80 import core, memory, opcodes  # noqa: E402
 RECORD = ROOT / "conformance" / "hardware.json"
 
 START = 0x0100
-"""Where a probe instruction is assembled, clear of the vectors and of zero."""
 
 OPERAND = 0x01
-"""The byte every operand slot is filled with.
-
-One value everywhere keeps the disassembly predictable, so a displacement, an
-immediate byte and both halves of an immediate word all read as 01.
-"""
 
 PREFIXES: tuple[tuple[int, ...], ...] = (
     (),
@@ -56,11 +31,6 @@ PREFIXES: tuple[tuple[int, ...], ...] = (
 REGISTERS = ("b", "c", "d", "e", "h", "l", "a")
 
 PRIME = chr(0x2032)
-"""The mark the manual sets on the alternate register file, as in EX AF, AF.
-
-The disassembler writes a plain apostrophe, so one is turned into the other
-here rather than either side being changed to suit the match.
-"""
 
 FAMILIES: dict[str, tuple[str, ...]] = {
     "r": REGISTERS,
@@ -84,11 +54,6 @@ FAMILIES: dict[str, tuple[str, ...]] = {
 }
 
 RELATIVE = ("jr", "djnz")
-"""Jumps the disassembler resolves to an address, so they are matched by shape.
-
-Every other instruction is matched by its exact disassembly. These cannot be,
-because the text names where the jump lands rather than the offset in the byte.
-"""
 
 SETUPS: tuple[dict[str, int], ...] = (
     {"f": 0x00, "bc": 0x0001},
@@ -100,19 +65,9 @@ SETUPS: tuple[dict[str, int], ...] = (
     {"f": 0x00, "bc": 0x0200},
     {"f": 0xFF, "bc": 0x0200},
 )
-"""Enough starting states to reach both arms of every conditional row.
-
-A page that prints two rows prints them because the instruction costs different
-amounts depending on state: a condition met or not, a block counter reaching zero
-or not. Both flag words cover the conditions, and the counter values cover a
-block instruction ending on this iteration or repeating. Nothing here is set
-after bc, because writing b would silently overwrite half of it.
-"""
 
 
 class Row(NamedTuple):
-    """One printed row, and what a run of it spent."""
-
     page: int
     instruction: str
     printed: int
@@ -134,13 +89,6 @@ INDEX_PREFIXES = (0xDD, 0xFD)
 
 
 def catalogue() -> dict[str, tuple[int, ...]]:
-    """Every instruction the disassembler names, keyed by the text it prints.
-
-    An index prefix that produces no index operand is dropped. The part accepts
-    DD before JR and spends four more T states on it, but that is a redundant
-    prefix rather than a second instruction, and letting it in would widen the
-    set of totals a row is allowed to match until the check stopped being one.
-    """
     found: dict[str, tuple[int, ...]] = {}
     for byte in range(256):
         for prefix in PREFIXES:
@@ -157,7 +105,6 @@ def catalogue() -> dict[str, tuple[int, ...]]:
 
 
 def operands(name: str) -> tuple[str, list[str]]:
-    """The mnemonic and the operands of a printed row name."""
     parts = name.split(None, 1)
     head = parts[0].rstrip(",").lower()
     tail = parts[1] if len(parts) > 1 else ""
@@ -169,12 +116,6 @@ def operands(name: str) -> tuple[str, list[str]]:
 
 
 def spellings(name: str) -> list[str]:
-    """Every concrete instruction a printed row covers, as the disassembler prints it.
-
-    RES is the one row name that omits an operand the instruction takes. Its page
-    prints RES r where the BIT and SET pages print BIT b, r, so the bit is put
-    back here rather than into the record, which says what the page says.
-    """
     head, pieces = operands(name)
     if head == "res" and pieces and pieces[0] not in FAMILIES["b"]:
         pieces = ["b", *pieces]
@@ -185,7 +126,6 @@ def spellings(name: str) -> list[str]:
 
 
 def relative(name: str) -> tuple[str, str | None] | None:
-    """The mnemonic and condition of a relative jump, or None for anything else."""
     head, pieces = operands(name)
     if head not in RELATIVE:
         return None
@@ -194,7 +134,6 @@ def relative(name: str) -> tuple[str, str | None] | None:
 
 
 def encodings_for(name: str, known: dict[str, tuple[int, ...]]) -> list[tuple[int, ...]]:
-    """The bytes of every instruction a printed row covers."""
     shape = relative(name)
     if shape is None:
         return [known[one] for one in spellings(name) if one in known]
@@ -211,7 +150,6 @@ def encodings_for(name: str, known: dict[str, tuple[int, ...]]) -> list[tuple[in
 
 
 def spend(program: Sequence[int], setup: dict[str, int]) -> int:
-    """The T states this core spends on one instruction, assembled and stepped."""
     space = memory.SparseMemory()
     for offset, byte in enumerate(program):
         space.write8(START + offset, byte)
@@ -224,7 +162,6 @@ def spend(program: Sequence[int], setup: dict[str, int]) -> int:
 
 
 def measure(name: str, known: dict[str, tuple[int, ...]]) -> tuple[int, ...]:
-    """Every T-state total the instructions a row covers can spend."""
     found: set[int] = set()
     for program in encodings_for(name, known):
         for setup in SETUPS:
@@ -233,7 +170,6 @@ def measure(name: str, known: dict[str, tuple[int, ...]]) -> tuple[int, ...]:
 
 
 def survey(held: Iterable[dict[str, Any]] | None = None) -> list[Row]:
-    """Every printed row, beside what a run of it spent."""
     known = catalogue()
     cache: dict[str, tuple[int, ...]] = {}
     found = []
@@ -246,7 +182,6 @@ def survey(held: Iterable[dict[str, Any]] | None = None) -> list[Row]:
 
 
 def report(found: Sequence[Row]) -> str:
-    """What was checked, and anything that disagreed. Never a bare pass."""
     wrong = [one for one in found if not one.agrees]
     uncovered = [one for one in found if not one.measured]
     lines = [

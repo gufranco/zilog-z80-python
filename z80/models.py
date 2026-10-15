@@ -1,46 +1,3 @@
-"""Which parts of the Z80 family this package covers, and what separates them.
-
-The instruction set did not change across the family. Two things did, and both
-are undocumented, which is why neither was ever specified and why software that
-depended on either had to know which board it was running on.
-
-The first is an output instruction whose opcode names no source register. The
-NMOS parts send nothing at all; the CMOS parts send every bit. It is enough to
-matter: a program that clears a device register with it works on one part and
-sets every bit of the same register on the other.
-
-The second is where the two undocumented flag bits come from after a carry
-instruction. Zilog's parts, NMOS and CMOS alike, take them from the accumulator
-combined with a latch that holds whatever the previous instruction wrote to the
-flags. NEC's NMOS part takes them from the accumulator alone, so the history the
-Zilog parts consult does not reach the answer.
-
-The third is a defect rather than a difference, and Zilog documents both the
-defect and its own fix. On the NMOS part, an interrupt accepted while one of the
-two instructions that copy the interrupt latch into the parity flag is executing
-leaves that flag clear, which says interrupts were disabled at exactly the moment
-they demonstrably were not. Zilog: "On CMOS Z80 CPU, we've fixed this problem."
-
-The remaining differences are in timing and in what happens when an interrupt
-lands mid-instruction, neither of which a per-instruction model can observe. They
-are not modelled here rather than modelled badly.
-
-Adding a model means adding an entry here. A model held to a conformance suite
-says so; one that is not says that too, in ``verified``, because the difference
-between a measurement and a reading of somebody's research is the whole point of
-this table.
-
-Only the NMOS part carries that flag, and the reason is worth stating plainly
-rather than leaving to be inferred. A corpus exists for one part. Everything the
-other two share with it, which is the whole instruction set and every T state of
-it, is measured through that corpus. What is not measured is the handful of
-behaviours that make them different parts at all, and those are exactly the rows
-of the table below. A part whose differences rest on a manufacturer's sentence
-rather than on a recording says ``verified=False``, even though almost all of
-its behaviour is covered, because the covered part was never in doubt. A part number that resolves to a model whose behaviour it does not
-share is worse than an absent part number, because it answers.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -54,17 +11,13 @@ if TYPE_CHECKING:
 
 
 ZILOG_CARRY = "zilog"
-"""The carry flags come from the accumulator and the latch, together."""
 
 NEC_CARRY = "nec"
-"""They come from the accumulator alone, and the latch does not reach them."""
 
 CARRY_RULES = (ZILOG_CARRY, NEC_CARRY)
 
 
 class Model:
-    """One part of the family: what it is, and how to build one."""
-
     __slots__ = (
         "aliases",
         "carry_rule",
@@ -196,17 +149,6 @@ def _normalise(name: str) -> str:
 
 
 def lookup(name: str | None) -> Model:
-    """The model of that name, however it happens to be written.
-
-    Naming nothing is refused rather than filled in. This package covers more
-    than one part, they differ in ways a caller can be caught by, and a default
-    would pick one of them quietly. The refusal names every model there is, so a
-    caller who did not know what to pass finds out from the error.
-
-    Not exported from the package. What a caller needs is the part, and the part
-    carries its own model; a lookup that hands back a description of a part
-    nobody built reads like a test fixture rather than an interface.
-    """
     if name is None:
         raise UnknownModelError(
             "no model was named, and this package will not choose one for you."

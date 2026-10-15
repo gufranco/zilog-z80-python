@@ -1,33 +1,3 @@
-"""Run the part as a net of transistors, so the model can be asked about the die.
-
-Every other check in this package holds the model to a document or to a recording.
-Both stop at the package boundary: a document says what the part does and a
-recording says what one part did, and neither says what is inside. A switch-level
-run of the netlist answers a third kind of question, which is the one most of the
-open questions in this repository turn out to be.
-
-The resolver, the group walk, the propagation loop and the file readers follow
-`chipsim.js` and `wires.js` from the Visual 6502 project, which are MIT licensed.
-This is a Python implementation rather than a translation, and what it is faithful
-to is their behaviour, because a resolver that settles differently is a different
-chip. The notice they require is in `THIRD-PARTY-NOTICES.md`.
-
-The three files it reads are not carried here. `netlist.manifest.json` names them, says
-where they come from and records what each one hashes to, and a load refuses
-anything that is not what was read.
-
-Two things had to be established here rather than taken from anyone, and both were
-measured. They are in `TRANSISTORS_THAT_ARE_PULLUPS` and `MAIN_REGISTERS`.
-
-Authority rung 3. Below a manufacturer document and below a recording taken off a
-real part, because a netlist is an extraction and an extraction can be wrong.
-Nothing in this package is held to what it says; it is used to ask questions, and
-an answer it gives is recorded as coming from it.
-
-Usage:
-    python3 -m conformance.netlist [--half-cycles N]
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -39,11 +9,6 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent / "docs" / "independent" / "visual6502"
-"""Where the three files land, which is the folder git ignores.
-
-Same reasoning as `conformance.documents`: the record lives beside the code and
-the files it identifies do not live in the repository at all.
-"""
 
 MANIFEST = Path(__file__).resolve().parent / "netlist.manifest.json"
 
@@ -53,76 +18,26 @@ USAGE = "usage: netlist.py [--half-cycles N]"
 
 MAX_NETS = 4000
 MAX_TRANS = 10000
-"""Bounds this netlist states, carried so the arrays can be flat lists rather than
-dictionaries. A netlist needing more is not this one, and the load says so rather
-than growing silently.
-"""
 
 GROUND = 1
 POWER = 2
-"""The two nets whose numbers the format fixes. Checked on load rather than
-trusted, because every rule below is written in terms of them.
-"""
 
 SETTLE_LIMIT = 100
-"""Rounds before a propagation is called unsettled, which is the reference's own
-limiter. Reaching it is recorded rather than raised: a netlist that will not rest
-is a finding about the run, and stopping mid-edge would hide it.
-"""
 
 RESET_HALF_CYCLES = 31
-"""Half cycles reset is held low for, which is what the reference's own Z80 setup
-does before releasing it.
-"""
 
 TRANSISTORS_THAT_ARE_PULLUPS = 32
-"""Entries in the transistor file that are pull-ups rather than transistors.
-
-Each carries a flag saying so, and loading them anyway is not a small inaccuracy.
-It is the difference between a netlist that comes to rest and one that never
-does. Measured on 2026-08-27 over a run of 130 half cycles: loading them leaves
-36 propagations hitting the limiter and no register reaches a correct value,
-skipping them leaves none.
-
-The count is checked rather than assumed, because a file where a different number
-of entries carry that flag is a different file.
-"""
 
 MAIN_REGISTERS = {"b": "bb", "c": "cc", "d": "hh", "e": "ll", "h": "dd", "l": "ee"}
-"""Where the main register set actually lives, against the names the file gives.
-
-Two things differ from the names, and only the first was noticed at first. The
-doubled names hold the registers an instruction writes and the single-letter ones
-hold the shadow set, which is the opposite of what the names suggest. And D, E, H
-and L are not where their doubled names put them: `reg_dd` holds H, `reg_hh`
-holds D, `reg_ee` holds L and `reg_ll` holds E. A, B and C are under the names
-they look like.
-
-This was measured, and the first version of it was not. It claimed a measurement
-across all seven registers and had only ever been checked against A, B and C,
-which are the three the sample program happens to write and the three the mapping
-had right. Loading `BC`, `DE` and `HL` with distinct values in one program is
-what showed it: `LD HL,1B1Ah` put `0x1B` in `reg_dd`. A value that reads as the
-power-up pattern `0x55` proves nothing either way, so every probe value has to
-avoid it.
-
-The authority for this is Zilog's definition of `LD r,n` together with the
-netlist, never anybody's naming file.
-"""
 
 SAMPLE = bytes([0x3E, 0x42, 0x06, 0x99, 0x0E, 0x17, 0x04, 0x00])
-"""Load, load, load, increment. Chosen so the registers afterwards hold values
-that only executing it produces, rather than values a part doing nothing would
-also show.
-"""
 
 DEFAULT_HALF_CYCLES = 130
 
 _NAME = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(\d+)\s*,", re.M)
 
 
-class Missing(Exception):
-    """The netlist is not on this machine, or is not the netlist that was read."""
+class Missing(Exception): ...
 
 
 def identity(manifest: Path | str | None = None) -> dict[str, Any]:
@@ -132,13 +47,6 @@ def identity(manifest: Path | str | None = None) -> dict[str, Any]:
 
 
 def check(path: Path, entry: dict[str, Any]) -> None:
-    """That one file is the one the manifest names, by size and then by digest.
-
-    Size first because it is one call and it rejects almost every wrong file, and
-    the digest because size alone rejects nothing that was edited in place. A
-    refusal names where the file comes from, since a reader holding the wrong one
-    needs the address more than the reason.
-    """
     if not path.is_file():
         raise Missing(f"{path.name} is not in {path.parent}. Take it from {entry['retrievedFrom']}")
     size = path.stat().st_size
@@ -150,13 +58,6 @@ def check(path: Path, entry: dict[str, Any]) -> None:
 
 
 class Netlist:
-    """The three files, parsed into nets and transistors.
-
-    Kept apart from the run below because parsing is where a netlist is rejected
-    and running is where it is used, and a fault in the first should never be
-    reported as a fault in the second.
-    """
-
     def __init__(self, where: Path | str | None = None, manifest: Path | str | None = None) -> None:
         root = Path(where or ROOT)
         self.identity = identity(manifest)
@@ -207,12 +108,6 @@ class Netlist:
             self.names[name] = wanted
 
     def _read_pullups(self, path: Path) -> None:
-        """A pull-up is a property of a net here rather than a transistor of its own.
-
-        It is one of the three things the resolver weighs, and it is weighed
-        inside the joined set rather than ahead of it, which is why a net can be
-        pulled up and still read low.
-        """
         for raw in path.read_text().splitlines():
             if not raw.startswith("["):
                 continue
@@ -226,13 +121,6 @@ class Netlist:
         self.pullups = sum(self.pullup)
 
     def _read_transistors(self, path: Path) -> None:
-        """Gate, then the two channel connections, then a flag marking a pull-up.
-
-        The two channel connections are ordered rather than symmetric. A
-        transistor tied to a rail carries that connection second, because closing
-        one queues only the first end and opening one queues both, and queueing a
-        rail is work that decides nothing.
-        """
         for raw in path.read_text().splitlines():
             if not raw.startswith("["):
                 continue
@@ -275,8 +163,6 @@ class Netlist:
 
 
 class Simulation(Netlist):
-    """The netlist, driven a half cycle at a time, with memory and ports attached."""
-
     def __init__(self, where: Path | str | None = None, manifest: Path | str | None = None) -> None:
         super().__init__(where, manifest)
         self._group: list[int] = []
@@ -297,11 +183,6 @@ class Simulation(Netlist):
         ]
 
     def _collect(self, start: int) -> None:
-        """Every net joined to this one through transistors that are closed.
-
-        The walk stops at a rail rather than crossing it, so a group holds the
-        rails it touches and everything joined between them.
-        """
         group = self._group
         seen = self._grouped
         stack = [start]
@@ -327,12 +208,6 @@ class Simulation(Netlist):
         self._collect(n)
 
     def _value(self) -> int:
-        """What the joined set settles to.
-
-        Ground beats power, power beats everything else, and failing both the set
-        is decided by the first net in it that says anything: pulled up, pulled
-        down, or already high. A set where nothing says anything settles low.
-        """
         if self._grouped[GROUND]:
             return 0
         if self._grouped[POWER]:
@@ -376,14 +251,6 @@ class Simulation(Netlist):
                         self._queue(self.second_of[t], into)
 
     def settle(self, seeds: Sequence[int]) -> None:
-        """Propagate until nothing changes, or record that it never did.
-
-        Every net queued in a round is resolved, including one an earlier group in
-        the same round already set. Skipping those is the obvious optimisation and
-        it is wrong: a transistor that closed earlier in the round changes which
-        nets the later one is joined to, so the group is not the group that was
-        already resolved.
-        """
         pending = list(seeds)
         for _ in range(SETTLE_LIMIT):
             if not pending:
@@ -407,16 +274,6 @@ class Simulation(Netlist):
             self.drive(1 if value & (1 << i) else 0, f"db{i}")
 
     def half_cycle(self) -> None:
-        """One clock edge, with the pins serviced just before the rise.
-
-        Which machine cycle the part is in is decided from the control pins the
-        way Zilog's manual defines them rather than from any other implementation.
-        An opcode fetch drives MREQ and RD low with M1 low, a memory read does the
-        same one T state later with M1 high, a write drives WR in place of RD, and
-        the two port cycles drive IORQ in place of MREQ. A refresh cycle is left
-        alone, because the address on the bus during refresh is not one anybody is
-        asking about.
-        """
         clock = self.read("clk")
         if not clock and self.read("_rfsh"):
             m1 = bool(self.read("_m1"))
@@ -438,12 +295,6 @@ class Simulation(Netlist):
         self.half_cycles += 1
 
     def reset(self) -> Simulation:
-        """Hold reset low across the documented number of half cycles, then release.
-
-        Everything is settled once from every connected net before the first edge,
-        because a transistor that has never been resolved is open, and a netlist
-        where every transistor is open is not a state the part powers up in.
-        """
         for t in range(self.transistors):
             self.on[t] = 0
         self.drive(0, "_reset")
@@ -466,11 +317,6 @@ class Simulation(Netlist):
         return self.bus("db", 8)
 
     def register(self, name: str) -> int:
-        """One eight-bit register, under the name an instruction would call it.
-
-        MAIN_REGISTERS is applied here rather than at every call site, so a caller
-        asks for `b` and gets what `LD B,n` writes.
-        """
         return self.bus(f"reg_{MAIN_REGISTERS.get(name, name)}", 8)
 
     def pc(self) -> int:

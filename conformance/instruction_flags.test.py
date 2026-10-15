@@ -18,17 +18,9 @@ BIT = {"S": flags.S, "Z": flags.Z, "H": flags.H, "P/V": flags.PV, "N": flags.N, 
 START = 0x0100
 
 SEEDS = 40
-"""How many states each rule is tried against.
-
-An absolute holds for every input or it is not an absolute, so the only thing a
-count buys is the chance of hitting the input that breaks it. Forty states across
-a hundred and twenty six rules is four and a half thousand runs, which is cheap.
-"""
 
 
 class ScriptedPorts:
-    """A port space that answers, so a block instruction has something to move."""
-
     def __init__(self, generator: random.Random) -> None:
         self.generator = generator
 
@@ -121,8 +113,6 @@ class RecordTest(unittest.TestCase):
 
 
 class AbsoluteTest(unittest.TestCase):
-    """Every absolute the manual states, tried against forty states each."""
-
     def broken(self) -> dict[str, list[str]]:
         found: dict[str, list[str]] = {}
         for name, held in HELD["rules"].items():
@@ -150,8 +140,6 @@ class AbsoluteTest(unittest.TestCase):
 
 
 class BitInstructionTest(unittest.TestCase):
-    """The four pages of one instruction, two of which print the wrong letter."""
-
     def after(self, program: Sequence[int]) -> tuple[int, int]:
         space = memory.SparseMemory()
         for offset, byte in enumerate(program):
@@ -177,8 +165,6 @@ class BitInstructionTest(unittest.TestCase):
 
 
 class BlockTransferTest(unittest.TestCase):
-    """The eight instructions the manual is wrong about, against the measured rule."""
-
     class Port:
         def __init__(self, value: int) -> None:
             self.value = value
@@ -214,7 +200,6 @@ class BlockTransferTest(unittest.TestCase):
         self.assertEqual(wrong, [])
 
     def runs(self) -> list[tuple[int, int, int, int]]:
-        """Every state tried, paired with the flags one block input left behind."""
         return [
             (b, c, value, self.input_step((0xED, 0xA2), value, b, c))
             for b, c, value in self.states()

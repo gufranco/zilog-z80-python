@@ -149,15 +149,6 @@ class BuildTest(unittest.TestCase):
 
 
 class QuietStoreTest(unittest.TestCase):
-    """`fill`, which is the one spelling across this family for a store of one byte.
-
-    Not what a board hands over and not the default: a caller asking for zeroes
-    is asking for something no machine does, so they have to say so. What it is
-    for is a run that has to get through a few dozen instructions without meeting
-    an opcode that stops the part, which is what every check of a cycle budget
-    needs and what scrambled memory cannot give.
-    """
-
     def test_a_fill_puts_that_byte_everywhere(self) -> None:
         part = z80.Cpu("z80", fill=0)
 
@@ -169,12 +160,6 @@ class QuietStoreTest(unittest.TestCase):
         self.assertEqual({part.memory.read8(address) for address in range(0x40)}, {0xAA})
 
     def test_without_one_the_store_is_scrambled_rather_than_cleared(self) -> None:
-        """The default has to stay the thing a machine actually hands over.
-
-        Read address by address rather than off the store's own bytes, because
-        the default store allocates nothing until it is asked and has no bytes
-        to read.
-        """
         part = z80.Cpu("z80")
 
         held = {part.memory.read8(address) for address in range(0x40)}
@@ -182,7 +167,6 @@ class QuietStoreTest(unittest.TestCase):
         self.assertNotEqual(held, {0})
 
     def test_and_a_store_handed_in_is_left_alone(self) -> None:
-        """So `fill` cannot quietly replace memory a caller already built."""
         own = z80.Memory(fill=0xAA)
 
         part = z80.Cpu("z80", own, fill=0)
@@ -192,14 +176,6 @@ class QuietStoreTest(unittest.TestCase):
 
 
 class NamingNoneTest(unittest.TestCase):
-    """That leaving the model out is refused, and refused usefully.
-
-    A default here would be the one implicit thing in the whole call. It would
-    also be worst on a package like this one, where the three parts differ in
-    ways a caller can be caught by, so the refusal names all three rather than
-    telling somebody they got it wrong.
-    """
-
     def test_building_without_naming_a_model_is_refused(self) -> None:
         with self.assertRaises(errors.UnknownModelError):
             z80.Cpu()

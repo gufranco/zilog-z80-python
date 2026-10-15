@@ -1,11 +1,3 @@
-"""That the open questions document names every question that is actually open.
-
-A file like this is worth having only while it is complete. One divergence added
-to the record and not to the document, and the document quietly becomes a claim
-that the project knows more than it does, which is the failure it exists to
-prevent.
-"""
-
 import json
 import sys
 import unittest
@@ -26,14 +18,6 @@ def divergences() -> list[dict[str, Any]]:
 
 
 LIVE = ("open", "narrowed")
-"""The statuses a question is still open under.
-
-`narrowed` is one of them. A question that has been cut down to a smaller
-question is still a question, and the document has to keep naming it. It is kept
-apart from `open` so a reader can tell an entry nobody has touched from one that
-has been measured and got smaller, which is the family vocabulary in
-family.test.py rather than a word invented here.
-"""
 
 
 def opened() -> list[dict[str, Any]]:
@@ -84,7 +68,6 @@ class RecordTest(unittest.TestCase):
         self.assertEqual(len(closed), 7)
 
     def test_every_severity_the_record_uses_has_a_place_in_the_document(self) -> None:
-        """The vocabulary itself is checked once, for the whole family, in family.test.py."""
         severities = {one["severity"] for one in opened()}
 
         self.assertEqual(sorted(severities), ["contradiction", "low", "unchecked", "unstated"])

@@ -1,17 +1,3 @@
-"""Hold the core's own constants and timing to what Zilog printed.
-
-A datasheet figure quoted in a docstring rots and cannot fail. This file is what
-turns hardware.json from a record of a reading into a gate.
-
-It checks two different things, and the difference matters. The first is that
-the constants in this package match the figures in the document. The second is
-that the number of T states this core spends on a documented instruction is the
-number the document gives it, assembled and stepped rather than looked up. That
-second check is the only place the core is held to Zilog rather than to the
-recording, and it is deliberately independent of the conformance suite: a
-machine with no suite on it still runs it.
-"""
-
 import json
 import sys
 import unittest
@@ -58,16 +44,9 @@ CYCLES_WITH_FIGURES = (
 )
 
 START = 0x0100
-"""Where a probe instruction is assembled, clear of the vectors and of zero."""
 
 
 def spent(program: tuple[int, ...], setup: dict[str, int] | None = None) -> int:
-    """The T states this core spends on one instruction, assembled and stepped.
-
-    Nothing is looked up. The bytes are written into memory, the part is pointed
-    at them, and the bus counts what it spends. A model whose timing came from a
-    table would pass this by construction, which is why it does not have one.
-    """
     space = memory.SparseMemory()
     for offset, byte in enumerate(program):
         space.write8(START + offset, byte)
@@ -80,13 +59,6 @@ def spent(program: tuple[int, ...], setup: dict[str, int] | None = None) -> int:
 
 
 def named_by_the_core() -> set[str]:
-    """Every mnemonic the disassembler emits, walked the way the part walks an opcode.
-
-    The timing table is a reading of a document, so nothing in it is checked by
-    running the core. This is the one handle on it: a row naming an instruction
-    this package cannot name is a row that was read off the wrong part of a page,
-    which is how forty three of them once came to be labelled Description.
-    """
     found: set[str] = set()
     for byte in range(256):
         for encoding in (
@@ -103,17 +75,11 @@ def named_by_the_core() -> set[str]:
 
 
 def mnemonic_of(entry: dict[str, Any]) -> str:
-    """The leading word of a manual heading, which is where the mnemonic sits.
-
-    Punctuation is dropped rather than tolerated, because the manual heads one
-    page DJNZ, e and every other jump without the comma.
-    """
     head = entry["instruction"].split(maxsplit=1)[0]
     return "".join(letter for letter in head if letter.isalpha()).lower()
 
 
 def row(page: int) -> dict[str, Any]:
-    """The manual's timing row from one page, which is where each one is unique."""
     found = [entry for entry in ROWS if entry["manualPage"] == page]
     if len(found) != 1:
         raise AssertionError(f"manual page {page} has {len(found)} timing rows, expected one")
@@ -122,8 +88,6 @@ def row(page: int) -> dict[str, Any]:
 
 
 class RowLookupTest(unittest.TestCase):
-    """The helper the timing cases lean on, which has to refuse an ambiguous page."""
-
     def test_a_page_with_one_row_gives_that_row(self) -> None:
         self.assertEqual(row(180)["tStates"], 4)
 
@@ -157,8 +121,6 @@ class DocumentTest(unittest.TestCase):
 
 
 class TimingTableTest(unittest.TestCase):
-    """The document's own internal redundancy, used as a check on the reading."""
-
     def test_every_breakdown_sums_to_the_total_beside_it(self) -> None:
         wrong = [
             entry["instruction"]
@@ -299,13 +261,6 @@ class MachineCycleShapeTest(unittest.TestCase):
 
 
 class FigureEdgeTest(unittest.TestCase):
-    """The pins this bus draws, against the edges measured off the manual's figures.
-
-    The record holds where each edge falls and the columns the rule gives when
-    applied to them. This asserts the bus produces those columns, so a change to
-    either has to be a change to both.
-    """
-
     def pins(self, cycle: Callable[[bus.Bus], None]) -> list[str]:
         line = bus.Bus(recording=True)
         cycle(line)
@@ -405,12 +360,6 @@ class FigureEdgeTest(unittest.TestCase):
         self.assertEqual(EDGES["rule"]["name"], "read at the clock edge that ends each T state")
 
     def covered(self, cycle: str) -> list[str]:
-        """The reading that was not chosen, applied to the same measured edges.
-
-        A pin belongs to a state when it is asserted at any point during it,
-        rather than when the state ends. Computing it here rather than reading it
-        out of the record is what makes the record's copy a checked figure.
-        """
         states, edges = bus.EDGES[cycle]
         return [
             "".join(
@@ -470,12 +419,6 @@ class FigureEdgeTest(unittest.TestCase):
 
 
 class SpentAgainstTheManualTest(unittest.TestCase):
-    """The core stepped, against the figure printed for that instruction.
-
-    Each case names the manual page rather than repeating the number, so the
-    expected value comes out of the document and not out of this file.
-    """
-
     def test_a_register_to_register_load_costs_what_page_71_says(self) -> None:
         self.assertEqual(spent((0x41,)), row(71)["tStates"])
 
@@ -658,13 +601,6 @@ class SpentAgainstTheManualTest(unittest.TestCase):
 
 
 class InterruptResponseTest(unittest.TestCase):
-    """What an accepted interrupt costs, against the totals the manual prints.
-
-    Nothing here assembles a figure. The machine is offered a line and the bus
-    reports what it spent, so a model that carried a table of totals would not
-    pass this by construction.
-    """
-
     def offered(self, offer: Callable[[core.Cpu], object], mode: int = 0) -> tuple[object, int]:
         cpu = core.Cpu(memory.SparseMemory())
         cpu.reset()
@@ -703,7 +639,6 @@ class InterruptResponseTest(unittest.TestCase):
         self.assertEqual(spent_now - spent((supplied,)), 2)
 
     def supplied(self, program: tuple[int, ...]) -> int:
-        """What a mode zero response to this instruction costs over the instruction."""
         cpu = core.Cpu(memory.SparseMemory())
         cpu.reset()
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
@@ -875,8 +810,6 @@ class InterruptResponseTest(unittest.TestCase):
 
 
 class ParityDefectTest(unittest.TestCase):
-    """The NMOS defect Zilog documents, and the CMOS part that does not have it."""
-
     def taken(self, name: str, opcode: int = 0x57) -> tuple[int, int]:
         space = memory.SparseMemory()
         space.write8(START, 0xED)
@@ -933,8 +866,6 @@ class ParityDefectTest(unittest.TestCase):
 
 
 class HaltTest(unittest.TestCase):
-    """A halted part keeps fetching, which is the whole reason it is not idle."""
-
     def halted(self) -> core.Cpu:
         space = memory.SparseMemory()
         space.write8(START, 0x76)
@@ -995,8 +926,6 @@ class HaltTest(unittest.TestCase):
 
 
 class ConditionalTimingTest(unittest.TestCase):
-    """The instructions the manual prints two timings for, checked both ways."""
-
     def test_a_relative_jump_taken_costs_more_than_one_not_taken(self) -> None:
         taken = spent((0x20, 0x02), {"f": 0x00})
         passed = spent((0x20, 0x02), {"f": flags.Z})
@@ -1086,8 +1015,6 @@ class FlagRegisterTest(unittest.TestCase):
 
 
 class SuiteRecordTest(unittest.TestCase):
-    """The corpus pin, and the generator that lets it be rebuilt rather than trusted."""
-
     @override
     def setUp(self) -> None:
         self.suite = SUITES["suites"][0]
@@ -1275,18 +1202,6 @@ class DivergenceTest(unittest.TestCase):
 
 
 class ModelScopeTest(unittest.TestCase):
-    """That every fact says which of the three parts it governs.
-
-    Three names share one core here and differ by option: the carry rule, the
-    byte an output with no source leaves on the bus, and whether an accepted
-    interrupt clears the parity flag. Most facts govern all three, which is worth
-    saying rather than leaving to be assumed, because the one that does not is
-    the defect the publisher fixed in the CMOS part.
-
-    The model list comes from the package, so a name added or removed there is a
-    failure here rather than a record that quietly disagrees with the code.
-    """
-
     def test_every_fact_names_the_models_it_governs(self) -> None:
         unscoped = [
             name
@@ -1320,12 +1235,6 @@ class ModelScopeTest(unittest.TestCase):
         self.assertEqual(sorted(HELD["modelDifferences"]["models"]), sorted(z80.MODELS))
 
     def test_the_parity_defect_is_the_one_fact_that_is_not_every_part(self) -> None:
-        """The quote names the split, and the model already carries it.
-
-        A fact scoped to fewer parts than the rest is the interesting case, so it
-        is checked by name: the flag it describes is set on one model here and the
-        record has to agree with that rather than with the word NMOS.
-        """
         defect = HELD["facts"]["interruptResponse"]["nmosParityDefect"]
 
         clearing = [

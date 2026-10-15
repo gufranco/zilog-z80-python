@@ -1,20 +1,3 @@
-"""Hold the core to the published per-opcode suite.
-
-The suite states, for one thousand cases per opcode, every register and every byte
-of memory before and after a single instruction, plus every port transaction in
-the order it happened. That is a definition of correct that does not depend on
-anyone's reading of a datasheet, so where the two disagree the suite wins and the
-disagreement is a defect here.
-
-A case names only the memory it cares about. Anything it does not name is left
-holding whatever it held, which is the point: an instruction that reads a byte the
-case never mentioned is reading something undefined, and a run that quietly
-answered zero would hide it.
-
-Usage:
-    python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]
-"""
-
 from __future__ import annotations
 
 import json
@@ -69,8 +52,6 @@ class Usage(Exception):
 
 
 class ScriptedPorts:
-    """Answers reads with what the case says the port gave, in the order it gave it."""
-
     def __init__(self, expected: Sequence[Sequence[Any]]) -> None:
         self.answers = [entry for entry in expected if entry[2] == "r"]
         self.log: list[list[Any]] = []
@@ -91,22 +72,6 @@ def machine_for(
     recording: bool = False,
     shape: str = bus.RECORDING,
 ) -> core.Cpu:
-    """A machine holding exactly what the case says it held, and nothing else.
-
-    One builder for both runners. The cycle comparison asks for the bus to be
-    recorded; the state comparison does not, because holding a tuple per T state
-    across a million and a half cases costs more than the comparison it feeds.
-
-    The caller supplies the ports rather than the expected transactions, so that
-    it keeps its own reference to them. Reaching back through the machine for the
-    log would mean asking a core that accepts any port space to promise it was
-    handed this one.
-
-    The pin shape defaults to the recorded one here, which is the opposite of the
-    core's own default. A machine built to be compared against the corpus has to
-    draw its pins the way the corpus does, and the corpus simplifies the strobes
-    by its generator's own documented choice. Everywhere else the manual wins.
-    """
     space = memory.SparseMemory()
     for address, value in initial["ram"]:
         space.write8(address, value)

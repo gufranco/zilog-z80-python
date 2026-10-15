@@ -1,36 +1,3 @@
-"""The Z80 core, decoded the way the part decodes rather than from a table.
-
-An opcode is not an arbitrary number here. Its two top bits choose a group, the
-next three choose a destination or a condition, and the last three choose a
-source, with one of those three bits splitting some groups again. Every family of
-instructions falls out of that decomposition, which is why an eight bit part ended
-up with several hundred instructions without needing several hundred entries
-written down. Writing them down anyway invites a transcription error in a table
-nobody can read.
-
-Four prefixes extend it. One reaches the bit and shift instructions, one reaches a
-second set of arithmetic and the block instructions, and two swap an index
-register in for the working pair. The last two combine with the first, and in that
-combination the displacement byte arrives before the opcode rather than after,
-which is the one place the decoding stops being uniform.
-
-Three things separate a core that runs software from one that is right.
-
-The undocumented flags are not spare bits. Almost every instruction copies bits
-three and five of its result into them, a compare copies them from its operand
-instead, and two instructions copy them from a register with no name.
-
-That register is `WZ`, where the processor builds an address it has not finished
-with. It is invisible until one of those instructions reads it.
-
-And `Q` records whether the instruction just executed wrote the flags at all,
-which is what the two carry instructions consult to decide where to take their
-hidden bits from.
-
-Nothing starts clean, and the refresh counter advances on every fetch including
-the extra fetch a prefix costs.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -55,60 +22,17 @@ INTERRUPT_MODES = (0, 0, 1, 2, 0, 0, 1, 2)
 INDEX_PREFIX = {0xDD: "ix", 0xFD: "iy"}
 
 RESET_STATES = 3
-"""How long the pin has to be held, which is the first half of what a reset costs.
-
-Zilog states it rather than leaving it to be inferred: "RESET must be active for
-a minimum of three full clock cycles before a reset operation is complete." It is
-a floor and not a figure, because how long a board actually holds the pin is the
-board's decision and nothing here can know it.
-"""
 
 RESUME_STATES = 2
-"""What the part spends after the pin releases, before it fetches anything.
-
-The user manual stops at the pin, so this was missing here until the Z8400 and
-Z84C00 product specification was read: "Once RESET goes inactive, two internal T
-cycles are consumed before the CPU resumes normal processing operation." That
-sheet covers the NMOS and the CMOS part together, which is both of the Zilog
-models this package ships.
-
-Unlike the three above this is not a floor. It is what the part does once the
-board has let go, so a board holding the pin longer does not change it.
-
-NEC's sheet for its own part is silent on it, saying only that the pulse must be
-at least three clock cycles and that execution then begins from address zero.
-Silence is not a denial, and the part is a second source for the same design, so
-the same two are charged and the record says the NEC document does not state
-them.
-"""
 
 NONMASKABLE_RESTART = 0x0066
-"""Where the nonmaskable line sends the part, which the manual prints outright."""
 
 MODE_ONE_RESTART = 0x0038
-"""Where mode one sends it, which the manual prints the same way."""
 
 VECTOR_MASK = 0xFF
-"""How much of the device's byte reaches the pointer, which is all of it.
-
-Zilog says otherwise: "Only seven bits are required from the interrupting device,
-because the least-significant bit must be a 0." Sean Young tested the part and
-reports the opposite, and ``conformance/divergences.json`` carries both. Zilog's
-sentence is sound advice to whoever builds the table, because an odd pointer makes
-the two bytes straddle two entries. It is not what the silicon does with the byte.
-"""
 
 
 class Cpu:
-    """One Z80, holding whatever it held until something writes to it.
-    The slots are the point rather than a saving. Without them a name this class
-    does not have is accepted in silence: the caller sets a stray attribute, the
-    one they meant keeps whatever it held, and nothing reports that the write went
-    nowhere. A sibling package shipped exactly that, where two parts spell the
-    interrupt disable flag differently and reaching for the wrong one did nothing
-    at all.
-    """
-
     __slots__ = (
         "bus",
         "carry_rule",
@@ -154,29 +78,16 @@ class Cpu:
         self.ports = ports
         self.registers = Registers(seed)
         self.wait_line = False
-        """The WAIT line, active when true. Held, it lengthens the machine cycle in progress."""
 
         self.irq_line = False
-        """The request line, active when true. Level sensitive: held, not pulsed."""
 
         self.nmi_line = False
-        """The non-maskable line, active when true. Edge sensitive: the transition interrupts."""
 
         self.nmi_seen = False
-        """The level the non-maskable line last had when it was read."""
 
         self.sampled_irq = False
-        """What the request line read at the most recent T state.
-
-        Zilog states where the part looks: "The CPU samples the interrupt signal
-        (INT) with the rising edge of the final clock at the end of any
-        instruction." Which state is the final one is not known until the
-        instruction ends, so every state records what it saw and the last
-        recording is the one that counts.
-        """
 
         self.on_cycle: Callable[[], None] | None = None
-        """Called once per T state, after that state's bus activity."""
 
         self.bus = bus.Bus(
             recording=recording, shape=shape, on_state=self.spend, waiting=self.wants_a_wait
@@ -190,60 +101,18 @@ class Cpu:
         self.interrupt_clears_parity = True
         self.holding_counter = False
         self.responding: Callable[[], int] | None = None
-        """Set while a device is answering the bus, and read for every byte it owes.
-
-        Mode zero lets the device put a whole instruction on the bus, and a whole
-        instruction can be more than one byte. While this is set, every fetch from
-        the held counter takes its byte from here rather than from memory.
-        """
         self.deferring_interrupt = False
 
     def spend(self) -> None:
-        """Account for one T state, and tell whoever is watching that it happened.
-
-        Every T state this part runs passes through here and nowhere else. The
-        bus counts states because it draws them; this is where the part learns
-        one went by, so a count kept by the bus and a count kept by the processor
-        cannot come apart.
-
-        `on_cycle` is what a board hangs off the pin. It is called once per T
-        state, after that state's activity, so what it observes is a state the
-        part has finished rather than one it is about to start.
-        """
         self.cycles += 1
         self.sampled_irq = self.irq_line
         if self.on_cycle is not None:
             self.on_cycle()
 
     def wants_a_wait(self) -> bool:
-        """Whether memory is asking for another state, read where the part reads it.
-
-        Zilog's data book names the moment: "The CPU samples the WAIT input with
-        the falling edge of clock state T2." The bus asks once per machine cycle,
-        after that state, and goes on asking for as long as the answer is yes,
-        which is what "one or more Wait states" means.
-
-        A caller who holds the line and never releases it does not get out, which
-        is what a board that does the same gets. The cycle hook fires on every
-        added state, so a host driving the part by hand can release it there, and
-        a clock can release it between two states.
-        """
         return self.wait_line
 
     def sample_pins(self) -> bool:
-        """Act on whatever the interrupt lines were showing when the part looked.
-
-        The request line is read at the final T state of the instruction, which
-        is where Zilog says the part reads it, so a caller that raises the line
-        and drops it again before that state gets nothing. That is what a device
-        withdrawing its request produces, and it is only reachable at all because
-        a clock can stop between two T states.
-
-        The non-maskable line is edge sensitive: it is the transition that
-        interrupts, so the level is compared against the one last seen rather
-        than simply tested. Both are refused while the part is answering nothing,
-        which the individual methods decide.
-        """
         edge = self.nmi_line and not self.nmi_seen
         self.nmi_seen = self.nmi_line
         if edge:
@@ -254,25 +123,6 @@ class Cpu:
         return False
 
     def reset(self) -> Cpu:
-        """Drive RESET, which returns the part to a known state and nothing else.
-
-        The T state tally survives, because a reset does not rewind a clock. The
-        oscillator kept running through the pulse, the part spent cycles
-        answering it, and a host pacing against real time still owes the wall
-        every one of them.
-
-        Five of those are charged, and they are two different things. Three are
-        the minimum Zilog states the pin must be held for: a board that holds it
-        longer spends longer, and this model has no way to know that it did, so
-        the floor is what it charges. Two more follow the pin's release, and the
-        product specification is where they are stated rather than the user
-        manual, which stops at the pin. Those two are not a floor.
-
-        The bus is not recorded across any of them: the manual says the address
-        and data lines are in a high impedance state for the duration, which is a
-        thing the trace has no way to write down, since it records accesses
-        rather than line states.
-        """
         for _ in range(RESET_STATES + RESUME_STATES):
             self.spend()
         self.registers.reset()
@@ -293,17 +143,9 @@ class Cpu:
         self.bus.write(address, value)
 
     def idle(self, count: int = 1) -> None:
-        """Internal cycles, which the manual counts and never gives an address."""
         self.bus.idle(count)
 
     def port_read(self, address: int) -> int:
-        """One input cycle, which the part performs whether anything answers or not.
-
-        A port with nothing attached still costs the four T states the manual
-        gives an I/O cycle, and the part still latches whatever the data pins
-        were holding. Reporting no cycle there would be reporting a machine
-        cycle the part performed as one it did not.
-        """
         address &= 0xFFFF
         value = self.ports.read(address) if self.ports is not None else self.floating_output
         self.bus.port_read(address, value)
@@ -342,12 +184,6 @@ class Cpu:
         return value - 0x100 if value & 0x80 else value
 
     def push16(self, value: int) -> None:
-        """Two writes, high half first, each preceded by its own decrement.
-
-        The order is not a detail. A push that writes the low half first touches
-        the same two addresses in the opposite sequence, which no comparison of
-        final state can see and which a bus recording shows immediately.
-        """
         self.registers.sp = self.registers.sp - 1
         self.write8(self.registers.sp, (value >> 8) & 0xFF)
         self.registers.sp = self.registers.sp - 1
@@ -359,30 +195,12 @@ class Cpu:
         return value
 
     def answered(self, address: int) -> int:
-        """One read cycle a device answers instead of memory.
-
-        The cycle happens either way: the part drives the address and a read, and
-        something puts a byte on the data bus. Which something it is decides the
-        value, not the shape, so this draws an ordinary read and takes the byte
-        from the device.
-        """
         assert self.responding is not None
         value = self.responding() & 0xFF
         self.bus.read(address & 0xFFFF, value)
         return value
 
     def opcode_fetch(self) -> int:
-        """One opcode: a four T state machine cycle, not a three T state read.
-
-        The manual gives the fetch its own shape. The counter is on the address
-        bus while the opcode is read, and the refresh address replaces it for the
-        last two states, so this cannot go through the ordinary memory read path
-        without reporting a machine cycle the part does not perform.
-
-        The refresh address carries the counter as it stood before this fetch
-        advanced it. Advancing first and then reading is wrong by one on every
-        instruction.
-        """
         counter = self.registers.pc
         refresh = (self.registers.i << 8) | self.registers.r
         if self.responding is not None:
@@ -525,13 +343,6 @@ class Cpu:
         return result
 
     def begin(self) -> None:
-        """What every step and every interrupt response does before anything else.
-
-        The runaway guard belongs here rather than in the stepper alone, because a
-        caller offering an interrupt in a loop can run away exactly as a caller
-        stepping in one can, and a limit only one of them respected would not be a
-        limit.
-        """
         self.bus.clear()
         self.steps += 1
         self.registers.ei = 0
@@ -539,13 +350,6 @@ class Cpu:
         self.deferring_interrupt = False
 
     def step(self) -> int:
-        """Run one instruction, and report the T states it took.
-
-        The count is what a caller needs to keep a host in step with a real
-        clock. A part at 3.5 MHz spends 3,500,000 T states a second, so a host
-        that adds up what each instruction returns knows exactly how far ahead
-        of the wall it has run.
-        """
         self.begin()
         if self.halted:
             self.halt_cycle()
@@ -556,30 +360,12 @@ class Cpu:
         return self.bus.states
 
     def run_for(self, cycles: int) -> int:
-        """Run whole instructions until at least this many cycles have passed.
-
-        A cycle on this part is a T state, and the parameter is named for the
-        family rather than for the part so that one host loop drives either.
-
-        Returns what was actually spent, which is almost never the number asked
-        for: an instruction is not divisible, so the last one usually carries the
-        count past the budget. A host pacing against a clock carries the excess
-        into the next call rather than discarding it, which is what keeps a long
-        run from drifting.
-        """
         spent = 0
         while spent < cycles:
             spent += self.step()
         return spent
 
     def run_until(self, predicate: Callable[[Cpu], bool], limit: int | None = None) -> Cpu:
-        """Step until the predicate holds.
-
-        `limit` bounds the number of instructions and raises when it is reached.
-        Without one this runs as long as the part would, which for a program
-        that never satisfies the predicate is forever. That is what the silicon
-        does, so it is what happens here unless a caller asks for otherwise.
-        """
         taken = 0
         while not predicate(self):
             self.step()
@@ -589,45 +375,15 @@ class Cpu:
         return self
 
     def held(self) -> bool:
-        """Whether the part has stopped advancing the program on its own.
-
-        One question the whole family answers, differently per part. This one has
-        a single such state: HALT, which an interrupt or a reset ends. It differs
-        from the 65xx halt states in that the part still executes something, so
-        `step()` keeps working and returns the four T states each pass costs.
-        There is no `held_cycle()` here because none is needed.
-        """
         return self.halted
 
     def halt_cycle(self) -> None:
-        """One machine cycle of a halted part, which is a fetch it throws away.
-
-        A halted part is not idle on the bus. The manual is explicit that it keeps
-        performing M1 cycles for the sake of the memory it is refreshing: "Each
-        cycle in the HALT state is a normal M1 (fetch) cycle except that the data
-        received from the memory is ignored and an NOP instruction is forced
-        internally to the CPU." A model that emitted nothing here would advance the
-        refresh counter, which is observable, while reporting no bus activity,
-        which is not what the part does.
-
-        The counter does not advance, so the same address is fetched every cycle.
-        Which address that is the manual does not settle: the note under Figure 11
-        says the halt instruction is repeated, and this fetches from the counter,
-        which by then has already passed it.
-        """
         counter = self.registers.pc
         refresh = (self.registers.i << 8) | self.registers.r
         self.bus.fetch(counter, refresh, self.memory.read8(counter & 0xFFFF))
         self.registers.tick_refresh()
 
     def acknowledge(self, vector: int) -> int:
-        """The special M1 that answers an accepted interrupt.
-
-        The port request replaces the memory request, which is how the device
-        knows to answer, and the refresh happens exactly as it would in an
-        ordinary fetch. The byte the device puts on the data bus is returned
-        rather than being read from memory, because no memory cycle occurs.
-        """
         counter = self.registers.pc
         refresh = (self.registers.i << 8) | self.registers.r
         self.bus.acknowledge(counter, refresh, vector & 0xFF)
@@ -635,56 +391,10 @@ class Cpu:
         return vector & 0xFF
 
     def begin_response(self) -> None:
-        """A step, plus leaving the halt state, which either line does."""
         self.begin()
         self.halted = False
 
     def irq(self, vector: int | Callable[[], int] = 0xFF) -> bool:
-        """Offer the maskable line, and report whether the part took it.
-
-        Refused while the enable flip-flop is clear, and refused for one further
-        instruction after an enable, because "When an EI instruction is executed,
-        any pending interrupt request is not accepted until after the instruction
-        following EI is executed". A part that accepted immediately would take the
-        interrupt between an enable and the return that follows it, which is the
-        case the delay exists for.
-
-        Refused for one instruction after a return from interrupt too, when the
-        two flip-flops disagreed on the way in. That refusal has a latch of its
-        own rather than sharing the one an enable sets, because the recorded
-        corpus carries the enable latch as observable state and does not set it
-        for a return. Reusing it would have made this core disagree with the
-        recording on all eight return opcodes, which is how the separation was
-        found.
-
-        The three modes cost thirteen, thirteen and nineteen T states. None of
-        those totals is assembled here: the acknowledge cycle and the restart
-        below spend them, and ``conformance/hardware.test.py`` checks the result
-        against the figures the manual prints.
-
-        In mode zero the counter is held while the supplied instruction runs, so
-        that the bytes it reads come from the address the counter already held
-        rather than from successive ones. The part does not advance it for a fetch
-        it never made, and the counter goes back to the interrupted program.
-
-        `vector` may be a callable rather than a byte, and that is how a device
-        supplies an instruction longer than one byte. It is asked once for the
-        acknowledge and once more for every further byte the instruction fetches,
-        which is what "the interrupting device can place any instruction on the
-        data bus" needs in order to mean anything wider than a restart. Only the
-        first of those cycles is an acknowledge, because Zilog says so plainly:
-        "the Z80 CPU generates only one INTACK signal". The rest are ordinary
-        cycles with a device answering instead of memory, which is also what a
-        prefix byte needs, since a prefix is followed by another opcode fetch.
-
-        An interrupt taken while one of the two instructions that copy the
-        interrupt latch into the parity flag was executing clears that flag on the
-        NMOS part, which reports that interrupts were disabled at the one moment
-        they cannot have been. Zilog documents the defect and says the CMOS part
-        fixed it, and the reason is a race rather than a decision: "the interrupt
-        flip-flop (IFF2) is cleared before it is actually transferred to the P/V
-        flag."
-        """
         if not self.registers.iff1 or self.registers.ei or self.deferring_interrupt:
             return False
         reading_the_latch = self.registers.p
@@ -719,22 +429,6 @@ class Cpu:
         return True
 
     def nmi(self) -> None:
-        """Raise the nonmaskable line, which the part has no way of refusing.
-
-        Nothing is reported back, because "The CPU always accepts a nonmaskable
-        interrupt" and a value that is the same every time tells a caller nothing.
-
-        This is not an acknowledge cycle. Figure 10 draws an ordinary M1 with the
-        memory request rather than the port request, so the two automatic wait
-        states do not apply and the response costs what a restart costs. The
-        fetch happens and its opcode is thrown away, because "the CPU ignores the
-        next instruction that it fetches and instead performs a restart at address
-        0066h", and the counter is put back so that the address pushed below is
-        the ignored instruction rather than the one after it.
-
-        The enable flip-flop is cleared and its copy is left alone, which is what
-        makes the return from this interrupt able to put it back.
-        """
         self.begin_response()
         self.opcode_fetch()
         self.registers.pc = self.registers.pc - 1
@@ -742,7 +436,6 @@ class Cpu:
         self.restart(NONMASKABLE_RESTART)
 
     def restart(self, address: int) -> None:
-        """The one internal state a restart's M1 carries, then the call itself."""
         self.idle()
         self.push16(self.registers.pc)
         self.registers.pc = address
@@ -773,12 +466,6 @@ class Cpu:
         return self.execute_group3(y, z, p, q, prefix)
 
     def operand(self, z: int, prefix: str | None) -> int:
-        """One source operand, with the five states an indexed one costs to reach.
-
-        The manual gives every indexed form nineteen T states over five machine
-        cycles, (4, 4, 3, 5, 3). The fourth is the sum of the index register and
-        the displacement, and it drives no bus cycle.
-        """
         displacement = self.fetch_signed() if z == 6 and prefix is not None else 0
         if z == 6 and prefix is not None:
             self.idle(5)
@@ -850,11 +537,6 @@ class Cpu:
         return self.take_branch(offset, self.condition(y - 4))
 
     def take_branch(self, offset: int, taken: bool) -> None:
-        """The five states a taken relative jump spends adding its displacement.
-
-        A jump not taken costs nothing beyond reading the displacement, which is
-        why the manual prints two timings for every conditional relative jump.
-        """
         if taken:
             self.idle(5)
             self.registers.pc = self.registers.pc + offset
@@ -898,13 +580,6 @@ class Cpu:
         return None
 
     def indirect_accumulator(self, address: int, q: int) -> None:
-        """A load or store through an address, and the half-updated `WZ` it leaves.
-
-        A store leaves the high half holding the accumulator and the low half
-        holding the address one on, which looks like a mistake and is what the part
-        does: the two halves are written by different steps and nothing puts them
-        back together.
-        """
         if q == 0:
             self.write8(address, self.registers.a)
             self.registers.wz = ((self.registers.a << 8) | ((address + 1) & 0xFF)) & 0xFFFF
@@ -914,23 +589,12 @@ class Cpu:
         self.keep_flags()
 
     def group0_count(self, p: int, q: int, prefix: str | None) -> None:
-        """INC ss and DEC ss, which the manual gives six T states and one machine cycle.
-
-        A sixteen bit increment performs no bus cycle of its own. The two extra
-        states are the part carrying the low half into the high half.
-        """
         self.idle(2)
         name = self.wide_name(p, prefix)
         setattr(self.registers, name, getattr(self.registers, name) + (1 if q == 0 else -1))
         self.keep_flags()
 
     def group0_step(self, y: int, prefix: str | None, operation: Callable[[int], int]) -> None:
-        """INC and DEC on any operand, which cost a state when the operand is memory.
-
-        The manual gives INC (HL) eleven T states over three machine cycles,
-        (4, 4, 3). The middle four are a three state read with one state of
-        arithmetic after it, before the three state write.
-        """
         displacement = self.fetch_signed() if y == 6 and prefix is not None else 0
         if y == 6 and prefix is not None:
             self.idle(5)
@@ -940,13 +604,6 @@ class Cpu:
         self.register_write(y, operation(value), prefix, displacement)
 
     def group0_immediate(self, y: int, prefix: str | None) -> None:
-        """LD r,n, and the indexed store whose address arithmetic costs two states.
-
-        The manual gives LD (IX+d),n nineteen T states, (4, 4, 3, 5, 3), where an
-        indexed load is also nineteen but spends five on the arithmetic and three
-        on the immediate. Here the immediate cycle is the long one, because the
-        part overlaps the sum with reading the byte it is about to store.
-        """
         displacement = self.fetch_signed() if y == 6 and prefix is not None else 0
         value = self.fetch8()
         if y == 6 and prefix is not None:
@@ -1037,22 +694,6 @@ class Cpu:
         )
 
     def carry_undocumented(self) -> int:
-        """Where the two hidden bits come from for the two carry instructions.
-
-        This is the pair that reads `Q`, and it is the one place a part number
-        changes an answer other than on the output instruction that names no
-        source. On a Zilog part the bits are bits 5 and 3 of ``(Q ^ F) | A``, which
-        is Patrik Rak's formula and which makes the answer depend on what the
-        previous instruction did to the flags rather than on this one. On NEC's
-        NMOS part they are bits 5 and 3 of the accumulator, and the latch does not
-        reach them at all.
-
-        The formula is written out rather than branched on whether the latch is
-        set. The two agree only because the latch is either zero or equal to the
-        flag register, which is an invariant of this core rather than anything the
-        formula requires, and they disagree on nearly half of the triples that
-        invariant excludes.
-        """
         if self.carry_rule == models.NEC_CARRY:
             return flags.undocumented(self.registers.a)
         return flags.undocumented((self.registers.q ^ self.registers.f) | self.registers.a)
@@ -1161,7 +802,6 @@ class Cpu:
         return None
 
     def out_to_immediate(self) -> None:
-        """OUT (n),A, whose port address carries the accumulator in its high half."""
         low = self.fetch8()
         address = (self.registers.a << 8) | low
         self.port_write(address, self.registers.a)
@@ -1169,7 +809,6 @@ class Cpu:
         self.keep_flags()
 
     def in_from_immediate(self) -> None:
-        """IN A,(n), which latches the data bus whether or not anything drove it."""
         low = self.fetch8()
         address = (self.registers.a << 8) | low
         self.registers.a = self.port_read(address)
@@ -1177,11 +816,6 @@ class Cpu:
         self.keep_flags()
 
     def exchange_stack(self, prefix: str | None) -> None:
-        """EX (SP),HL, nineteen T states over five machine cycles, (4, 3, 4, 3, 5).
-
-        The two long cycles are the second read and the second write. The part is
-        holding one half of the exchange while it moves the other.
-        """
         name = self.index_pair(prefix)
         low = self.read8(self.registers.sp)
         high = self.read8(self.registers.sp + 1)
@@ -1196,13 +830,6 @@ class Cpu:
         self.keep_flags()
 
     def execute_bit(self, prefix: str | None) -> None:
-        """The bit and shift group, whose indexed forms put the displacement first.
-
-        With an index register the last byte is not an opcode fetch. It arrives as
-        an ordinary three state read and the refresh counter does not advance for
-        it, which is why an indexed bit instruction leaves the counter two on
-        rather than three.
-        """
         displacement = self.fetch_signed() if prefix is not None else 0
         opcode = self.opcode_fetch() if prefix is None else self.fetch8()
         if prefix is not None:
@@ -1232,13 +859,6 @@ class Cpu:
         return None
 
     def store_bit_result(self, z: int, result: int, prefix: str | None, displacement: int) -> None:
-        """Where a prefixed bit instruction puts its answer, which is two places.
-
-        Without an index register it writes the register the opcode names. With one
-        it writes the memory the displacement reaches, and then writes the named
-        register as well, which is why these opcodes appear to have a register
-        operand that the assembler has no syntax for.
-        """
         if prefix is None:
             self.register_write(z, result)
             return
@@ -1275,15 +895,6 @@ class Cpu:
         return result
 
     def test_bit(self, bit: int, value: int, from_memory: bool) -> None:
-        """The one test whose hidden bits come from somewhere other than its operand.
-
-        Against a register they come from the byte being tested. Against memory
-        they come from the high half of `WZ` instead, whichever pointer reached it.
-        Through an index register that is the address just computed. Through the
-        working pair nothing updates `WZ` at all, so the bits come from an address
-        some earlier instruction left there, and the answer depends on what ran
-        before.
-        """
         result = value & (1 << bit)
         f = self.registers.f & flags.C
         f |= flags.H
@@ -1333,14 +944,6 @@ class Cpu:
         self.set_flags((self.registers.f & flags.C) | flags.sign_zero(value) | flags.parity(value))
 
     def extended_out(self, y: int) -> None:
-        """OUT (C),r, twelve T states over three machine cycles.
-
-        The write goes through port_write whether or not a device is attached,
-        because the machine cycle is the part's and not the device's. Guarding
-        the call instead of letting port_write handle an absent device dropped
-        the cycle and four T states with it, which no suite noticed because a
-        suite always attaches ports.
-        """
         address = self.registers.bc
         value = self.floating_output if y == 6 else self.register_read(y)
         self.port_write(address, value)
@@ -1348,11 +951,6 @@ class Cpu:
         self.keep_flags()
 
     def extended_wide(self, p: int, q: int) -> None:
-        """ADC HL,ss and SBC HL,ss, fifteen T states over four machine cycles.
-
-        (4, 4, 4, 3) after the two fetches leaves seven states with no bus cycle,
-        which is the sixteen bit addition carried a byte at a time.
-        """
         self.idle(7)
         value = getattr(self.registers, PAIRS_SP[p])
         left = self.registers.hl
@@ -1392,19 +990,6 @@ class Cpu:
         self.sub8(value)
 
     def extended_return(self, y: int) -> None:
-        """Either return from an interrupt, both of which restore the enable state.
-
-        The two are documented as distinct instructions and only one is described
-        as restoring the interrupt flag. The part restores it for both, and the
-        difference between them is a signal on a pin that never reaches the
-        registers.
-
-        When the two flip-flops disagreed on the way in, the next instruction
-        boundary does not accept a maskable interrupt. They can only disagree
-        because a nonmaskable interrupt was taken and not yet returned from, so
-        this is what stops a maskable one from arriving in the gap between
-        restoring the copy and resuming the interrupted program.
-        """
         held = self.registers.iff1 != self.registers.iff2
         self.registers.pc = self.pop16()
         self.registers.wz = self.registers.pc
@@ -1413,12 +998,6 @@ class Cpu:
         self.keep_flags()
 
     def extended_accumulator(self, y: int) -> None:
-        """The extended group that reaches I, R and the two nibble rotates.
-
-        Moving the accumulator to or from either interrupt register is nine T
-        states over two machine cycles, (4, 5). The second fetch carries the extra
-        state; there is no bus cycle to attach it to.
-        """
         if y < 4:
             self.idle()
         if y == 0:
@@ -1441,16 +1020,6 @@ class Cpu:
         return None
 
     def load_from_interrupt(self, value: int) -> None:
-        """Reading either interrupt register, which reports the interrupt state.
-
-        The parity flag does not report parity here. It reports whether interrupts
-        were enabled, which is the only way software can ask.
-
-        The mark left behind is read by nothing else. It exists so that an
-        interrupt accepted immediately afterwards can tell that this was the
-        instruction it interrupted, which is the one case where the NMOS part
-        answers the question wrongly.
-        """
         self.registers.a = value
         self.registers.p = 1
         self.set_flags(
@@ -1460,11 +1029,6 @@ class Cpu:
         )
 
     def rotate_digit(self, left: bool) -> None:
-        """RLD and RRD, eighteen T states over five machine cycles, (4, 4, 3, 4, 3).
-
-        The fourth cycle is four states rather than three because the part is
-        shuffling nibbles between the accumulator and the byte it just read.
-        """
         address = self.registers.hl
         held = self.read8(address)
         self.idle(4)

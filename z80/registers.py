@@ -1,31 +1,3 @@
-"""The register file, including the two the datasheet does not name.
-
-The visible part is ordinary: seven eight bit registers and an accumulator, four
-sixteen bit pairs made from them, two index registers, a stack pointer and a
-program counter. There is a second copy of the main set that instructions swap in
-and out wholesale, which is not the same as saving them.
-
-Two more registers exist that no programmer ever names and every accurate model
-needs.
-
-`WZ` is where the processor keeps an address it is in the middle of building. It
-is invisible until an instruction leaves a value in it that a later instruction
-copies into the flags, at which point two bits of the flag register report what
-was in a register the programmer cannot see. It has been called MEMPTR for that
-reason.
-
-`Q` records whether the instruction just executed touched the flags at all. Two
-instructions read it, and get a different answer depending on what ran before
-them, which is why an emulator that omits it fails those two and nothing else.
-
-Both are in the conformance suite's initial and final state, so a model without
-them cannot pass, and a model that carries them is right for reasons its author
-can point at.
-
-Nothing starts clean. Everything except what a reset defines holds arbitrary but
-reproducible values, because that is what a real part holds.
-"""
-
 from __future__ import annotations
 
 import random
@@ -68,22 +40,6 @@ REFRESH_MASK = 0x7F
 
 
 class Registers:
-    """One Z80's registers, the hidden ones included.
-
-    Every name is declared here, so a name this part does not have cannot be
-    written. Without the slots below a wrong spelling is accepted in silence: the
-    caller sets a stray attribute, the register they meant keeps whatever it
-    held, and nothing reports that the write went nowhere.
-
-    The twenty-nine are written out rather than generated. Generating them put a
-    Python level call on the hottest path in the package and cost about six per
-    cent of the throughput, where a property is implemented in C. The risk that
-    buys, one of them masking to the wrong width, is answered by a test that
-    drives every register past its width and checks what comes back, which is a
-    better answer than a factory anyway: it holds whether they were generated or
-    typed.
-    """
-
     __slots__ = (
         "_a",
         "_af_",
@@ -384,11 +340,6 @@ class Registers:
         self.ei = 0
 
     def reset(self) -> Registers:
-        """What a reset defines, and nothing else.
-
-        The program counter, the interrupt vector and refresh registers, the
-        interrupt mode and both enable latches. The rest keeps what it held.
-        """
         self.pc = 0x0000
         self.i = 0x00
         self.r = 0x00
@@ -401,22 +352,14 @@ class Registers:
         return self
 
     def exchange_set(self) -> None:
-        """Swap the main three pairs with their shadows, leaving the accumulator."""
         self.bc, self.bc_ = self.bc_, self.bc
         self.de, self.de_ = self.de_, self.de
         self.hl, self.hl_ = self.hl_, self.hl
 
     def exchange_accumulator(self) -> None:
-        """Swap the accumulator and flags with their shadow, and nothing else."""
         self.af, self.af_ = self.af_, self.af
 
     def tick_refresh(self) -> None:
-        """Advance the refresh counter the way the processor does.
-
-        Only the low seven bits count. The top bit is whatever was last written
-        to it and stays there, which is why software that reads the register as a
-        source of changing numbers gets a value that never crosses that bit.
-        """
         self.r = (self.r & 0x80) | ((self.r + 1) & REFRESH_MASK)
 
     @override

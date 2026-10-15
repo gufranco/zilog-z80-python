@@ -292,7 +292,6 @@ class ClockTest(unittest.TestCase):
         self.assertEqual(cpu.cycles, 4 + core.RESET_STATES + core.RESUME_STATES)
 
     def test_a_reset_costs_the_pin_hold_and_the_two_that_follow_it(self) -> None:
-        """The user manual gives the first three, the product specification the last two."""
         cpu, _ = machine([0x00])
         before = cpu.cycles
 
@@ -301,7 +300,6 @@ class ClockTest(unittest.TestCase):
         self.assertEqual(cpu.cycles - before, 5)
 
     def test_and_those_two_are_spent_after_the_pin_releases(self) -> None:
-        """Named separately because only the three are a floor a board can raise."""
         cpu, _ = machine([0x00])
         before = cpu.cycles
 

@@ -1,5 +1,3 @@
-"""That the WZ probe reports the die and refuses when it cannot."""
-
 import importlib
 import json
 import sys

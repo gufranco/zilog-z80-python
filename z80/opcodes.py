@@ -1,16 +1,3 @@
-"""Naming what the core executes, from the same decomposition the core uses.
-
-A disassembler built from a table of several hundred rows is a second description
-of the instruction set, and two descriptions drift. This one walks the opcode the
-way the part walks it, so an instruction the core executes and an instruction this
-names cannot disagree about which one it is.
-
-The output is the conventional assembler syntax, lower case, with hexadecimal
-written the way the assemblers of the period wrote it. Relative jumps are resolved
-to the address they reach rather than left as the offset the byte holds, because
-an offset is not something a reader can follow.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -44,8 +31,6 @@ INDEX_PREFIX = {0xDD: "ix", 0xFD: "iy"}
 
 
 class Instruction:
-    """One decoded instruction: where it sat, how long it was, and what it says."""
-
     __slots__ = (
         "address",
         "raw",
@@ -65,8 +50,6 @@ class Instruction:
 
 
 class Reader:
-    """A cursor over the bytes, which refuses to read past the end rather than guess."""
-
     __slots__ = (
         "data",
         "offset",
@@ -112,7 +95,6 @@ def displacement_text(value: int) -> str:
 
 
 def register_text(index: int, prefix: str | None, displacement: int) -> str:
-    """One register operand, which an index prefix can change into a memory reference."""
     name = REGISTERS[index]
     if prefix is None:
         return name
@@ -130,7 +112,6 @@ def pair_text(name: str, prefix: str | None) -> str:
 
 
 def decode(data: Sequence[int], offset: int = 0, address: int = 0) -> Instruction:
-    """The instruction at that offset, named as an assembler would name it."""
     reader = Reader(data, offset)
     prefix = None
     opcode = reader.byte()
@@ -314,7 +295,6 @@ def decode_extended(reader: Reader) -> str:
 
 
 def disassemble(data: Sequence[int], address: int = 0) -> list[Instruction]:
-    """Every instruction in a run of bytes, with a trailing fragment shown as data."""
     listing: list[Instruction] = []
     offset = 0
     while offset < len(data):

@@ -1,18 +1,3 @@
-"""Memory and ports, neither of which starts cleared.
-
-A byte nobody has written holds whatever the hardware powered up with, so reading
-one is reading something undefined. Filling it with zeroes would make that read
-look deliberate, and a program that depends on it would appear to work. So an
-address that has never been written derives its value from the address itself:
-arbitrary, not zero, and the same every time it is asked.
-
-Ports are a separate sixteen bit space, not part of memory, and the whole sixteen
-bits address them. Software that treats only the low eight as significant works
-until something answers on the top half. Every transaction is recorded in order,
-because a conformance suite that names which port was touched and with what needs
-that answered rather than inferred.
-"""
-
 from __future__ import annotations
 
 import random
@@ -21,14 +6,6 @@ from typing import Protocol
 
 
 class PortBus(Protocol):
-    """The little of a port space the core touches.
-
-    Naming the surface rather than the class is what lets a conformance runner
-    hand the core a scripted port that answers what a recorded case says it
-    answered. Asking for the concrete class would make the core testable against
-    nothing but itself.
-    """
-
     def read(self, address: int) -> int: ...
 
     def write(self, address: int, value: int) -> None: ...
@@ -44,8 +21,6 @@ def _derive(seed: int, address: int) -> int:
 
 
 class SparseMemory:
-    """Unclean everywhere without being allocated anywhere."""
-
     __slots__ = (
         "seed",
         "written",
@@ -66,29 +41,6 @@ class SparseMemory:
 
 
 class Memory:
-    """Sixty four kilobytes, holding the pattern the parts it is built from decide.
-
-    Never cleared by default, because no machine hands over a cleared one. A
-    read of a byte nothing wrote is a defect on real silicon, and memory that
-    answers zero to it turns that defect into a passing test.
-
-    `fill` is how a caller asks for one byte everywhere, and it is deliberately
-    something they have to write. What it is for is a run that has to get
-    through a few dozen instructions without meeting an opcode that stops the
-    part, which is what every check of a cycle budget needs and what scrambled
-    memory cannot give. It is the one spelling for that across this family: the
-    same request used to need a different keyword in each member, so a check
-    written against one reported the others as broken.
-
-    `image` is what a board genuinely does know at power on: the bytes a mask ROM
-    or a cartridge holds, loaded at the bottom. Everything the image does not
-    cover stays undefined, because on the board it is.
-
-    `SparseMemory` is the same promise without the allocation, for a test that
-    touches a dozen addresses. This one suits a machine that will touch most of
-    its space, and is where a ROM image goes.
-    """
-
     __slots__ = ("data",)
 
     def __init__(
@@ -113,8 +65,6 @@ class Memory:
 
 
 class Ports:
-    """The other sixteen bit space, and a record of what happened on it."""
-
     __slots__ = (
         "log",
         "seed",

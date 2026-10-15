@@ -10,13 +10,6 @@ from z80.core import Cpu
 
 
 def ports_of(cpu: Cpu) -> Ports:
-    """The concrete port space this file handed the core, narrowed for the checker.
-
-    The core accepts anything that reads and writes a port, which is what lets a
-    conformance runner give it a scripted one. These tests give it a real one and
-    then want its log, so the narrowing happens here rather than by widening what
-    the core will accept.
-    """
     ports = cpu.ports
     assert isinstance(ports, Ports)
     return ports

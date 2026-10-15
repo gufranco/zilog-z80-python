@@ -16,7 +16,6 @@ START = 0x0100
 
 
 def run(program: Sequence[int], **setup: int) -> Any:
-    """One instruction, assembled where nothing else is, and stepped."""
     space = memory.SparseMemory()
     for offset, byte in enumerate(program):
         space.write8(START + offset, byte)
@@ -46,8 +45,6 @@ class RecordTest(unittest.TestCase):
 
 
 class AddressRegisterTest(unittest.TestCase):
-    """The register the corpus fixes, checked against a table nobody derived from it."""
-
     @override
     def setUp(self) -> None:
         self.rules = HELD["internalAddressRegister"]["rules"]
@@ -218,8 +215,6 @@ class ModeTwoVectorTest(unittest.TestCase):
 
 
 class ResponseCostTest(unittest.TestCase):
-    """What each response spends, against a source that is not the manual's arithmetic."""
-
     def spent(self, mode: int, vector: int = 0xFF, nonmaskable: bool = False) -> int:
         cpu = Cpu("z80", memory.SparseMemory())
         cpu.registers.sp, cpu.registers.pc = 0x8000, START
@@ -249,8 +244,6 @@ class ResponseCostTest(unittest.TestCase):
 
 
 class CarryRuleTest(unittest.TestCase):
-    """The two carry flag rules, on the two kinds of part that are not disputed."""
-
     def carried(self, model: str, latch: int, f: int, a: int) -> int:
         space = memory.SparseMemory()
         space.write8(START, 0x37)

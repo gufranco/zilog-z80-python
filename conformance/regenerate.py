@@ -1,24 +1,3 @@
-"""Rebuild the conformance corpus from the generator that produced it.
-
-The pinned corpus is a set of files somebody published. This runs the program
-that made them, so a reader can confirm the corpus rather than trust it, and can
-produce the variant the published one does not carry.
-
-Two things come out of that. The published files can be compared against a fresh
-run, which is how the eleven opcodes where the generator's current commit has
-moved away from the corpus were found, all of them in territory Zilog never
-printed. And the generator's full memory cycle flag produces a corpus whose data
-strobes are drawn the way the manual's figures draw them, which is a second
-oracle for the pin shape this package uses by default.
-
-The generator is a browser program. It is driven here in a sandbox that supplies
-the four globals it reaches for and writes each file as it is asked to, rather
-than collecting an archive it cannot build headless.
-
-Usage:
-    python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]
-"""
-
 from __future__ import annotations
 
 import json
@@ -35,21 +14,12 @@ DEFINITION = ROOT / "suites.json"
 USAGE = "usage: python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]"
 
 CLONE_TIMEOUT = 600
-"""Seconds to wait on a clone of a repository of a few tens of megabytes."""
 
 RUN_TIMEOUT = 7200
-"""Seconds to wait on a run that produces sixteen hundred thousand cases."""
 
 HEAP_MEGABYTES = 20480
-"""How much the generator is allowed, because it holds every case before writing.
-
-It builds the whole corpus in memory and only then walks it. The default heap is
-a fraction of what that needs, and the failure is an out of memory abort part way
-through rather than anything that names the cause.
-"""
 
 FLAG = "let Z80_DO_FULL_MEMCYCLES = false;"
-"""The line the full run rewrites, matched exactly so a rename is a failure."""
 
 DRIVER = """
 'use strict';
@@ -99,7 +69,6 @@ vm.runInContext(code + '\\n;generate_Z80_tests(null, false);', sandbox);
 
 
 def definition(path: Path | str | None = None) -> dict[str, Any]:
-    """The generator this corpus declares, as written down."""
     with Path(path or DEFINITION).open() as handle:
         suites: list[dict[str, Any]] = json.load(handle)["suites"]
     generator: dict[str, Any] = suites[0]["generator"]
@@ -107,7 +76,6 @@ def definition(path: Path | str | None = None) -> dict[str, Any]:
 
 
 def clone_command(generator: dict[str, Any], directory: Path | str) -> list[list[str]]:
-    """The git steps that bring the generator down at the commit it is pinned to."""
     where = str(directory)
     return [
         ["git", "init", "-q", where],
@@ -118,19 +86,11 @@ def clone_command(generator: dict[str, Any], directory: Path | str) -> list[list
 
 
 def driver(generator: dict[str, Any]) -> str:
-    """The headless program that runs the generator, with its sources named."""
     sources = [*generator["requires"], generator["entryPoint"].split(",")[0].strip()]
     return DRIVER % {"sources": json.dumps(sources), "flag": json.dumps(FLAG)}
 
 
 def clone(generator: dict[str, Any], directory: Path | str) -> Path:
-    """Bring the generator down, unless something is already sitting there.
-
-    A directory with anything in it is taken as a checkout somebody meant to be
-    used, whether it came from here or from their own clone. Cloning into it
-    would fail on the first step anyway, and failing on the step that is really a
-    misunderstanding about the argument reads as a broken tool.
-    """
     directory = Path(directory)
     if directory.is_dir() and any(directory.iterdir()):
         return directory
@@ -145,7 +105,6 @@ def clone(generator: dict[str, Any], directory: Path | str) -> Path:
 
 
 def generate(generator: dict[str, Any], source: Path, output: Path, full: bool) -> int:
-    """Run the generator, writing one file per opcode into the output directory."""
     if shutil.which("node") is None:
         raise SystemExit("node is not on the path, and the generator is a JavaScript program")
     output.mkdir(parents=True, exist_ok=True)

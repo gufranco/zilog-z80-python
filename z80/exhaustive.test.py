@@ -21,7 +21,6 @@ STATES = (
 
 
 def program(prefix: tuple[int, ...], opcode: int) -> list[int]:
-    """The bytes of one instruction, with the displacement where the part wants it."""
     if prefix in DISPLACED:
         return [*prefix, 0x02, opcode]
     return [*prefix, opcode]
@@ -154,8 +153,6 @@ class ListingTest(unittest.TestCase):
 
 
 class CarryFlagTest(unittest.TestCase):
-    """The two instructions whose hidden bits depend on what ran before them."""
-
     def test_after_an_instruction_that_wrote_the_flags_the_accumulator_alone_decides(self) -> None:
         cpu = machine([0x37], {"f": 0x28, "a": 0x00})
         cpu.registers.q = 0x28

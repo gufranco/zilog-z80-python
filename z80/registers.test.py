@@ -142,7 +142,6 @@ class ReadingTest(unittest.TestCase):
 
 
 def narrower(held: object, names: tuple[str, ...], mask: int) -> list[str]:
-    """Every register that kept more than its own width after an oversized write."""
     found = []
     for name in names:
         with contextlib.suppress(AttributeError):
@@ -154,15 +153,6 @@ def narrower(held: object, names: tuple[str, ...], mask: int) -> list[str]:
 
 
 class WidthTest(unittest.TestCase):
-    """That every register masks to its own width, and to no other.
-
-    The twenty-nine properties are written out rather than generated, which buys
-    the throughput of a C descriptor and risks one of them masking to the wrong
-    width. This is the answer to that risk, and it is a better one than a factory
-    was: it holds whether they were typed or generated, and it names the register
-    that is wrong rather than failing somewhere downstream.
-    """
-
     BYTES: ClassVar[tuple[str, ...]] = (
         "a",
         "f",
@@ -205,7 +195,6 @@ class WidthTest(unittest.TestCase):
         self.assertEqual(narrower(registers.Registers(), self.WORDS, 0xFFFF), [])
 
     def test_the_reader_names_a_register_that_keeps_too_much(self) -> None:
-        """A check nothing has been seen to fail is a check nobody knows."""
 
         class Wider:
             eight = 0x1FF
@@ -213,7 +202,6 @@ class WidthTest(unittest.TestCase):
         self.assertEqual(narrower(Wider(), ("eight",), 0xFF), ["eight kept 0x1ff"])
 
     def test_the_two_lists_cover_every_register_the_class_has(self) -> None:
-        """A register left out of both lists is one this check never reaches."""
         held = {
             name for name, value in vars(registers.Registers).items() if isinstance(value, property)
         }
@@ -221,7 +209,6 @@ class WidthTest(unittest.TestCase):
         self.assertEqual(held, set(self.BYTES) | set(self.WORDS))
 
     def test_a_name_the_part_does_not_have_cannot_be_written(self) -> None:
-        """The slots are the point: a wrong spelling fails instead of going nowhere."""
         held = registers.Registers()
 
         with self.assertRaises(AttributeError):

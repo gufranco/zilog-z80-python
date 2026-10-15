@@ -1,11 +1,3 @@
-"""That every timing the manual prints is reproduced by running the instruction.
-
-The manual's tables are a transcription, so nothing in them is checked by the
-conformance corpus: that corpus is a recording of another model, and this file is
-the only place the core is held to Zilog for all 217 rows rather than for the
-handful a hand-written case names.
-"""
-
 import contextlib
 import io
 import sys

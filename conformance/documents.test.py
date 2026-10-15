@@ -46,13 +46,6 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(short, [])
 
     def test_every_document_says_where_it_came_from_or_why_it_cannot(self) -> None:
-        """An address, a page it was printed from, or a line saying none is recorded.
-
-        Four of these have no address anywhere in this repository. Leaving the
-        field empty would read as an oversight and would tempt the next reader to
-        fill it with whichever search result looks right, which is how a citation
-        comes to point at a different file.
-        """
         silent = [
             entry["file"]
             for entry in self.entries
@@ -69,7 +62,6 @@ class ManifestTest(unittest.TestCase):
         self.assertLessEqual(rungs, {1, 3, 4})
 
     def test_the_ladder_says_why_the_second_rung_is_empty_here(self) -> None:
-        """A ladder that lists a rung and leaves it blank reads as a rung nobody needed."""
         self.assertIn("suites.json", HELD["authority"]["2"])
 
     def test_every_part_either_has_a_document_or_says_why_it_has_none(self) -> None:
@@ -88,13 +80,6 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(missing, [])
 
     def test_every_independent_document_names_its_licence(self) -> None:
-        """Rung three is used here rather than empty, which is what makes this matter.
-
-        Independent research settles what no manufacturer printed, and a reader
-        who wants to redistribute or quote one of these has to know what it was
-        published under. A manufacturer sheet needs no such line because none of
-        them is redistributable at all.
-        """
         silent = [
             entry["file"]
             for entry in self.entries
@@ -109,12 +94,6 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(len(digests), len(set(digests)))
 
     def test_a_document_printed_from_a_page_is_never_fetched_over(self) -> None:
-        """A print is not reproducible, so the file on disk is the only copy of it.
-
-        Fetching the address would return the page's markup and overwrite the
-        thing that was read. The script verifies these and leaves them alone, and
-        this is the check that the manifest marks every one of them.
-        """
         printed = [entry for entry in self.entries if entry.get("printedFromPage")]
         addressed = [
             entry["file"]
@@ -290,13 +269,6 @@ class EntryTest(unittest.TestCase):
 
 @unittest.skipUnless(PRESENT, "the documents are not on this machine")
 class OnDiskTest(unittest.TestCase):  # pragma: no cover
-    """The documents this machine actually holds, if it holds any.
-
-    Outside the coverage gate, and the only thing here that is. A check whose
-    subject is a file the repository does not carry runs on one machine and not
-    another, so the gate would measure which machine ran it rather than the code.
-    """
-
     def test_every_document_on_disk_is_the_one_that_was_read(self) -> None:
         self.assertEqual(documents.main(["--check"], ROOT / "docs"), 0)
 

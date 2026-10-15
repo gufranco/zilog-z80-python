@@ -47,13 +47,6 @@ class DefinitionTest(unittest.TestCase):
 
 
 class ClaimedCaseCountTest(unittest.TestCase):
-    """That the case count the readme advertises is the one the pins imply.
-
-    A figure in a readme that nothing derives is a figure that drifts. This one
-    is derivable, so holding the readme to it means the claim cannot outlive a
-    change to the pin.
-    """
-
     def held(self) -> Any:
         return json.loads(fetch.DEFINITION.read_text())
 
@@ -69,13 +62,11 @@ class ClaimedCaseCountTest(unittest.TestCase):
         self.assertEqual(int(claimed.group(1).replace(",", "")), derived)
 
     def test_every_suite_says_how_many_files_it_ships_empty(self) -> None:
-        """Zero is an answer and has to be written, because absent is not."""
         missing = [one["name"] for one in self.held()["suites"] if "emptyFiles" not in one]
 
         self.assertEqual(missing, [])
 
     def test_the_record_says_how_each_advertised_figure_is_known(self) -> None:
-        """One is derived and one is measured, and a reader cannot tell by looking."""
         counted = self.held()["counted"]
 
         for name in ("conformanceCases", "tStates"):
@@ -115,13 +106,6 @@ class LatestTest(unittest.TestCase):
 
 
 def build_upstream(root: Path | str) -> tuple[Path, str]:
-    """A real repository on disk, shaped like the suite this core is held to.
-
-    Nothing here is stubbed. The fetch path is git for its whole length, so a
-    stand-in for git would only prove the stand-in works. A repository in a
-    temporary directory is the same software the real fetch talks to, reached
-    over a path instead of over the network.
-    """
     upstream = Path(root) / "upstream"
     suite = upstream / "65816" / "v1"
     suite.mkdir(parents=True)
