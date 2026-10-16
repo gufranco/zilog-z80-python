@@ -18,13 +18,20 @@ def _version(where: Path | None = None) -> str:
 
 ROOT = Path(__file__).resolve().parent.parent
 
+
+def _reachable(root: Path = ROOT, path: list[str] | None = None) -> bool:
+    where = sys.path if path is None else path
+    if str(root) in where:
+        return False
+    where.insert(0, str(root))
+    return True
+
+
+_reachable()
+
 from z80 import environment  # noqa: E402
 
 VERSION = _version()
-
-
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 from z80 import models  # noqa: E402
 from z80.memory import SparseMemory  # noqa: E402

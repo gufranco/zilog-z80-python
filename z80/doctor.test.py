@@ -1,5 +1,7 @@
 import importlib
+import os
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -328,6 +330,49 @@ class PathTest(unittest.TestCase):
         where.write_text("NOTHING = 1\n")
 
         self.assertEqual(doctor._version(where), "unknown")
+
+    def test_a_root_that_is_not_on_the_path_is_put_there(self) -> None:
+        # Arrange
+        path: list[str] = []
+
+        # Act
+        added = doctor._reachable(Path("/somewhere"), path)
+
+        # Assert
+        self.assertEqual((added, path), (True, ["/somewhere"]))
+
+    def test_a_root_already_on_the_path_is_left_alone(self) -> None:
+        # Arrange
+        path = ["/somewhere"]
+
+        # Act
+        added = doctor._reachable(Path("/somewhere"), path)
+
+        # Assert
+        self.assertEqual((added, path), (False, ["/somewhere"]))
+
+
+class TheDoctorRunsAsTheReadmeSaysTest(unittest.TestCase):
+    def test_running_it_as_a_file_from_elsewhere_prints_a_report_rather_than_a_traceback(
+        self,
+    ) -> None:
+        # Arrange
+        elsewhere = tempfile.mkdtemp()
+        environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+
+        # Act
+        finished = subprocess.run(
+            [sys.executable, str(doctor.ROOT / "z80" / "doctor.py")],
+            capture_output=True,
+            text=True,
+            cwd=elsewhere,
+            env=environment,
+            check=False,
+        )
+
+        # Assert
+        self.assertIn(finished.returncode, (0, 1))
+        self.assertNotIn("Traceback", finished.stderr)
 
 
 if __name__ == "__main__":
