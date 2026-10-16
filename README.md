@@ -1,70 +1,295 @@
+English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁體中文（香港）](README.zh-HK.md)
+
 # Zilog Z80
 
-A Z80 you can drive from a clock, held to Zilog's own manual for the shape of every machine cycle and to a per-opcode suite for every T state of every opcode.
+The Zilog Z80, the NEC µPD780C and the Zilog Z84C00 in Python, driven one instruction or one T state at a time and held to Zilog's user manual for the shape of every machine cycle and to a per-opcode corpus for every T state of every opcode.
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,356** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,366** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
 
-cpu = Cpu("z80", Memory(image=bytes([0x3E, 0x42, 0x47])))
+cpu = Cpu("z80", Memory(image=bytes([0x3E, 0x42, 0x47, 0x76])))
 cpu.reset()
-cpu.registers.pc = 0x0000
 
-cpu.step()
-cpu.step()
-
-print(f"{cpu.registers.b:02X}")
+spent = [cpu.step(), cpu.step(), cpu.step()]
+print(f"b={cpu.registers.b:02X} pc={cpu.registers.pc:04X}", spent, cpu.held(), cpu.cycles)
 ```
 
 ```
-42
+b=42 pc=0004 [7, 4, 4] True 20
 ```
+
+The program is `ld a,$42`, `ld b,a`, `halt`. Each `step()` runs one instruction and returns the T states it cost: 7, 4 and 4. `held()` is true once `HALT` executes. `cycles` reads 20 because `reset()` spends 5 T states before the first instruction.
 
 ## Install
 
+| Requirement | Version |
+|:--|:--|
+| Python | 3.12 or newer |
+| git | Any, to clone |
+
 ```bash
-pip install git+https://github.com/gufranco/zilog-z80-python.git
+git clone https://github.com/gufranco/zilog-z80-python.git
+cd zilog-z80-python
+python3 z80/doctor.py
 ```
 
-Python 3.12 or newer. Nothing else.
+The package imports nothing outside the standard library. `pip install git+https://github.com/gufranco/zilog-z80-python.git` installs the `z80` package alone, without the conformance tools.
+
+The doctor reports the machine, each of the three parts it builds and resets, and whether the corpus is fetched and complete. It runs as a file so that it still reports when the package will not import. It exits 0 when every check passes and 1 otherwise. Paste its whole output into any bug report. On a fresh checkout it ends with:
+
+```
+  8 checks, nothing to report
+```
+
+Releases follow [Semantic Versioning](https://semver.org/) and are cut from the commit history by semantic-release. Every release is tagged and listed on the [releases page](https://github.com/gufranco/zilog-z80-python/releases).
 
 ## The interface
 
-Everything a caller touches. Nothing else is public.
+Everything below is exported from `z80`. Nothing else is public.
+
+### Building a part
+
+`Cpu(model, memory=None, fill=None, ports=None, seed=UNSET_SEED, recording=False, shape="manual")` builds one part, powered and not reset.
+
+| Argument | Meaning |
+|:--|:--|
+| `model` | Required. A model name or alias, case and separators ignored. Leaving it out raises `UnknownModelError`, which lists every model |
+| `memory` | Any object with `read8(address)` and `write8(address, value)`. The part keeps the one it is handed. Left out, the part builds a `SparseMemory` |
+| `fill` | Used only when `memory` is left out: builds a 64 KB `Memory` holding that byte everywhere |
+| `ports` | Any object with `read(address)` and `write(address, value)`. Left out, an input reads the model's floating output and an output goes nowhere |
+| `seed` | Seeds the power-on scramble of the registers |
+| `recording` | `True` keeps a per-T-state log in `cpu.bus.log` |
+| `shape` | `"manual"` or `"recording"`, the edge each control pin is read on. Anything else raises `UnknownShape` |
+
+### Running it
 
 | Call | Does | Returns |
 |:--|:--|:--|
-| `Cpu(model, memory=None, **options)` | Builds a part, powered and not yet reset. The model is required and there is no default; naming none raises and lists every model. Memory of its own if none is given | a `Cpu` |
-| `cpu.reset()` | Drives RESET. Costs five T states: the three Zilog names as the minimum the pin must be held, and the two the part spends after it releases | the `Cpu` |
-| `cpu.step()` | Runs one instruction | T states it cost |
-| `cpu.run_for(cycles)` | Runs whole instructions until at least that many T states have passed | T states actually spent, usually a little over |
-| `cpu.run_until(check, limit=None)` | Steps while `check(cpu)` is false. `limit` bounds the instructions and raises `RunLimit` | the `Cpu` |
-| `cpu.held()` | Whether the part has stopped advancing the program | `bool` |
-| `cpu.irq(vector=0xFF)` / `cpu.nmi()` | Offers a line and acts on it now. `vector` may be a callable, which is how a device supplies an instruction longer than one byte in mode zero | `True` if taken / nothing |
-| `disassemble(data, address)` | Reads bytes with no machine to run them in | `Instruction` objects with `.text` |
-| `MODELS` | Every model this package covers, by the name it goes by | a mapping |
+| `reset()` | Drives RESET: the 3 T states Zilog names as the minimum the pin is held, then the 2 the part spends after release. Sets `pc`, `i`, `r` and `im` to 0, clears both interrupt flip-flops and `steps`, leaves every other register as it was | the `Cpu` |
+| `step()` | Runs one instruction, or one `HALT` cycle while halted | T states it cost |
+| `run_for(cycles)` | Runs whole instructions until at least `cycles` T states have passed | T states spent, which can exceed `cycles` |
+| `run_until(check, limit=None)` | Steps while `check(cpu)` is false. After `limit` instructions it raises `RunLimit` | the `Cpu` |
+| `held()` | Whether a `HALT` is executing | `bool` |
+| `irq(vector=0xFF)` | Offers a maskable interrupt now. `vector` is the byte the device supplies, or a callable returning one byte per read, which is how a device supplies a longer instruction in mode 0 | `True` if taken |
+| `nmi()` | Takes a non-maskable interrupt now and restarts at `$0066` | `None` |
 
-| Pin or attribute | Is |
+### Pins and state
+
+| Attribute | Is |
 |:--|:--|
-| `cpu.irq_line` | The request line as a level. Read at the final T state of an instruction, where the manual says the part reads it, so a request withdrawn before then is not taken |
-| `cpu.nmi_line` | The non-maskable line. Edge sensitive: the transition interrupts, and holding it afterwards does not interrupt again |
-| `cpu.wait_line` | Memory asking for more time. Read after T2 of each machine cycle, and every state it adds repeats T2 |
-| `cpu.cycles` / `cpu.steps` | T states since construction, across resets; instructions since the last reset |
-| `cpu.halted` | Whether a `HALT` is being executed, which still costs four T states a time |
-| `cpu.registers` | `a`, `f`, `b`, `c`, `d`, `e`, `h`, `l` and the pairs `af`, `bc`, `de`, `hl`; `sp`, `pc`, `ix`, `iy` with their halves; the shadow set as `af_`, `bc_`, `de_`, `hl_`; `i`, `r`, `iff1`, `iff2`, `im`; and `wz` and `q`, the two nobody documents |
-| `cpu.bus` | The T states of the last instruction, and the recorded cycles when `recording=True` |
-| `cpu.on_cycle` | Called once per T state, after that state's bus activity |
+| `irq_line` | The maskable request as a level, sampled at the final T state of each instruction |
+| `nmi_line` | The non-maskable request. The transition interrupts; holding it does not interrupt again |
+| `wait_line` | Read after T2 of every machine cycle. Each T state it stays set repeats T2 |
+| `on_cycle` | Called once per T state, after that state's bus activity |
+| `cycles` | T states since the part was built, across resets |
+| `steps` | Instructions since the last reset |
+| `halted` | Whether a `HALT` is executing; each `HALT` cycle costs 4 T states |
+| `registers` | The `Registers` file below |
+| `bus` | The last instruction: `states`, its T state count; `cycles`, a list of `(state, kind)` per machine cycle; `log`, a list of `(address, value, pins)` per T state. The two lists fill only with `recording=True` |
+| `memory`, `ports` | What the part was built with |
+| `model` | The canonical model name |
 
-Options: `seed=` fixes the undefined state, `recording=True` keeps a bus log, `shape=` picks which edge a pin is read on, `ports=` takes an I/O bus.
+```python
+from z80 import Cpu, Memory
 
-**A part arrives powered, not reset**, because no board hands over one that has reset itself. Every register holds rubbish derived from the seed, the program counter included, so stepping it executes rubbish from a rubbish address. Call `reset()` to get a machine that runs a program.
+cpu = Cpu("z80", Memory(image=bytes([0x3E, 0x42])))
+cpu.reset()
+seen = []
+
+
+def each_state() -> None:
+    seen.append(cpu.bus.states)
+    cpu.wait_line = len(seen) < 4
+
+
+cpu.on_cycle = each_state
+cpu.wait_line = True
+print(cpu.step(), seen)
+```
+
+```
+9 [1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+`ld a,n` costs 7 T states. The wait line is still set when it is read after T2 of the opcode fetch, and again one state later, so T2 repeats twice and the instruction costs 9. `on_cycle` saw every one of them.
+
+### Interrupts
+
+```python
+from z80 import Cpu, Memory, RunLimit
+
+program = bytes([0xED, 0x56, 0xFB, 0x00, 0x18, 0xFD])
+space = Memory(image=program, fill=0x00)
+cpu = Cpu("z80", space)
+cpu.reset()
+cpu.registers.sp = 0x8000
+
+cpu.run_until(lambda part: part.registers.pc == 0x0004)
+cpu.irq_line = True
+cpu.step()
+cpu.irq_line = False
+print(f"pc={cpu.registers.pc:04X} iff1={cpu.registers.iff1} im={cpu.registers.im}")
+print(f"pushed {space.read8(0x7FFF):02X}{space.read8(0x7FFE):02X}")
+
+try:
+    cpu.run_until(lambda part: False, limit=3)
+except RunLimit as error:
+    print(error)
+```
+
+```
+pc=0038 iff1=False im=1
+pushed 0003
+gave up after 3 instructions at $003B
+```
+
+The program is `im 1`, `ei`, `nop`, then `jr` back to the `nop`. With the line set, the `jr` completes, the part samples the request at its last T state, pushes the return address `$0003` and restarts at `$0038`. `run_until` with a check that never passes gives up after the 3 instructions `limit` allows.
+
+### Memory and ports
+
+| Name | Is |
+|:--|:--|
+| `SparseMemory(seed=UNSET_SEED)` | 64 KB that stores only what is written. An unwritten byte reads as a value derived from `seed` and the address |
+| `Memory(size=0x10000, image=None, seed=UNSET_SEED, fill=None)` | A flat `bytearray`. Without `fill` it is scrambled from `seed`. `image` is copied in from address 0 |
+| `Ports(seed=UNSET_SEED)` | An I/O space. Reads and writes go to `log` as `(address, value, "r" or "w")`. An unwritten port reads as a value derived from `seed` |
+| `UNSET_SEED` | `0x5A5A5A5A`, the seed every scramble uses when none is given |
+
+Addresses on every bus are 16 bits. A port address carries the accumulator or `B` in its high byte, as the part drives it.
+
+```python
+from z80 import Cpu, Memory, Ports
+
+program = bytes([0x3E, 0x12, 0xD3, 0x34, 0x01, 0x99, 0x00, 0xED, 0x71])
+ports = Ports()
+cpu = Cpu("z84c00", Memory(image=program), ports=ports, recording=True)
+cpu.reset()
+
+cpu.step()
+cpu.step()
+print(cpu.bus.states, cpu.bus.cycles)
+for address, value, pins in cpu.bus.log:
+    print(f"{address:04X} {value} {pins}")
+
+cpu.step()
+cpu.step()
+print(ports.log)
+```
+
+```
+11 [(0, 'fetch'), (4, 'read'), (7, 'portWrite')]
+0002 None r-m-
+0002 None r-m-
+0001 211 --m-
+0001 None ----
+0003 None r-m-
+0003 None r-m-
+0003 52 ----
+1234 18 ----
+1234 18 -w-i
+1234 18 -w-i
+1234 18 ----
+[(4660, 18, 'w'), (153, 255, 'w')]
+```
+
+`out ($34),a` is an opcode fetch, an operand read and a port write: 11 T states. Each log row is the address on the bus, the value on the data lines or `None`, and four pins in the order RD, WR, MREQ, IORQ, with `-` for inactive. The last two states of the fetch carry the refresh address built from `I` and `R`. `out (c),0` on the Z84C00 then sends `$FF` to port `$0099`, which is the last entry of the port log.
+
+### Registers
+
+`cpu.registers` holds `a`, `f`, `b`, `c`, `d`, `e`, `h`, `l` and the pairs `af`, `bc`, `de`, `hl`; `sp` and `pc`; `ix` and `iy` with their halves `ixh`, `ixl`, `iyh`, `iyl`; the shadow set `af_`, `bc_`, `de_`, `hl_`; `i`, `r`, `iff1`, `iff2` and `im`; the internal pair `wz` with its halves `w` and `z`; and `q`, the latch the corpus records for the flag result of the last instruction. Writes are masked to the register's width.
+
+`Registers(seed=UNSET_SEED)` builds a file on its own. `reset()` does what the RESET pin does to it, `exchange_set()` is `exx` and `exchange_accumulator()` is `ex af,af'`.
+
+```python
+from z80 import Registers
+
+held = Registers(seed=7)
+print(held)
+held.reset()
+held.hl = 0x1234
+held.exchange_set()
+print(f"pc={held.pc:04X} hl={held.hl:04X} hl_={held.hl_:04X} im={held.im} iff1={held.iff1}")
+```
+
+```
+<Registers pc=1FAC af=A54D hl=BB1D>
+pc=0000 hl=724C hl_=1234 im=0 iff1=False
+```
+
+### Models and errors
+
+| Name | Is |
+|:--|:--|
+| `MODELS` | The three `Model` records, keyed by canonical name |
+| `Model` | `name`, `aliases`, `summary`, `floating_output`, `carry_rule`, `interrupt_clears_parity`, `verified`, and `build(memory, **options)` |
+| `UnknownModelError` | Raised by `Cpu` for a missing model or a name no model goes by. The message lists the three |
+| `UnknownShape` | Raised by `Cpu` for a `shape` other than `manual` or `recording` |
+| `UnknownCarryRule` | Raised by `Model` for a carry rule other than `zilog` or `nec` |
+| `RunLimit` | Raised by `run_until` when `limit` instructions pass and the check never held |
+| `Truncated` | Raised by `decode` when the bytes end inside an instruction |
+| `ClockClosed` | Raised by `Clock.tick()` after the clock was closed |
+| `__version__` | The installed version |
+
+```python
+import z80
+from z80 import Clock, ClockClosed, Cpu, Model, UnknownCarryRule, UnknownShape
+
+try:
+    Cpu("z80", shape="sampled")
+except UnknownShape as error:
+    print(error)
+
+try:
+    Model("z80x", "a part nobody made", 0x00, carry_rule="intel")
+except UnknownCarryRule as error:
+    print(error)
+
+clock = Clock(Cpu("z80").reset())
+clock.run_for(3)
+clock.close()
+try:
+    clock.tick()
+except ClockClosed as error:
+    print(error, clock.cycles)
+
+print(z80.__version__)
+```
+
+```
+sampled is not a pin shape; there are manual, recording
+intel is not a carry flag rule; there are zilog, nec
+this clock has been closed 3
+6.12.2
+```
+
+### Command-line tools
+
+Every tool runs from the repository root. The conformance tools run as modules.
+
+| Command | Does | Exit codes |
+|:--|:--|:--|
+| `python3 z80/doctor.py` | Reports the machine, the parts and the corpus | 0 every check passed, 1 one did not |
+| `python3 -m conformance.fetch [directory] [--latest]` | Clones the corpus at its pinned commit, or at upstream's head with `--latest`, into `directory`, by default `~/.cache/conformance-suites` | 0 fetched, 1 upstream unreachable or a git step failed |
+| `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]` | Compares registers and memory after every case | 0 no failure, 1 a failure or no cases found, 2 bad arguments |
+| `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | Compares every T state's address, data and pins. The shape defaults to `recording` | 0 no failure, 1 a failure or no cases found, 2 bad arguments |
+| `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]` | Rebuilds the corpus from the generator that produced it. Needs `node` | 0 written, the generator's own code if it failed, 1 bad arguments |
+| `python3 -m conformance.timing` | Runs every per-instruction timing row in the record and compares the T states | 0 every row agrees, 1 one does not |
+| `python3 -m conformance.quotes` | Finds every quoted sentence in the document it cites, on a machine holding the documents | 0 every quote found, 1 one was not |
+| `python3 -m conformance.documents [--check] [--only SUBSTRING]` | Downloads the documents that have an address and verifies every digest. `--check` only verifies | 0 every one verified, 1 one refused or bad arguments |
+| `python3 -m conformance.netlist [--half-cycles N]` | Runs the transistor netlist from reset for `N` half cycles, 130 by default | 0 every node settled, 1 one did not or a data file is absent |
+| `python3 -m conformance.wz [output]` | Reads what the netlist leaves in `WZ` and writes it to `output`, by default [`conformance/wz.json`](conformance/wz.json) | 0 written, 1 netlist absent or the probe uncalibrated |
+| `python3 -m conformance.speed [--instructions N] [--repeats N]` | Times `run_for(N)` on a 64 KB image, 200,000 T states over 7 runs by default | 0 at or above 400,000 T states per second, 1 below, 2 bad arguments |
+| `python3 -m conformance.links` | Requests every address in this file | 0 every address still exists, 1 one carries status `404` or `410` |
+| `python3 -m conformance.package <wheel>` | Checks a built wheel ships every module and no test | 0 clean, 1 a fault or no such file, 2 no argument |
 
 ## Running it at a real speed
 
-A part runs at whatever its crystal says. `step()` reports what an instruction cost, so a host can hold the part to a real clock.
+`step()` reports what an instruction cost, so a host holds the part to its crystal by spending a budget per slice of wall time.
 
 ```python
 import time
@@ -86,11 +311,11 @@ for _ in range(5):
     time.sleep(max(0.0, SLICE - (time.perf_counter() - began)))
 ```
 
-An instruction cannot be cut in half, so `run_for()` overshoots and returns what it really spent. Carrying the overshoot into the next slice is what stops a long run drifting.
+An instruction cannot be cut in half, so `run_for()` overshoots and returns what it spent. Carrying the overshoot into the next slice keeps a long run from drifting.
 
 ## Driving it one T state at a time
 
-`Clock` stops the part between any two T states, which is where a board changes what a read will answer.
+`Clock(cpu)` stops the part between any two T states, which is where a board changes what a read will answer.
 
 ```python
 from z80 import Clock, Cpu, Memory
@@ -112,23 +337,32 @@ print(0x99 in [value for _, value, _ in cpu.bus.log])
 True
 ```
 
-The instruction picked up a byte written after it had already begun. That is real suspension rather than a replay, and it is what makes the three pins above mean anything.
+The byte at `$0001` changed after the first T state of the opcode fetch, and the operand read that follows the fetch picked up the new value.
 
-It is not free. An instruction is an ordinary call stack and Python cannot suspend one, so the clock runs the part on a thread and lets it block where the T state is spent, which is what ares and bsnes do. Expect roughly fifty times slower than `step()`. Use `step()` for speed and `Clock` when the question is where a T state falls.
+| Call | Does |
+|:--|:--|
+| `tick()` | Advances one T state and returns the clock's count |
+| `run_for(cycles)` | Calls `tick()` `cycles` times and returns the count |
+| `close()` | Stops the part and gives `on_cycle` back. Leaving a `with` block calls it |
+| `cycles`, `closed` | The count of ticks, and whether the clock is closed |
+
+Iterating a clock ticks it until it is closed. An exception raised inside the part is raised again from `tick()`, and the clock closes.
+
+The part runs on a thread, because Python cannot suspend an instruction's call stack. Each T state is a handoff between two semaphores, so a clock runs many times slower than `step()`. Use `step()` for speed and `Clock` when the question is where a T state falls.
 
 ## Models
 
-The instruction set never changed. Three things did, all undocumented or defective, which is why software that depended on any of them had to know which board it was on.
+The instruction set is the same on all three. Three behaviours differ.
 
-| Build it with | Bare `OUT (C)` sends | Carry flag bits | Interrupt clears parity | These three columns measured |
+| Build it with | Bare `OUT (C)` sends | Undocumented flag bits after `SCF` and `CCF` | Interrupt after `LD A,I` or `LD A,R` clears parity | These three columns measured |
 |:--|:--|:--|:--|:--|
-| `Cpu("z80")` | nothing | accumulator and latch | yes, and Zilog documents it | yes, by the corpus |
-| `Cpu("z84c00")` | every bit | accumulator and latch | no, Zilog fixed it | no, Zilog's own sentence |
-| `Cpu("upd780c")` | nothing | accumulator alone | not stated | no, independent research |
+| `Cpu("z80")` | `$00` | accumulator and latch | yes, and Zilog documents it | yes, by the corpus |
+| `Cpu("z84c00")` | `$FF` | accumulator and latch | no, Zilog fixed it | no, Zilog's own sentence |
+| `Cpu("upd780c")` | `$00` | accumulator alone | not stated | no, independent research |
 
-The last column is narrow on purpose. One corpus exists, for the NMOS part, and everything the other two share with it is measured through it. What is not measured is the handful of behaviours that make them different parts, which is the three columns before it.
+The corpus records the NMOS Z80 only. Everything the other two share with it is measured through it. The three columns that make them different parts are not measured, and `Model.verified` is `False` for both.
 
-Each answers to the numbers its manufacturer sold it under. Case and separators do not matter.
+Each model answers to the part numbers its makers sold it under. Case, `-` and `_` are ignored, so `Cpu("Z84C00-10")` builds a `z84c00`.
 
 | Build it with | Also answers to |
 |:--|:--|
@@ -136,30 +370,69 @@ Each answers to the numbers its manufacturer sold it under. Case and separators 
 | `Cpu("upd780c")` | `necupd780c`, `d780c`, `d780c1`, `d780c2`, `upd780`, `upd780c1`, `upd780c2` |
 | `Cpu("z84c00")` | `cmosz80`, `z80c`, `z8400c`, `z84c0006`, `z84c0008`, `z84c0010`, `z84c0020`, `toshibatmpz84c00`, `tmpz84c00`, `t84c00`, `kr1858vm3` |
 
-A part number nothing here implements is refused rather than resolved to something close, so `Cpu("z180")` raises `UnknownModelError` instead of handing back a Z80 missing instructions the caller asked for.
+```python
+import z80
+
+for name, model in z80.MODELS.items():
+    floating = f"${model.floating_output:02X}"
+    print(name, floating, model.carry_rule, model.interrupt_clears_parity, model.verified)
+
+print(z80.Cpu("Z84C00-10").model, z80.Cpu("mk3880").model)
+
+for asked in (None, "z180"):
+    try:
+        z80.Cpu(asked)
+    except z80.UnknownModelError as error:
+        print(error)
+```
+
+```
+z80 $00 zilog True True
+upd780c $00 nec False False
+z84c00 $FF zilog False False
+z84c00 z80
+no model was named, and this package will not choose one for you. Name one of: upd780c, z80, z84c00
+z180 is not a model this family covers; it has upd780c, z80, z84c00
+```
+
+A part number this package does not implement is refused rather than resolved to something close, so `Cpu("z180")` raises instead of returning a Z80 that lacks the instructions the caller asked for.
 
 ## Reading without running
 
-A survey of a ROM has nothing but the file, so reading and running are separate halves.
+`decode(data, offset=0, address=0)` reads one instruction. `disassemble(data, address=0)` reads all of them. Neither needs a part. Each returns `Instruction` objects with `address`, `size`, `raw` and `text`.
 
 ```python
-from z80 import disassemble
+from z80 import Truncated, decode, disassemble
 
-for found in disassemble(bytes([0x3E, 0x42, 0x47, 0xC9]), 0x8000):
-    print(f"{found.address:04X}  {found.text}")
+program = bytes([0x3E, 0x42, 0xDD, 0x7E, 0xFE, 0x10, 0xFA, 0xED, 0x71, 0xC3])
+
+for found in disassemble(program, 0x8000):
+    print(f"{found.address:04X}  {found.raw.hex(' '):<9} {found.text}")
+
+one = decode(bytes([0xCD, 0x34, 0x12]), address=0x0100)
+print(one, one.size)
+
+try:
+    decode(bytes([0xCD, 0x34]))
+except Truncated as error:
+    print(error)
 ```
 
 ```
-8000  ld a,$42
-8002  ld b,a
-8003  ret
+8000  3e 42     ld a,$42
+8002  dd 7e fe  ld a,(ix-$02)
+8005  10 fa     djnz $8001
+8007  ed 71     out (c),0
+8009  c3        db $C3
+<0100 call $1234> 3
+instruction at 0 runs past the end of the data
 ```
 
-A run of bytes too short to complete its instruction raises `Truncated` rather than returning a guess.
+Relative jumps print their target. `decode` raises `Truncated` when the bytes end inside an instruction. `disassemble` writes the first byte of such an instruction as `db` and carries on.
 
 ## Nothing starts clean
 
-Memory and registers hold a reproducible scrambled pattern. There is no parameter that clears them and there will not be one: a read of a byte nothing wrote is a defect on real silicon, and memory that answers zero turns that defect into a passing test.
+Registers and memory power up holding a reproducible scrambled pattern, because a read of a byte nothing wrote is a defect on real silicon and memory that answers zero turns that defect into a passing test. No argument clears the registers. Memory holds a single value only when the caller builds it with `fill`.
 
 ```python
 from z80 import Cpu, SparseMemory
@@ -177,11 +450,11 @@ True
 0x8926 0
 ```
 
-A byte derived from the address, the same every time, and not zero. The part has spent nothing because nothing has driven RESET yet.
+The byte is derived from the seed and the address, so it is the same on every run and is not zero. The program counter is scrambled too, and `cycles` is 0 because nothing has driven RESET yet. Stepping a part before `reset()` executes whatever that address holds.
 
 ## Is it right
 
-Every instruction is checked against a published per-opcode suite that states each register and each byte of memory before and after: **1,604,000 cases, no failures**. The comparison then goes further and checks what the part put on the bus, T state by T state, address by address, pin by pin: **22,005,372 T states, no failures**.
+Every instruction is run against the SingleStepTests corpus, which states each register and each byte of memory before and after: **1,604,000 cases, 0 failures**. A second runner compares what the part put on the bus, T state by T state, address, data and pins: **22,005,372 T states, 0 failures**.
 
 ```bash
 python3 -m conformance.fetch ~/.cache/conformance-suites
@@ -189,66 +462,60 @@ python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
 python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 ```
 
-The suite commit is pinned so a build is reproducible, and a weekly job runs against whatever upstream holds now and opens a pull request or an issue. A runner reports what it checked rather than a bare pass, because a run that parsed nothing and found no failures exits zero and looks identical to one that checked everything.
+```
+1604000 cases, 0 failed, 0 opcodes affected
+1604000 cases, 22005372 T states compared, 0 failed, 0 opcodes affected, 0 opening states skipped, shape recording
+```
 
-Where the manual and the recordings disagree, both are kept. [`conformance/hardware.json`](conformance/hardware.json) holds every fact taken from a document with the sentence it came from and the page. [`conformance/divergences.json`](conformance/divergences.json) holds every place two sources part, with what would settle it. That reading found four places where the manual contradicts itself, three of them in its own timing tables.
+The corpus commit is pinned in [`conformance/suites.json`](conformance/suites.json), and a weekly job runs against upstream's head and opens a pull request or an issue. Each runner prints how many cases it checked, because a run that parsed nothing exits 0 just like one that checked everything.
+
+The manual is held separately. [`conformance/hardware.json`](conformance/hardware.json) carries every fact taken from a document with its sentence and page, and [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the model's constants and machine cycles against it with no corpus on the machine. `python3 -m conformance.timing` runs all 217 per-instruction timing rows and compares each with the T states the part spends. The manual contradicts itself in five places: three timing rows, on pages 99, 260 and 269, whose M cycle count disagrees with their own T state breakdown, and two where the prose and a figure disagree. Every place where two sources disagree is in [`conformance/divergences.json`](conformance/divergences.json) with what would settle it.
+
+[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) lists the 17 questions where fidelity is a claim rather than a measurement, each with the measurement that would close it. Bits 3 and 5 of the flag register and the internal `WZ` register appear nowhere in the 780 pages of Zilog's user manual and data book.
 
 ### Asking the die
 
-A document says what the part does and a recording says what one part did. Neither says what is inside the package, and most of the questions left over are about what is inside.
-
-[`conformance/netlist.py`](conformance/netlist.py) runs the part as a net of transistors, from a netlist extracted from die photographs. Driven from reset it fetches from `0x0000`, executes, and comes to rest on every clock edge.
+[`conformance/netlist.py`](conformance/netlist.py) runs the part as a net of transistors, from a netlist extracted from die photographs. Driven from reset, it fetches from `$0000` and executes a sample program.
 
 ```bash
 python3 -m conformance.netlist
 ```
 
-The resolver follows `chipsim.js` and `wires.js` from the Visual 6502 project, which are MIT licensed; the notice they ask for is in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). The three data files are not carried here. [`conformance/netlist.manifest.json`](conformance/netlist.manifest.json) names them, says where they come from and records what each one hashes to; put them in `docs/independent/visual6502` and a load refuses anything that is not what was read.
+The resolver follows `chipsim.js` and `wires.js` from the Visual 6502 project, which are MIT licensed. Their notice is in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The three data files are not in this repository. [`conformance/netlist.manifest.json`](conformance/netlist.manifest.json) names them, says where they come from and records each digest. Put them in `docs/independent/visual6502`, and a load refuses any file whose digest differs.
 
-Two things had to be established here rather than taken from anyone. Thirty-two entries in the transistor file are pull-ups rather than transistors, and loading them is the difference between a netlist that comes to rest and one that never does. And the doubled net names hold the register set an instruction writes, while the single-letter ones hold the shadow set, which is the opposite of what the names suggest; that was measured by executing `LD r,n` across every register and every bit position and watching where the value landed.
+The transistor file marks 32 entries as pull-ups, and the net settles only when they load as pull-ups. The doubled net names hold the register set an instruction writes and the single-letter ones hold the shadow set, which `LD r,n` across every register and every bit position shows.
 
-Nothing in this package is held to what the netlist says. It sits below the manufacturer's documents and below a recording taken off a real part, because a netlist is an extraction and an extraction can be wrong.
-
-**Seventeen questions remain** where being faithful is a claim rather than a measurement, and each names the measurement that would close it: [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md). Some cannot be closed by anyone. Bits 3 and 5 of the flag register have gone undocumented through eleven revisions in forty years, and the internal register the recordings call `WZ` appears nowhere in 780 pages of Zilog's own paper.
+Nothing in the package is held to the netlist. It ranks below the manufacturer's documents and below a recording from a real part, because a netlist is an extraction and an extraction can be wrong.
 
 ## Working on it
 
+| Need | Where |
+|:--|:--|
+| Every gate and the order to run them | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| The same material for a coding agent | [AGENTS.md](AGENTS.md) |
+| The standard this repository shares with the rest of the family | [FAMILY.md](FAMILY.md) |
+| Bug reports | [GitHub Issues](https://github.com/gufranco/zilog-z80-python/issues) |
+| Security reports | [SECURITY.md](SECURITY.md) |
+
 ```bash
-python -m coverage erase
+uvx ruff@0.16.3 format --check .
+uvx ruff@0.16.3 check .
+uvx --python 3.12 mypy==1.14.1
+python3 -m coverage erase
 for file in $(find z80 conformance -name '*.test.py' | sort); do
-  python -m coverage run -a "$file"
+  python3 -m coverage run -a "$file"
 done
-python -m coverage report
+python3 -m coverage report
+python3 -m conformance.speed
 ```
 
-`python3 z80/doctor.py` says what is actually on this machine: the parts, what makes each one different, and whether the suites this repository cannot carry are fetched and whole. It is run as a file rather than with `-m` so that it still runs when the package itself will not import, which is the case it exists for. Its report is what an issue asks for, because a report is only as good as what it says about the machine that produced it.
-
-Tests sit beside the module they cover, named `<module>.test.py`. Coverage is 100% of statements and branches, enforced. Types are `mypy` at strict. Commits follow [Conventional Commits](https://www.conventionalcommits.org/), and releases are cut by [semantic-release](https://semantic-release.gitbook.io/).
-
-[`AGENTS.md`](AGENTS.md) is the document for an agent working here. [`FAMILY.md`](FAMILY.md) is the standard this repository shares with [mos65xx-python](https://github.com/gufranco/mos65xx-python), kept identical in both.
-
-```
-z80/
-  core.py          the processor
-  bus.py           machine cycles, and the pins each T state carries
-  clock.py         driving it one T state at a time
-  models.py        the three parts, by name and alias
-  memory.py        memory that holds what it held
-  opcodes.py       the opcode table and a disassembler
-  registers.py     the register file, shadow set included
-conformance/
-  suites.json      which corpus, at which commit
-  singlestep.py    running it, state by state
-  cycles.py        running it, T state by T state
-  hardware.json    what Zilog printed, fact by fact
-  divergences.json where sources part
-```
+Each module has a test file beside it, named `<module>.test.py`, and each runs on its own. Coverage is a hard gate at 100% statement and branch. Types are `mypy` at strict. The speed check fails below 400,000 T states per second and runs outside the coverage step. Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## References
 
-This repository carries no documents. Every claim is traced to something published elsewhere, listed here so a reader can fetch the same file and check the same page. Each row gives the page count and the first sixteen characters of the file's SHA-256, because vendor links move and a link that has rotted into a different revision is easy to follow without noticing. Compute the full digest with `shasum -a 256 <file>`.
+This repository carries no documents. Each row gives the page count and the first sixteen characters of the file's SHA-256, so a reader can fetch the same file and check the same page. Compute the full digest with `shasum -a 256 <file>`.
 
-Every manufacturer document below is copyrighted and not redistributable, which is why none is in this repository. Individual sentences are quoted in [`conformance/hardware.json`](conformance/hardware.json) with the page they came from.
+Every manufacturer document below is copyrighted and not redistributable. Individual sentences are quoted in [`conformance/hardware.json`](conformance/hardware.json) with the page they came from.
 
 | Document | Date | Pages | SHA-256 | Redistributable |
 |:---------|:-----|------:|:--------|:----------------|
@@ -257,7 +524,7 @@ Every manufacturer document below is copyrighted and not redistributable, which 
 | Zilog, *Z84C00 Product Specification*, PS017801-0602 | undated | 36 | `06198d3c22a79a3f…` | No |
 | NEC, *µPD780C* data sheet | undated | 24 | `2036fa845533feee…` | No |
 
-Independent research, used only where two lineages that never consulted each other agree, and never as a citation for a figure a manufacturer gave.
+Independent research is used only where two lineages that never consulted each other agree, and never as a citation for a figure a manufacturer gave.
 
 | Document | Author | Pages | SHA-256 | Licence |
 |:---------|:-------|------:|:--------|:--------|
@@ -273,21 +540,21 @@ Independent research, used only where two lineages that never consulted each oth
 | [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git) | The generator that produced it, so it can be rebuilt rather than only downloaded |
 | [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer) | The netlist whose behaviour is recorded in [`conformance/divergences.json`](conformance/divergences.json) |
 
-
-Fetching them is a command rather than an exercise. [`conformance/documents.json`](conformance/documents.json) carries the full digest and the byte count for each, and an address where one is recorded, and [`conformance/documents.py`](conformance/documents.py) brings down what can be fetched into `docs/`, which git ignores, and refuses anything whose digest does not match.
+[`conformance/documents.json`](conformance/documents.json) carries the full digest and byte count of each document. [`conformance/documents.py`](conformance/documents.py) downloads into `docs/`, which git ignores, and refuses any file whose digest does not match.
 
 ```bash
-python3 -m conformance.documents          # fetch what can be fetched and verify every digest
-python3 -m conformance.documents --check  # verify what is already here
+python3 -m conformance.documents
+python3 -m conformance.documents --check
 ```
 
-Four of the eight have no address recorded anywhere here, and three more were printed from a web page rather than downloaded, so a fetch would replace them with markup. The manifest marks each of those and verifies them instead of replacing them.
+Two of the eight documents carry an address and are downloaded. The other six were printed from a web page, so the command verifies a copy you supply and never replaces it.
 
-The MEMPTR paper is pinned above as text and the copy in that folder is a print of the same writing, so the two have different digests. Neither is the other, and checking one against the other's digest finds a mismatch that means nothing.
+The MEMPTR paper is pinned above as text. The copy in `docs/` is a print of the same writing, so the two digests differ, and checking one against the other's digest reports a mismatch that means nothing.
+
 ## Citing this
 
-[CITATION.cff](CITATION.cff) is kept in step with the released version by the same script that stamps the package, so the version it names is the version that shipped. GitHub renders it as a Cite this repository button.
+[CITATION.cff](CITATION.cff) is updated with each release by the script that stamps the package version. GitHub renders it as a Cite this repository button.
 
 ## License
 
-[MIT](LICENSE)
+MIT. See [LICENSE](LICENSE).
