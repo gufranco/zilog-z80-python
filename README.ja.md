@@ -8,7 +8,7 @@ Zilog Z80、NEC µPD780C、Zilog Z84C00をPythonで実装したものです。1�
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3**種類のパーツ、**1,604,000**件の適合性ケースと**22,005,372**Tステートを比較して失敗は**0**件、テスト**1,419**件、ステートメントとブランチのカバレッジ**100%**、依存関係なし
+**3**種類のパーツ、**1,604,000**件の適合性ケースと**22,005,372**Tステートを比較して失敗は**0**件、テスト**1,420**件、ステートメントとブランチのカバレッジ**100%**、依存関係なし
 
 ```python
 from z80 import Cpu, Memory

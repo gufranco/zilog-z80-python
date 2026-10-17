@@ -2136,12 +2136,12 @@
       "section": "Z8400/Z84C00 NMOS/CMOS Z80 CPU product specification, Non-Maskable Interrupt Request Cycle",
       "filePage": 18,
       "quote": "Although NMI is an asynchronous input, to guarantee its being recognized on the following machine cycle, NMI's falling edge must occur no later than the rising edge of the clock cycle preceding the last state of any instruction cycle.",
-      "notModelled": "The deadline, because there is no line to miss it. This package takes a non-maskable request as a call rather than as a level, so a request either arrived before the instruction boundary or it did not, and there is no half state in between for an edge to land in.",
-      "whyItIsRecordedAnyway": "It is the sentence that says what a board has to do for the model's own assumption to hold. A caller wiring real timing against this model needs it, and it is the only place either document states the deadline.",
+      "note": "Modelled. Every T state passes through spend(), which keeps the level of nmi_line for the state just spent and for the one before it. At the instruction boundary the edge is detected from the level held two states before the end, the state whose rising edge is the deadline, so an edge that first lands in the last state is answered at the following boundary instead.",
       "appliesTo": ["upd780c", "z80", "z84c00"],
       "deadlineStatesBeforeTheEnd": 2,
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_an_edge_that_lands_before_the_deadline_is_taken_at_the_boundary"
+        "conformance/hardware.test.py::PrintedFactTest.test_an_edge_that_lands_before_the_deadline_is_taken_at_the_boundary",
+        "conformance/hardware.test.py::PrintedFactTest.test_an_edge_that_lands_in_the_last_state_waits_for_the_next_boundary"
       ]
     }
   },

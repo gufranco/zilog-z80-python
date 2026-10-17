@@ -45,6 +45,8 @@ class Cpu:
         "irq_line",
         "memory",
         "model",
+        "nmi_at_deadline",
+        "nmi_in_last_state",
         "nmi_line",
         "nmi_seen",
         "on_cycle",
@@ -85,6 +87,10 @@ class Cpu:
 
         self.nmi_seen = False
 
+        self.nmi_at_deadline = False
+
+        self.nmi_in_last_state = False
+
         self.sampled_irq = False
 
         self.on_cycle: Callable[[], None] | None = None
@@ -106,6 +112,8 @@ class Cpu:
     def spend(self) -> None:
         self.cycles += 1
         self.sampled_irq = self.irq_line
+        self.nmi_at_deadline = self.nmi_in_last_state
+        self.nmi_in_last_state = self.nmi_line
         if self.on_cycle is not None:
             self.on_cycle()
 
@@ -113,8 +121,8 @@ class Cpu:
         return self.wait_line
 
     def sample_pins(self) -> bool:
-        edge = self.nmi_line and not self.nmi_seen
-        self.nmi_seen = self.nmi_line
+        edge = self.nmi_at_deadline and not self.nmi_seen
+        self.nmi_seen = self.nmi_at_deadline
         if edge:
             self.nmi()
             return True

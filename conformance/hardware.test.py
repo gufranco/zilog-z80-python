@@ -178,6 +178,11 @@ def raised_in(cpu: core.Cpu, line: str, states: frozenset[int]) -> None:
     cpu.on_cycle = hook
 
 
+def counter_after_a_step(cpu: core.Cpu) -> int:
+    cpu.step()
+    return cpu.registers.pc
+
+
 def offered_after_a_step(cpu: core.Cpu) -> bool:
     cpu.step()
     return cpu.irq(0xFF)
@@ -1796,6 +1801,20 @@ class PrintedFactTest(unittest.TestCase):
 
         # Assert
         self.assertEqual(cpu.registers.pc, RESPONSE["nonmaskable"]["restartsAt"])
+
+    def test_an_edge_that_lands_in_the_last_state_waits_for_the_next_boundary(self) -> None:
+        # Arrange
+        printed = FACTS["nonmaskableEdgeMustLandBeforeTheLastState"]
+        cpu = loaded((0x00, 0x00))
+        raised_in(cpu, "nmi_line", frozenset(range(bus.FETCH_STATES, 2 * bus.FETCH_STATES + 2)))
+
+        # Act
+        landed = [counter_after_a_step(cpu) for _ in range(2)]
+
+        # Assert
+        self.assertEqual(
+            landed, [START + 1, RESPONSE["nonmaskable"]["restartsAt"]], printed["quote"]
+        )
 
     def test_every_misprinted_machine_cycle_count_is_run_as_the_reading(self) -> None:
         # Arrange
