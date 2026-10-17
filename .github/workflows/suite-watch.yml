@@ -27,7 +27,7 @@ concurrency:
 jobs:
   revalidate:
     name: Re-validate against the newest suite
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
