@@ -2,7 +2,7 @@
 
 Zilog Z80、NEC µPD780C、Zilog Z84C00をPythonで実装したものです。1命令単位、または1Tステート単位で駆動できます。すべてのマシンサイクルの形はZilogのユーザーマニュアルに、すべてのオペコードのすべてのTステートはオペコードごとのコーパスに照らして検証しています。
 
-[English](README.md) &nbsp;|&nbsp; 日本語 &nbsp;|&nbsp; [简体中文](README.zh-Hans.md) &nbsp;|&nbsp; [繁體中文（香港）](README.zh-HK.md)
+[English](README.md) | 日本語 | [简体中文](README.zh-Hans.md) | [繁體中文（香港）](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)

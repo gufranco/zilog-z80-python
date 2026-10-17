@@ -2,7 +2,7 @@
 
 以 Python 實現的 Zilog Z80、NEC µPD780C 和 Zilog Z84C00，可按一條指令或一個 T 狀態驅動。每個機器週期的形態以 Zilog 的用戶手冊為準，每個操作碼的每個 T 狀態以逐操作碼的測試語料庫為準。
 
-[English](README.md) &nbsp;|&nbsp; [日本語](README.ja.md) &nbsp;|&nbsp; [简体中文](README.zh-Hans.md) &nbsp;|&nbsp; 繁體中文（香港）
+[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | 繁體中文（香港）
 
 [![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
