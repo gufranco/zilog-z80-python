@@ -73,7 +73,7 @@
       "publisher": "Sean Young",
       "title": "The Undocumented Z80 Documented, v0.91",
       "date": "2005-09-18",
-      "retrievedFrom": "https://archive.org/download/the-undocumented-z80-documented/the-undocumented-z80-documented.pdf",
+      "retrievedFrom": "https://archive.org/download/the-undocumented-z80-documented/EN%20-%20The%20Undocumented%20Z80%20Documented%200.91.pdf",
       "licence": "GFDL 1.1 or later",
       "covers": ["upd780c", "z80", "z84c00"],
       "settles": "How much of an interrupting device's byte reaches the pointer, and what each interrupt response costs, from a lineage that is not the manual's arithmetic.",
