@@ -68,19 +68,36 @@
         "addressInT3T4": "refresh",
         "refreshQuote": "During T3 and T4, the lower seven bits of the address bus contain a memory refresh address and the RFSH signal becomes active, indicating that a refresh read of all dynamic memories must be performed. To prevent data from different memory segments from being gated onto the data bus, an RD signal is not generated during this refresh period.",
         "dataSampledQuote": "The CPU samples the data from the memory space on the data bus with the rising edge of the clock of state T3, and this same edge is used by the CPU to turn off the RD and MREQ signals.",
-        "manualPage": 8
+        "manualPage": 8,
+        "dataSampledInState": 3,
+        "firstMachineCycleStates": [4, 5, 6],
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_a_fetch_carries_the_counter_then_the_refresh_address",
+          "conformance/hardware.test.py::PrintedFactTest.test_a_fetch_takes_its_data_in_the_state_the_manual_samples_it",
+          "conformance/hardware.test.py::PrintedFactTest.test_every_first_machine_cycle_the_bus_bounds_is_a_printed_length",
+          "conformance/hardware.test.py::FigureEdgeTest.test_a_fetch_draws_the_columns_figure_5_gives_it"
+        ]
       },
       "memoryReadOrWrite": {
         "tStates": 3,
         "quote": "Figure 6 shows the timing of memory read or write cycles other than an op code fetch cycle. These cycles are generally three clock periods long unless wait states are requested by memory through the WAIT signal.",
-        "manualPage": 9
+        "manualPage": 9,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_a_memory_read_and_write_each_take_the_printed_states",
+          "conformance/hardware.test.py::MachineCycleShapeTest.test_a_memory_access_is_as_long_as_the_manual_says"
+        ]
       },
       "inputOrOutput": {
         "tStates": 4,
         "automaticWaitStates": 1,
         "quote": "During I/O operations, a single wait state is automatically inserted. The reason for this single wait state insertion is that during I/O operations, the period from when the IORQ signal goes active until the CPU must sample the WAIT line is short.",
         "why": "This is why an I/O machine cycle is four T states where a memory access is three. The wait is not requested by the device and cannot be declined.",
-        "manualPage": 10
+        "manualPage": 10,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_a_port_cycle_is_a_memory_cycle_plus_the_inserted_wait",
+          "conformance/hardware.test.py::MachineCycleShapeTest.test_a_port_access_is_as_long_as_the_manual_says",
+          "conformance/hardware.test.py::MachineCycleShapeTest.test_the_port_access_carries_the_wait_the_manual_says_is_inserted"
+        ]
       },
       "interruptAcknowledge": {
         "tStates": 7,
@@ -98,16 +115,28 @@
         ],
         "drawnStates": 6,
         "columns": ["----", "----", "---i", "---i", "--m-", "----"],
-        "columnsNote": "Figure 9 draws six of the seven and stops during the refresh. The seventh is the internal state that makes this a five state M1, the figure does not say where within the cycle it falls, and it is spent by the response rather than by this cycle, which is where a restart already spends the fifth state of its own M1. Either grouping gives the same total."
+        "columnsNote": "Figure 9 draws six of the seven and stops during the refresh. The seventh is the internal state that makes this a five state M1, the figure does not say where within the cycle it falls, and it is spent by the response rather than by this cycle, which is where a restart already spends the fifth state of its own M1. Either grouping gives the same total.",
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_an_accepted_interrupt_opens_with_the_cycle_figure_9_draws",
+          "conformance/hardware.test.py::MachineCycleShapeTest.test_which_the_response_spends_beyond_its_two_stack_writes"
+        ]
       },
       "nonmaskableInterrupt": {
         "quote": "The CPU response to a nonmaskable interrupt is similar to a normal memory read operation. The only difference is that the contents of the data bus are ignored while the processor automatically stores the Program Counter in the external stack and jumps to address 0066h.",
-        "manualPage": 13
+        "manualPage": 13,
+        "restartsAt": 102,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_response_ignores_the_byte_it_fetches_and_restarts"
+        ]
       },
       "halt": {
         "quote": "Each cycle in the HALT state is a normal M1 (fetch) cycle except that the data received from the memory is ignored and an NOP instruction is forced internally to the CPU.",
         "why": "A halted part is not idle on the bus. It keeps fetching so that dynamic memory keeps being refreshed, which is why a model that stops issuing cycles while halted is not modelling this part.",
-        "manualPage": 14
+        "manualPage": 14,
+        "heldBy": [
+          "conformance/hardware.test.py::HaltTest.test_a_halted_cycle_is_a_fetch_whose_data_is_ignored",
+          "conformance/hardware.test.py::HaltTest.test_the_halt_state_repeats_its_fetch_every_cycle"
+        ]
       },
       "figureEdges": {
         "note": "Where every control pin edge falls, measured off the timing figures of the pinned document and snapped to the clock, which moves in half T states. The prose gives a few of these and gives none of them for every cycle kind, so the figures are the only place the rest are stated. Offsets are in T states from the start of the machine cycle.",
@@ -284,32 +313,46 @@
       "m1": {
         "quote": "M1. Machine Cycle One (output, active Low). M1, together with MREQ, indicates that the current machine cycle is the op code fetch cycle of an instruction execution. M1, when operating together with IORQ, indicates an interrupt acknowledge cycle.",
         "page": 6,
-        "document": "userManual"
+        "document": "userManual",
+        "unreachable": "The bus models only the RD, WR, MREQ and IORQ pins, so the model has no M1 pin whose level a test could read."
       },
       "mreq": {
         "quote": "MREQ. Memory Request (output, active Low, tristate). MREQ indicates that the address bus holds a valid address for a memory read or a memory write operation.",
         "page": 6,
-        "document": "userManual"
+        "document": "userManual",
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_mreq_marks_the_addresses_memory_is_read_or_written_at"
+        ]
       },
       "iorq": {
         "quote": "IORQ. Input/Output Request (output, active Low, tristate). IORQ indicates that the lower half of the address bus holds a valid I/O address for an I/O read or write operation.",
         "page": 6,
-        "document": "userManual"
+        "document": "userManual",
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_iorq_puts_the_port_on_the_lower_half_of_the_address_bus"
+        ]
       },
       "rd": {
         "quote": "RD. Read (output, active Low, tristate). RD indicates that the CPU wants to read data from memory or an I/O device.",
         "page": 6,
-        "document": "userManual"
+        "document": "userManual",
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_rd_is_asserted_only_in_cycles_that_read"
+        ]
       },
       "wr": {
         "quote": "WR. Write (output, active Low, tristate). WR indicates that the CPU data bus contains valid data to be stored at the addressed memory or I/O location.",
         "page": 7,
-        "document": "userManual"
+        "document": "userManual",
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_wr_is_asserted_only_while_the_data_bus_holds_the_stored_value"
+        ]
       },
       "rfsh": {
         "quote": "RFSH. Refresh (output, active Low). RFSH, together with MREQ, indicates that the lower seven bits of the system's address bus can be used as a refresh address to the system's dynamic memories.",
         "page": 7,
-        "document": "userManual"
+        "document": "userManual",
+        "unreachable": "The bus models only the RD, WR, MREQ and IORQ pins, so the model has no RFSH pin whose level a test could read."
       },
       "appliesTo": ["upd780c", "z80", "z84c00"]
     },
@@ -330,9 +373,20 @@
         "states": 2,
         "note": "The user manual stops at the pin and never mentions these two, so a reset built from it alone is two T states short. The product specification heads the section covering the NMOS and the CMOS part together, so it settles both models this package ships under Zilog names.",
         "necIsSilent": "NEC's own sheet for the upd780c states the three-cycle pulse width and says execution then begins from address zero, and says nothing about internal cycles either way. The same two are charged for that model because it is a second source for the same design, and this line records that the claim rests on the Zilog sheet rather than on NEC's.",
-        "appliesTo": ["upd780c", "z80", "z84c00"]
+        "appliesTo": ["upd780c", "z80", "z84c00"],
+        "firstFetchFrom": 0,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_a_reset_spends_the_pin_time_and_the_two_states_after_it",
+          "conformance/hardware.test.py::PrintedFactTest.test_the_first_fetch_after_a_reset_is_from_the_printed_address"
+        ]
       },
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_a_reset_spends_the_pin_time_and_the_two_states_after_it",
+        "conformance/hardware.test.py::PrintedFactTest.test_a_reset_clears_the_interrupt_enable_as_the_manual_says",
+        "conformance/hardware.test.py::ResetTest.test_reset_clears_what_the_manual_says_it_clears",
+        "conformance/hardware.test.py::ResetTest.test_and_leaves_the_interrupt_mode_where_the_manual_says"
+      ]
     },
     "flagRegister": {
       "quote": "Table 21. Flag Register Bit Positions. Bit Position 7 S, 6 Z, 5 X, 4 H, 3 X, 2 P/V, 1 N, 0 C",
@@ -350,7 +404,12 @@
       "unusedBitsQuote": "Each of these two Flag registers contains 6 bits of status information that are set or cleared by CPU operations; bits 3 and 5 are not used.",
       "note": "The manual calls bits 3 and 5 not used and gives them no behaviour. The part drives them anyway, and what it drives them with is settled by the recording rather than by this file. That is an absence in the document, not a contradiction of it.",
       "manualPage": 65,
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_clearing_the_accumulator_sets_exactly_the_zero_and_parity_bits",
+        "conformance/hardware.test.py::FlagRegisterTest.test_every_flag_sits_in_the_bit_the_manual_gives_it",
+        "conformance/hardware.test.py::FlagRegisterTest.test_the_two_the_manual_calls_unused_are_the_two_this_package_calls_undocumented"
+      ]
     },
     "interruptModes": {
       "count": 3,
@@ -359,7 +418,11 @@
       "document": "userManual",
       "nmiVector": 102,
       "nmiVectorQuote": "NMI is always recognized at the end of the current instruction, independent of the status of the interrupt enable flip-flop, and automatically forces the CPU to restart at location 0066h.",
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_the_mode_instructions_select_the_printed_number_of_modes",
+        "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_request_waits_for_the_instruction_and_ignores_the_enable"
+      ]
     },
     "instructionTiming": {
       "note": "Every per-instruction timing table in the manual, one row per printed row, each carrying the page it was read from. machineCycles is the manual's own parenthesised breakdown, which sums to tStates on every one of these rows. printedMCycles is the manual's M Cycles column, kept because it is what the page says even where it is wrong.",
@@ -1894,7 +1957,10 @@
         "printedMCycles": 2,
         "tStates": 7,
         "machineCycles": [4, 3],
-        "quote": "This example indicates that the instruction consists of two machine cycles. The first cycle contains 4 clock periods/T states). The second cycle contains 3 clock periods, for a total of 7 clock periods/T states. The instruction executes in 1.75 microseconds."
+        "quote": "This example indicates that the instruction consists of two machine cycles. The first cycle contains 4 clock periods/T states). The second cycle contains 3 clock periods, for a total of 7 clock periods/T states. The instruction executes in 1.75 microseconds.",
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_a_fetch_then_a_read_is_the_shape_the_notation_example_draws"
+        ]
       },
       "howItWasRead": "Read twice, from the two descriptions of the same pages, and the record is what both agree on. The first reading rendered each page at 300 dots per inch and took the column boundaries from the header cells. The second parsed the document's own text layer, which carries all 152 tables. Neither is clean on its own: the recogniser drops a lone digit, and the text layer prints SBC A, (lY+d) and RRC (lY+d) with a lowercase L for the index register. Where one dropped a cell the other supplied it, and where a value could be had from neither it was re-rendered alone until two crops agreed.",
       "reReadOn": "2026-08-23",
@@ -1914,7 +1980,14 @@
         "iff1": false,
         "iff2": "unchanged",
         "iffQuote": "When a nonmaskable interrupt is accepted, IFF1 resets to prevent further interrupts until reenabled by the programmer. Therefore, after a nonmaskable interrupt is accepted, maskable interrupts are disabled but the previous state of IFF1 is saved so that the complete state of the CPU just prior to the nonmaskable interrupt can be restored at any time.",
-        "manualPage": 19
+        "manualPage": 19,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_interrupt_keeps_the_previous_enable_in_iff2",
+          "conformance/hardware.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
+          "conformance/hardware.test.py::InterruptResponseTest.test_the_nonmaskable_line_costs_what_a_restart_costs",
+          "conformance/hardware.test.py::InterruptResponseTest.test_the_nonmaskable_line_lands_where_the_manual_says",
+          "conformance/hardware.test.py::InterruptResponseTest.test_and_takes_the_nonmaskable_one_anyway"
+        ]
       },
       "mode0": {
         "quote": "With Mode 0, the interrupting device can place any instruction on the data bus and the CPU executes it. Consequently, the interrupting device provides the next instruction to be executed.",
@@ -1922,7 +1995,12 @@
         "tStates": "the instruction supplied, plus two",
         "afterReset": true,
         "afterResetQuote": "After the application of RESET, the CPU automatically enters interrupt Mode 0.",
-        "manualPage": 19
+        "manualPage": 19,
+        "addedStates": 2,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_mode_zero_runs_what_the_device_supplies_at_two_more_than_its_cost",
+          "conformance/hardware.test.py::InterruptResponseTest.test_reset_leaves_the_part_in_the_mode_the_manual_names"
+        ]
       },
       "mode1": {
         "tStates": 13,
@@ -1931,14 +2009,24 @@
         "quote": "When Mode 1 is selected by the programmer, the CPU responds to an interrupt by executing a restart at address 0038h. As a result, the response is identical to that of a nonmaskable interrupt except that the call location is 0038h instead of 0066h. The number of cycles required to complete the restart instruction is two more than normal due to the two added wait states.",
         "why": "Eleven for a restart plus the two the manual adds.",
         "inferred": "tStates",
-        "manualPage": 19
+        "manualPage": 19,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
+          "conformance/hardware.test.py::InterruptResponseTest.test_mode_one_costs_the_two_more_the_manual_adds",
+          "conformance/hardware.test.py::InterruptResponseTest.test_mode_one_lands_where_the_manual_says"
+        ]
       },
       "mode2": {
         "tStates": 19,
         "machineCycles": [7, 3, 3, 3, 3],
         "quote": "When the interrupting device supplies the lower portion of the pointer, the CPU automatically pushes the program counter onto the stack, obtains the starting address from the table, and performs a jump to this address. This mode of response requires 19 clock periods to complete (seven to fetch the lower eight bits from the interrupting device, six to save the program counter, and six to obtain the jump address).",
         "vectorQuote": "The upper eight bits of this pointer is formed from the contents of the I Register. The I register must be loaded with the applicable value by the programmer, such as LD I, A. A CPU reset clears the I Register so that it is initialized to 0. The lower eight bits of the pointer must be supplied by the interrupting device. Only seven bits are required from the interrupting device, because the least-significant bit must be a 0.",
-        "manualPage": 20
+        "manualPage": 20,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
+          "conformance/hardware.test.py::PrintedFactTest.test_mode_two_jumps_through_the_table_the_i_register_points_into",
+          "conformance/hardware.test.py::InterruptResponseTest.test_mode_two_costs_the_nineteen_the_manual_prints"
+        ]
       },
       "maskableIffQuote": "When the CPU accepts a maskable interrupt, both IFF1 and IFF2 are automatically reset, inhibiting further interrupts until the programmer issues a new El instruction.",
       "page": 12,
@@ -1958,9 +2046,21 @@
         "filePage": 417,
         "documentTitle": "Zilog Z80 Family Data Book, 1989-01, document 00-2490-01, printed page 412",
         "appliesTo": ["z80"],
-        "whyOnlyThatPart": "The quote names the split itself: the CMOS part had it fixed, so z84c00 is out. The NEC second source is NMOS and does not clear the flag either, which is a difference this package already models as interrupt_clears_parity, true on z80 alone. So the defect is the Zilog NMOS part's, and naming all three NMOS-or-not would contradict the model."
+        "whyOnlyThatPart": "The quote names the split itself: the CMOS part had it fixed, so z84c00 is out. The NEC second source is NMOS and does not clear the flag either, which is a difference this package already models as interrupt_clears_parity, true on z80 alone. So the defect is the Zilog NMOS part's, and naming all three NMOS-or-not would contradict the model.",
+        "heldBy": [
+          "conformance/hardware.test.py::ParityDefectTest.test_the_parts_the_defect_affects_lose_the_flag_and_the_fixed_one_keeps_it",
+          "conformance/hardware.test.py::ModelScopeTest.test_the_parity_defect_is_the_one_fact_that_is_not_every_part"
+        ]
       },
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "maskableClears": ["iff1", "iff2"],
+      "instructionsHeldOffAfterEnable": 1,
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_an_accepted_maskable_interrupt_resets_both_flip_flops",
+        "conformance/hardware.test.py::PrintedFactTest.test_an_enable_holds_a_request_off_for_the_printed_number_of_instructions",
+        "conformance/hardware.test.py::PrintedFactTest.test_a_request_present_in_the_final_state_is_taken",
+        "conformance/hardware.test.py::PrintedFactTest.test_a_request_gone_by_the_final_state_is_not"
+      ]
     },
     "halt": {
       "note": "What a halted part does, which is not nothing.",
@@ -1969,7 +2069,14 @@
       "sampledQuote": "The two interrupt lines are sampled with the rising clock edge during each T4 state as depicted in Figure 11. If a nonmaskable interrupt is received or a maskable interrupt is received and the interrupt enable flip-flop is set, then the HALT state is exited on the next rising clock edge.",
       "repeatsQuote": "The HALT instruction is repeated during the memory cycle shown in Figure 11.",
       "manualPage": 14,
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "sampledInState": 4,
+      "heldBy": [
+        "conformance/hardware.test.py::HaltTest.test_a_halted_step_costs_a_whole_fetch",
+        "conformance/hardware.test.py::HaltTest.test_a_halted_cycle_is_a_fetch_whose_data_is_ignored",
+        "conformance/hardware.test.py::HaltTest.test_the_halt_state_repeats_its_fetch_every_cycle",
+        "conformance/hardware.test.py::HaltTest.test_an_interrupt_sampled_in_the_printed_state_ends_the_halt"
+      ]
     },
     "technicalManualAmended": {
       "document": "familyDataBook",
@@ -1977,7 +2084,8 @@
       "quote": "In the Z80 CPU Technical Manual (Pages 70 and 72, footnote B), it is stated that \"All control signals are internally synchronized so that they are totally asynchronous with respect to the clock.\" This statement should be amended to say \"When interfacing the Z80 CPU to the Z80 family peripherals, the interface control signals are internally synchronized with the system clock by the peripherals themselves. When interfacing to the Z80 CPU with other devices, these control signals should be synchronized with respect to the system clock.\" Note that the former statement has been removed from the data book and the CPU product specification, but has not been removed from the technical manual yet.",
       "note": "The publisher amending itself in print, and saying which of its own documents still carries the withdrawn sentence. Nothing here models pin synchronisation, so it changes no behaviour, but it is the proof that an official correction to an official document exists for this part, which is worth knowing before assuming a printed sentence is final.",
       "filePage": 418,
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "unreachable": "It tells a board how to synchronise its control signals to the clock, an electrical timing requirement that a model sampling its lines once per T state cannot express."
     },
     "modeZeroGeneratesOneAcknowledge": {
       "document": "familyDataBook",
@@ -1985,7 +2093,11 @@
       "quote": "The 8080 generates three INTA pulses during the interrupt acknowledge cycle while the Z80 CPU generates only one INTACK signal (which can be decoded from M1 and RD). This system works fine if you are not using the 8259 and put \"RST\" (restart) instruction onto the bus during the Interrupt Acknowledge cycle, which is a one byte instruction.",
       "note": "The User Manual says the device supplies the instruction and stops there. This says the part generates exactly one acknowledge, where the 8080 it is source compatible with generates three, which answers where the later bytes of a longer response come from: not from further acknowledges. It also says what the normal case is, a one byte restart, which is the case this package can express.",
       "filePage": 419,
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "acknowledges": 1,
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_mode_zero_takes_a_restart_with_a_single_acknowledge"
+      ]
     },
     "nonmaskableDuringReset": {
       "document": "familyDataBook",
@@ -2001,7 +2113,8 @@
       "quote": "Q: Does the CPU tristate M1 during reset? A: No.",
       "note": "One of the few statements anywhere about what the pins do while reset is held. Nothing here models a pin during reset, so it changes no behaviour and is recorded because the question was asked and answered by the publisher.",
       "filePage": 417,
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "unreachable": "It is about a pin floating while reset is held, and the model has neither an M1 pin nor a high-impedance state."
     },
     "powerDownIsTheClockStopping": {
       "document": "familyDataBook",
@@ -2011,7 +2124,8 @@
       "appliesToNote": "The section heads itself \"Only applies to CMOS Z80 CPU\", so it is the z84c00 alone among the parts here.",
       "notModelled": "Nothing, and there is nothing to model. Power down is entered by a board stopping the clock, not by the part executing anything, and this model has no oscillator to stop: it advances when a caller drives it and stands still when nobody does. A caller who stops calling has already reproduced every effect the sentence describes, registers and control signals included.",
       "whyItIsRecordedAnyway": "It is documented behaviour of a part this package ships, and an absent entry reads as an unread page rather than as a decision. The data book also ties it to the HALT instruction in Figure 13, which is a different thing from the HALT state this record models above.",
-      "appliesTo": ["z84c00"]
+      "appliesTo": ["z84c00"],
+      "unreachable": "The model has no oscillator and advances only when a caller drives it, so a stopped clock is the absence of a call and leaves no behaviour for a test to observe."
     },
     "nonmaskableEdgeMustLandBeforeTheLastState": {
       "document": "familyDataBook",
@@ -2020,7 +2134,11 @@
       "quote": "Although NMI is an asynchronous input, to guarantee its being recognized on the following machine cycle, NMI's falling edge must occur no later than the rising edge of the clock cycle preceding the last state of any instruction cycle.",
       "notModelled": "The deadline, because there is no line to miss it. This package takes a non-maskable request as a call rather than as a level, so a request either arrived before the instruction boundary or it did not, and there is no half state in between for an edge to land in.",
       "whyItIsRecordedAnyway": "It is the sentence that says what a board has to do for the model's own assumption to hold. A caller wiring real timing against this model needs it, and it is the only place either document states the deadline.",
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "deadlineStatesBeforeTheEnd": 2,
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_an_edge_that_lands_before_the_deadline_is_taken_at_the_boundary"
+      ]
     }
   },
   "documentContradictions": [
@@ -2034,7 +2152,10 @@
       "verifiedOn": "the rendered page image, 2026-08-21, so this is what the document prints rather than an artefact of extracting its text",
       "kind": "timingTableMisprint",
       "assembled": true,
-      "assembledNote": "A row of the instruction table rather than a sentence: the column headings and the cell beneath each one, read across. Every word is the manual's and the order is the table's, so no search for a run of words can place it. This is the only quote on this entry, so the marker silences nothing beside it."
+      "assembledNote": "A row of the instruction table rather than a sentence: the column headings and the cell beneath each one, read across. Every word is the manual's and the order is the table's, so no search for a run of words can place it. This is the only quote on this entry, so the marker silences nothing beside it.",
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
+      ]
     },
     {
       "id": "res-r-m-cycle-count",
@@ -2046,7 +2167,10 @@
       "verifiedOn": "the rendered page image, 2026-08-21",
       "kind": "timingTableMisprint",
       "assembled": true,
-      "assembledNote": "A row of the instruction table rather than a sentence: the column headings and the cell beneath each one, read across. Every word is the manual's and the order is the table's, so no search for a run of words can place it. This is the only quote on this entry, so the marker silences nothing beside it."
+      "assembledNote": "A row of the instruction table rather than a sentence: the column headings and the cell beneath each one, read across. Every word is the manual's and the order is the table's, so no search for a run of words can place it. This is the only quote on this entry, so the marker silences nothing beside it.",
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
+      ]
     },
     {
       "id": "jr-nc-e-m-cycle-count",
@@ -2056,7 +2180,10 @@
       "problem": "The M Cycles column repeats the T States value. Two groups summing to seven are two machine cycles.",
       "reading": "Two machine cycles. The condition-met row on the same page prints 3 and 12 (4, 3, 5), which is consistent.",
       "verifiedOn": "the rendered page image, 2026-08-21",
-      "kind": "timingTableMisprint"
+      "kind": "timingTableMisprint",
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
+      ]
     },
     {
       "id": "read-strobe-release-prose-versus-figure",
@@ -2070,8 +2197,15 @@
       "corroboration": {
         "quote": "Memory access time requirements, which are covered in the Memory Read Or Write section on page 9, are most severe during the M1 cycle instruction fetch. All other memory access cycles complete in an additional one half clock cycle.",
         "manualPage": 23,
-        "why": "Prose elsewhere in the same document says outright that a memory access outside a fetch has half a clock cycle more than a fetch does, which is exactly what the two figures show and the opposite of what the summary on page 9 implies."
-      }
+        "why": "Prose elsewhere in the same document says outright that a memory access outside a fetch has half a clock cycle more than a fetch does, which is exactly what the two figures show and the opposite of what the summary on page 9 implies.",
+        "additionalStates": 0.5,
+        "heldBy": [
+          "conformance/hardware.test.py::PrintedFactTest.test_a_plain_read_holds_its_strobes_half_a_state_past_a_fetch"
+        ]
+      },
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_a_plain_read_holds_its_strobes_half_a_state_past_a_fetch"
+      ]
     },
     {
       "id": "bit-instruction-negate-flag-printed-as-half-carry",
@@ -2081,7 +2215,14 @@
       "printedQuote": "S is unknown. Z is set if specified bit is 0; otherwise, it is reset. H is set. P/V is unknown. H is reset. C is not affected.",
       "problem": "The half carry appears twice on one page, once set and once reset, and the negate flag never appears at all. The other two pages of the same instruction, BIT b, r and BIT b, (IX+d), print N is reset in the position where these two print H is reset.",
       "reading": "The letter is wrong on those two pages. Every form sets the half carry and resets the negate, which is what the two correct pages say and what the recorded corpus carries for all four.",
-      "verifiedOn": "the extracted text of all four pages of the instruction, 2026-08-21, compared line for line"
+      "verifiedOn": "the extracted text of all four pages of the instruction, 2026-08-21, compared line for line",
+      "settles": {
+        "h": true,
+        "n": false
+      },
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_every_bit_form_sets_the_half_carry_and_resets_the_negate"
+      ]
     }
   ],
   "notStated": {

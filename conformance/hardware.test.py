@@ -87,6 +87,118 @@ def row(page: int) -> dict[str, Any]:
     return only
 
 
+STACK = 0x8000
+
+MISPRINTED_RUNS: dict[int, tuple[tuple[int, ...], dict[str, int]]] = {
+    99: ((0x01, 0x00, 0x20), {}),
+    260: ((0xCB, 0x80), {}),
+    269: ((0x30, 0x02), {"f": flags.C}),
+}
+
+BIT_FORMS = {
+    "BIT b, r": (0xCB, 0x40),
+    "BIT b, (HL)": (0xCB, 0x46),
+    "BIT b, (IX+d)": (0xDD, 0xCB, 0x01, 0x46),
+    "BIT b, (IY+d)": (0xFD, 0xCB, 0x01, 0x46),
+}
+
+OFFERS: dict[str, tuple[dict[str, int], Callable[[core.Cpu], object]]] = {
+    "nonmaskable": ({}, lambda cpu: cpu.nmi()),
+    "mode1": ({"iff1": True, "im": 1}, lambda cpu: cpu.irq(0xFF)),
+    "mode2": ({"iff1": True, "im": 2}, lambda cpu: cpu.irq(0xFF)),
+}
+
+
+def loaded(program: tuple[int, ...], setup: dict[str, int] | None = None) -> core.Cpu:
+    space = memory.SparseMemory()
+    for offset, byte in enumerate(program):
+        space.write8(START + offset, byte)
+    cpu = core.Cpu(space, recording=True)
+    cpu.registers.pc = START
+    cpu.registers.sp = STACK
+    for name, value in (setup or {}).items():
+        setattr(cpu.registers, name, value)
+    return cpu
+
+
+def cycle_lengths(line: bus.Bus) -> list[int]:
+    starts = [start for start, _ in line.cycles]
+    return [end - start for start, end in zip(starts, [*starts[1:], len(line)], strict=True)]
+
+
+def cycle_names(line: bus.Bus) -> list[str]:
+    return [
+        name
+        for (_, name), length in zip(line.cycles, cycle_lengths(line), strict=True)
+        for _ in range(length)
+    ]
+
+
+def ran(program: tuple[int, ...], setup: dict[str, int] | None = None) -> core.Cpu:
+    cpu = loaded(program, setup)
+    cpu.step()
+    return cpu
+
+
+def bounded_first_cycles() -> set[int]:
+    found = (cycle_lengths(ran((opcode, 0, 0, 0)).bus) for opcode in range(256))
+    return {
+        lengths[0]
+        for lengths in found
+        if len(lengths) > 1 or lengths[0] < bus.FETCH_STATES + bus.MEMORY_STATES
+    }
+
+
+def states_spent(cycle: Callable[[bus.Bus], None]) -> int:
+    line = bus.Bus()
+    cycle(line)
+    return len(line)
+
+
+def fetch_then_read(line: bus.Bus) -> None:
+    line.fetch(START, 0, 0x06)
+    line.read(START + 1, 0x00)
+
+
+def response_cycles(name: str) -> list[int]:
+    setup, offer = OFFERS[name]
+    cpu = loaded((0x00,), setup)
+    offer(cpu)
+    return cycle_lengths(cpu.bus)
+
+
+def raised_in(cpu: core.Cpu, line: str, states: frozenset[int]) -> None:
+    seen = [0]
+
+    def hook() -> None:
+        seen[0] += 1
+        setattr(cpu, line, seen[0] + 1 in states)
+
+    setattr(cpu, line, 1 in states)
+    cpu.on_cycle = hook
+
+
+def offered_after_a_step(cpu: core.Cpu) -> bool:
+    cpu.step()
+    return cpu.irq(0xFF)
+
+
+def misprinted_row(page: int) -> dict[str, Any]:
+    found: dict[str, Any] = {
+        entry["manualPage"]: entry for entry in ROWS if entry.get("printedMCyclesIsAMisprint")
+    }[page]
+    return found
+
+
+def released(cycle: str, pin: str) -> float:
+    return min(end for name, _, end in bus.EDGES[cycle][1] if name == pin)
+
+
+def settled_by(program: tuple[int, ...]) -> dict[str, bool]:
+    f = ran(program, {"f": flags.N, "hl": 0x3000, "ix": 0x3000, "iy": 0x3000}).registers.f
+    return {"h": bool(f & flags.H), "n": bool(f & flags.N)}
+
+
 class RowLookupTest(unittest.TestCase):
     def test_a_page_with_one_row_gives_that_row(self) -> None:
         self.assertEqual(row(180)["tStates"], 4)
@@ -864,6 +976,20 @@ class ParityDefectTest(unittest.TestCase):
 
         self.assertEqual(cpu.registers.f & flags.PV, flags.PV)
 
+    def test_the_parts_the_defect_affects_lose_the_flag_and_the_fixed_one_keeps_it(self) -> None:
+        # Arrange
+        defect = FACTS["interruptResponse"]["nmosParityDefect"]
+        parts = [*defect["affects"], *defect["fixedIn"]]
+
+        # Act
+        kept = {name: self.taken(name)[1] == flags.PV for name in parts}
+
+        # Assert
+        self.assertEqual(
+            kept,
+            {**dict.fromkeys(defect["affects"], False), **dict.fromkeys(defect["fixedIn"], True)},
+        )
+
 
 class HaltTest(unittest.TestCase):
     def halted(self) -> core.Cpu:
@@ -923,6 +1049,46 @@ class HaltTest(unittest.TestCase):
         cpu.nmi()
 
         self.assertEqual(cpu.halted, False)
+
+    def test_a_halted_cycle_is_a_fetch_whose_data_is_ignored(self) -> None:
+        # Arrange
+        cpu = self.halted()
+        cpu.memory.write8(cpu.registers.pc, 0x3C)
+        cpu.bus.recording = True
+        before = (cpu.registers.pc, cpu.registers.a)
+
+        # Act
+        spent_now = cpu.step()
+
+        # Assert
+        self.assertEqual(
+            (spent_now, [name for _, name in cpu.bus.cycles], (cpu.registers.pc, cpu.registers.a)),
+            (FACTS["halt"]["tStatesPerCycle"], [bus.FETCH], before),
+        )
+
+    def test_the_halt_state_repeats_its_fetch_every_cycle(self) -> None:
+        # Arrange
+        cpu = self.halted()
+        before = cpu.registers.pc
+        cycles = 3 * FACTS["halt"]["tStatesPerCycle"]
+
+        # Act
+        spent_now = cpu.run_for(cycles)
+
+        # Assert
+        self.assertEqual((spent_now, cpu.held(), cpu.registers.pc), (cycles, True, before))
+
+    def test_an_interrupt_sampled_in_the_printed_state_ends_the_halt(self) -> None:
+        # Arrange
+        cpu = self.halted()
+        cpu.registers.sp, cpu.registers.iff1, cpu.registers.im = STACK, True, 1
+        raised_in(cpu, "irq_line", frozenset({FACTS["halt"]["sampledInState"]}))
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual((cpu.held(), cpu.registers.pc), (False, RESPONSE["mode1"]["restartsAt"]))
 
 
 class ConditionalTimingTest(unittest.TestCase):
@@ -1242,6 +1408,400 @@ class ModelScopeTest(unittest.TestCase):
         ]
 
         self.assertEqual(defect["appliesTo"], clearing)
+
+
+class PrintedFactTest(unittest.TestCase):
+    def test_a_fetch_carries_the_counter_then_the_refresh_address(self) -> None:
+        # Arrange
+        shape = SHAPES["opcodeFetch"]
+        cpu = loaded((0x00,), {"i": 0x12, "r": 0x34})
+        named = {"programCounter": START, "refresh": 0x1234}
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual(
+            [(address, bus.READ in pins) for address, _, pins in cpu.bus.log],
+            [(named[shape["addressInT1T2"]], True)] * 2
+            + [(named[shape["addressInT3T4"]], False)] * 2,
+        )
+
+    def test_a_fetch_takes_its_data_in_the_state_the_manual_samples_it(self) -> None:
+        # Arrange
+        state = SHAPES["opcodeFetch"]["dataSampledInState"]
+        cpu = loaded((0x00,))
+
+        # Act
+        cpu.step()
+
+        # Assert
+        carried = [index + 1 for index, entry in enumerate(cpu.bus.log) if entry[1] is not None]
+        self.assertEqual((carried, bus.READ in cpu.bus.log[state - 1][2]), ([state], False))
+
+    def test_every_first_machine_cycle_the_bus_bounds_is_a_printed_length(self) -> None:
+        # Arrange
+        printed = set(SHAPES["opcodeFetch"]["firstMachineCycleStates"])
+
+        # Act
+        found = bounded_first_cycles()
+
+        # Assert
+        self.assertEqual(found, printed)
+
+    def test_a_memory_read_and_write_each_take_the_printed_states(self) -> None:
+        # Arrange
+        printed = SHAPES["memoryReadOrWrite"]["tStates"]
+
+        # Act
+        found = {
+            "read": states_spent(lambda line: line.read(0x2000, 0x42)),
+            "write": states_spent(lambda line: line.write(0x2000, 0x42)),
+        }
+
+        # Assert
+        self.assertEqual(found, {"read": printed, "write": printed})
+
+    def test_a_port_cycle_is_a_memory_cycle_plus_the_inserted_wait(self) -> None:
+        # Arrange
+        shape = SHAPES["inputOrOutput"]
+
+        # Act
+        found = states_spent(lambda line: line.port_read(0x1234, 0x42))
+
+        # Assert
+        self.assertEqual(
+            (found, found - states_spent(lambda line: line.read(0x1234, 0x42))),
+            (shape["tStates"], shape["automaticWaitStates"]),
+        )
+
+    def test_an_accepted_interrupt_opens_with_the_cycle_figure_9_draws(self) -> None:
+        # Arrange
+        drawn = SHAPES["interruptAcknowledge"]["columns"]
+        cpu = loaded((0x00,), {"iff1": True, "im": 1})
+
+        # Act
+        cpu.irq(0xFF)
+
+        # Assert
+        self.assertEqual([pins for _, _, pins in cpu.bus.log[: len(drawn)]], drawn)
+
+    def test_a_nonmaskable_response_ignores_the_byte_it_fetches_and_restarts(self) -> None:
+        # Arrange
+        shape = SHAPES["nonmaskableInterrupt"]
+        cpu = loaded((0x3C,), {"a": 0x10})
+
+        # Act
+        cpu.nmi()
+
+        # Assert
+        stacked = cpu.memory.read8(cpu.registers.sp) | (cpu.memory.read8(cpu.registers.sp + 1) << 8)
+        self.assertEqual(
+            (cpu.registers.pc, cpu.registers.a, stacked, cpu.bus.cycles[0][1]),
+            (shape["restartsAt"], 0x10, START, bus.FETCH),
+        )
+
+    def test_mreq_marks_the_addresses_memory_is_read_or_written_at(self) -> None:
+        # Arrange
+        cpu = loaded((0x77,), {"hl": 0x3000, "a": 0x5A})
+
+        # Act
+        cpu.step()
+
+        # Assert
+        strobed = [
+            address
+            for address, _, pins in cpu.bus.log
+            if bus.MEMORY in pins and (bus.READ in pins or bus.WRITE in pins)
+        ]
+        self.assertEqual(strobed, [START, START, 0x3000], FACTS["pins"]["mreq"]["quote"])
+
+    def test_iorq_puts_the_port_on_the_lower_half_of_the_address_bus(self) -> None:
+        # Arrange
+        cpu = loaded((0xD3, 0x34), {"a": 0x12})
+
+        # Act
+        cpu.step()
+
+        # Assert
+        requested = [address for address, _, pins in cpu.bus.log if bus.PORT in pins]
+        self.assertEqual(requested, [0x1234, 0x1234], FACTS["pins"]["iorq"]["quote"])
+
+    def test_rd_is_asserted_only_in_cycles_that_read(self) -> None:
+        # Arrange
+        cpu = loaded((0xED, 0xA2), {"hl": 0x3000, "bc": 0x0110})
+
+        # Act
+        cpu.step()
+
+        # Assert
+        reading = {
+            name
+            for name, (_, _, pins) in zip(cycle_names(cpu.bus), cpu.bus.log, strict=True)
+            if bus.READ in pins
+        }
+        self.assertEqual(reading, {bus.FETCH, bus.PORT_READ_CYCLE}, FACTS["pins"]["rd"]["quote"])
+
+    def test_wr_is_asserted_only_while_the_data_bus_holds_the_stored_value(self) -> None:
+        # Arrange
+        cpu = loaded((0xED, 0xA3), {"hl": 0x3000, "bc": 0x0110})
+        cpu.memory.write8(0x3000, 0x5A)
+
+        # Act
+        cpu.step()
+
+        # Assert
+        written = [value for _, value, pins in cpu.bus.log if bus.WRITE in pins]
+        self.assertEqual(written, [0x5A, 0x5A], FACTS["pins"]["wr"]["quote"])
+
+    def test_a_reset_spends_the_pin_time_and_the_two_states_after_it(self) -> None:
+        # Arrange
+        cpu = core.Cpu(memory.SparseMemory())
+        before = cpu.cycles
+
+        # Act
+        cpu.reset()
+
+        # Assert
+        self.assertEqual(
+            cpu.cycles - before,
+            FACTS["reset"]["minimumClockCycles"] + FACTS["reset"]["afterThePinReleases"]["states"],
+        )
+
+    def test_the_first_fetch_after_a_reset_is_from_the_printed_address(self) -> None:
+        # Arrange
+        space = memory.SparseMemory()
+        space.write8(0x0000, 0x00)
+        cpu = core.Cpu(space, recording=True)
+        cpu.reset()
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual(cpu.bus.log[0][0], FACTS["reset"]["afterThePinReleases"]["firstFetchFrom"])
+
+    def test_a_reset_clears_the_interrupt_enable_as_the_manual_says(self) -> None:
+        # Arrange
+        cpu = core.Cpu(memory.SparseMemory())
+        cpu.registers.iff1 = cpu.registers.iff2 = True
+        cleared = FACTS["reset"]["clearsInterruptEnable"]
+
+        # Act
+        cpu.reset()
+
+        # Assert
+        self.assertEqual((cpu.registers.iff1, cpu.registers.iff2), (not cleared, not cleared))
+
+    def test_clearing_the_accumulator_sets_exactly_the_zero_and_parity_bits(self) -> None:
+        # Arrange
+        bits = FACTS["flagRegister"]["bits"]
+        cpu = loaded((0xAF,), {"a": 0x5A, "f": 0xFF})
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual(cpu.registers.f, (1 << bits["z"]) | (1 << bits["pv"]))
+
+    def test_the_mode_instructions_select_the_printed_number_of_modes(self) -> None:
+        # Arrange
+        programs = ((0xED, 0x46), (0xED, 0x56), (0xED, 0x5E))
+
+        # Act
+        modes = {ran(program).registers.im for program in programs}
+
+        # Assert
+        self.assertEqual(modes, set(range(FACTS["interruptModes"]["count"])))
+
+    def test_a_nonmaskable_request_waits_for_the_instruction_and_ignores_the_enable(self) -> None:
+        # Arrange
+        cpu = loaded((0x3C,), {"a": 0x10, "iff1": False})
+        cpu.nmi_line = True
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual(
+            (cpu.registers.a, cpu.registers.pc), (0x11, FACTS["interruptModes"]["nmiVector"])
+        )
+
+    def test_a_fetch_then_a_read_is_the_shape_the_notation_example_draws(self) -> None:
+        # Arrange
+        example = FACTS["instructionTiming"]["notationExample"]
+        line = bus.Bus(recording=True)
+
+        # Act
+        fetch_then_read(line)
+
+        # Assert
+        self.assertEqual(
+            (cycle_lengths(line), len(line)), (example["machineCycles"], example["tStates"])
+        )
+
+    def test_an_accepted_maskable_interrupt_resets_both_flip_flops(self) -> None:
+        # Arrange
+        cleared = FACTS["interruptResponse"]["maskableClears"]
+        cpu = loaded((0x00,), {"iff1": True, "iff2": True, "im": 1})
+
+        # Act
+        cpu.irq(0xFF)
+
+        # Assert
+        self.assertEqual(
+            {name: getattr(cpu.registers, name) for name in cleared},
+            dict.fromkeys(cleared, False),
+        )
+
+    def test_an_enable_holds_a_request_off_for_the_printed_number_of_instructions(self) -> None:
+        # Arrange
+        held = FACTS["interruptResponse"]["instructionsHeldOffAfterEnable"]
+        cpu = loaded((0xFB, *([0x00] * held)), {"im": 1})
+
+        # Act
+        answers = [offered_after_a_step(cpu) for _ in range(held + 1)]
+
+        # Assert
+        self.assertEqual(answers, [False] * held + [True])
+
+    def test_a_request_present_in_the_final_state_is_taken(self) -> None:
+        # Arrange
+        cpu = loaded((0x00,), {"iff1": True, "im": 1})
+        raised_in(cpu, "irq_line", frozenset({bus.FETCH_STATES}))
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual(
+            cpu.registers.pc,
+            RESPONSE["mode1"]["restartsAt"],
+            FACTS["interruptResponse"]["sampledQuote"],
+        )
+
+    def test_a_request_gone_by_the_final_state_is_not(self) -> None:
+        # Arrange
+        cpu = loaded((0x00,), {"iff1": True, "im": 1})
+        raised_in(cpu, "irq_line", frozenset(range(1, bus.FETCH_STATES)))
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual(cpu.registers.pc, START + 1, FACTS["interruptResponse"]["sampledQuote"])
+
+    def test_a_nonmaskable_interrupt_keeps_the_previous_enable_in_iff2(self) -> None:
+        # Arrange
+        response = RESPONSE["nonmaskable"]
+        cpu = loaded((0x00,), {"iff1": True, "iff2": True})
+
+        # Act
+        cpu.nmi()
+
+        # Assert
+        self.assertEqual((cpu.registers.iff1, cpu.registers.iff2), (response["iff1"], True))
+
+    def test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into(self) -> None:
+        # Arrange
+        names = ("nonmaskable", "mode1", "mode2")
+
+        # Act
+        found = {name: response_cycles(name) for name in names}
+
+        # Assert
+        self.assertEqual(found, {name: RESPONSE[name]["machineCycles"] for name in names})
+
+    def test_mode_zero_runs_what_the_device_supplies_at_two_more_than_its_cost(self) -> None:
+        # Arrange
+        cpu = loaded((0x00,), {"iff1": True, "im": 0, "a": 0x10})
+        alone = spent((0x3C,))
+
+        # Act
+        cpu.irq(0x3C)
+
+        # Assert
+        self.assertEqual(
+            (cpu.registers.a, len(cpu.bus) - alone), (0x11, RESPONSE["mode0"]["addedStates"])
+        )
+
+    def test_mode_two_jumps_through_the_table_the_i_register_points_into(self) -> None:
+        # Arrange
+        cpu = loaded((0x00,), {"iff1": True, "im": 2, "i": 0x12})
+        cpu.memory.write8(0x1234, 0x78)
+        cpu.memory.write8(0x1235, 0x56)
+
+        # Act
+        cpu.irq(0x34)
+
+        # Assert
+        self.assertEqual(cpu.registers.pc, 0x5678, RESPONSE["mode2"]["vectorQuote"])
+
+    def test_mode_zero_takes_a_restart_with_a_single_acknowledge(self) -> None:
+        # Arrange
+        cpu = loaded((0x00,), {"iff1": True, "im": 0})
+
+        # Act
+        cpu.irq(0xC7)
+
+        # Assert
+        self.assertEqual(
+            ([name for _, name in cpu.bus.cycles].count(bus.ACKNOWLEDGE), cpu.registers.pc),
+            (FACTS["modeZeroGeneratesOneAcknowledge"]["acknowledges"], 0x0000),
+        )
+
+    def test_an_edge_that_lands_before_the_deadline_is_taken_at_the_boundary(self) -> None:
+        # Arrange
+        deadline = FACTS["nonmaskableEdgeMustLandBeforeTheLastState"]["deadlineStatesBeforeTheEnd"]
+        cpu = loaded((0x00,))
+        raised_in(
+            cpu, "nmi_line", frozenset(range(bus.FETCH_STATES - deadline + 1, bus.FETCH_STATES + 2))
+        )
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual(cpu.registers.pc, RESPONSE["nonmaskable"]["restartsAt"])
+
+    def test_every_misprinted_machine_cycle_count_is_run_as_the_reading(self) -> None:
+        # Arrange
+        pages = [
+            entry["manualPage"]
+            for entry in HELD["documentContradictions"]
+            if entry["kind"] == "timingTableMisprint"
+        ]
+
+        # Act
+        found = {page: cycle_lengths(ran(*MISPRINTED_RUNS[page]).bus) for page in pages}
+
+        # Assert
+        self.assertEqual(found, {page: misprinted_row(page)["machineCycles"] for page in pages})
+
+    def test_a_plain_read_holds_its_strobes_half_a_state_past_a_fetch(self) -> None:
+        # Arrange
+        entry = {one["id"]: one for one in HELD["documentContradictions"]}[
+            "read-strobe-release-prose-versus-figure"
+        ]
+        strobes = (bus.READ, bus.MEMORY)
+
+        # Act
+        later = {pin: released(bus.READ_CYCLE, pin) - released(bus.FETCH, pin) for pin in strobes}
+
+        # Assert
+        self.assertEqual(later, dict.fromkeys(strobes, entry["corroboration"]["additionalStates"]))
+
+    def test_every_bit_form_sets_the_half_carry_and_resets_the_negate(self) -> None:
+        # Arrange
+        entry = {one["id"]: one for one in HELD["documentContradictions"]}[
+            "bit-instruction-negate-flag-printed-as-half-carry"
+        ]
+
+        # Act
+        found = {form: settled_by(program) for form, program in BIT_FORMS.items()}
+
+        # Assert
+        self.assertEqual(found, dict.fromkeys(BIT_FORMS, entry["settles"]))
 
 
 if __name__ == "__main__":
