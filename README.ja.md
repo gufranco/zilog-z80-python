@@ -257,14 +257,14 @@ try:
 except ClockClosed as error:
     print(error, clock.cycles)
 
-print(z80.__version__)
+print(len(z80.__version__.split(".")))
 ```
 
 ```
 sampled is not a pin shape; there are manual, recording
 intel is not a carry flag rule; there are zilog, nec
 this clock has been closed 3
-6.12.2
+3
 ```
 
 ### コマンドラインツール
