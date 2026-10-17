@@ -49,8 +49,10 @@ jobs:
 
       - name: Fetch the newer suite
         if: steps.upstream.outputs.moved == 'true'
+        env:
+          LATEST: ${{ steps.upstream.outputs.latest }}
         run: |
-          python - "${{ steps.upstream.outputs.latest }}" <<'PY'
+          python - "${LATEST}" <<'PY'
           import pathlib, sys
           sys.path.insert(0, "conformance")
           import fetch
