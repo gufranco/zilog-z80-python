@@ -455,6 +455,32 @@
         "document": "userManual",
         "source": "Zilog UM008011-0816, manual pages 6 and 13"
       },
+      "pointsTowardALatch": {
+        "rung": 1,
+        "document": "familyDataBook",
+        "source": "Zilog Z80 Family Data Book 1989, AC Characteristics, parameter 37, printed pages 21 and 23, and Figure 9 on printed page 13",
+        "page": 21,
+        "minimumPulseWidthNs": {
+          "z84c0004": 80,
+          "z84c0006": 70,
+          "z84c0008": 60,
+          "z84c0010": 60,
+          "z0840004": 80,
+          "z0840006": 70,
+          "z0840008": 60
+        },
+        "clockCycleTimeNs": {
+          "z84c0004": 250,
+          "z84c0006": 162,
+          "z84c0008": 125,
+          "z84c0010": 100,
+          "z0840004": 250,
+          "z0840006": 162,
+          "z0840008": 125
+        },
+        "whatItShows": "Every printed minimum is shorter than one T state at the same rating, and Figure 9 draws parameter 37 as the width of a low NMI pulse. A pulse that short could not be relied on by a part that only looked at the level once per instruction, which points toward the falling edge being held.",
+        "whyItDoesNotSettleIt": "The table row is a figure with no sentence attached, and the paragraph above Figure 9 says \"NMI is sampled at the same time as the maskable interrupt input INT\". No printed sentence makes the width a condition for recognition or says the edge is latched, so closing the question on these figures would rest on an assumption about the inside of the part."
+      },
       "packageFollows": "document",
       "consequence": "The level of nmi_line is read at the deadline state, two states before the end of an instruction, and an edge is taken when that level is active and the previous boundary saw it inactive. A pulse that falls and rises again before the deadline state is missed.",
       "why": "The manual says the line is sampled, which is what the model does, and says it is edge-triggered, which the model honours by taking a held line once. It never says the edge is latched, and the data book's minimum NMI pulse width on printed page 21 bounds how short a pulse the part is guaranteed to see without saying when it is seen. Latching every edge would be choosing the reading that sounds more like hardware, which is the thing this record exists to stop.",

@@ -70,6 +70,8 @@ Source: Zilog UM008011-0816, manual pages 6 and 13.
 
 **Why.** The manual says the line is sampled, which is what the model does, and says it is edge-triggered, which the model honours by taking a held line once. It never says the edge is latched, and the data book's minimum NMI pulse width on printed page 21 bounds how short a pulse the part is guaranteed to see without saying when it is seen. Latching every edge would be choosing the reading that sounds more like hardware, which is the thing this record exists to stop.
 
+**What points toward a latch.** The data book's minimum NMI pulse width, parameter 37 on printed pages 21 and 23, is 80, 70, 60 and 60 ns for the four CMOS ratings and 80, 70 and 60 ns for the three NMOS ones, against clock cycle times of 250, 162, 125 and 100 ns and 250, 162 and 125 ns. Every minimum is shorter than one T state, and Figure 9 draws the parameter as the width of a low pulse. It does not settle the question, because no sentence makes that width a condition for recognition, and the paragraph above Figure 9 says "NMI is sampled at the same time as the maskable interrupt input INT".
+
 **What would settle or reopen it.** A logic capture of a real part given an NMI pulse that falls and rises again entirely before the last two states of an instruction, recording whether the next boundary restarts at 0066h.; The same capture with the pulse placed inside an instruction several machine cycles long, which separates a latch from a sample taken once per instruction.
 
 ### Whether the lowest bit of the byte a device supplies reaches the pointer.
