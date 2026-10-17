@@ -471,7 +471,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 マニュアルは別に管理しています。[`conformance/hardware.json`](conformance/hardware.json)は、文書から取ったすべての事実をその文とページとともに保持し、[`conformance/hardware.test.py`](conformance/hardware.test.py)は、マシン上にコーパスがない状態で、モデルの定数とマシンサイクルをそれに照らしてチェックします。`python3 -m conformance.timing`は、命令ごとのタイミング行217行をすべて実行し、それぞれをパーツが費やすTステート数と比較します。マニュアルは5か所で自己矛盾しています。3か所は99、260、269ページのタイミング行で、Mサイクル数が自身のTステートの内訳と一致しません。残りの2か所は本文と図が一致しません。2つの情報源が食い違うすべての箇所は、それを決着させる方法とともに[`conformance/divergences.json`](conformance/divergences.json)にあります。
 
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)には、忠実性が測定ではなく主張にとどまっている17の問いが、それぞれを解決する測定とともに列挙されています。フラグレジスタのビット3とビット5、および内部の`WZ`レジスタは、Zilogのユーザーマニュアルとデータブックの780ページのどこにも登場しません。
+[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)には、忠実性が測定ではなく主張にとどまっている18の問いが、それぞれを解決する測定とともに列挙されています。フラグレジスタのビット3とビット5、および内部の`WZ`レジスタは、Zilogのユーザーマニュアルとデータブックの780ページのどこにも登場しません。
 
 ### ダイに尋ねる
 

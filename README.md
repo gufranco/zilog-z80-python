@@ -471,7 +471,7 @@ The corpus commit is pinned in [`conformance/suites.json`](conformance/suites.js
 
 The manual is held separately. [`conformance/hardware.json`](conformance/hardware.json) carries every fact taken from a document with its sentence and page, and [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the model's constants and machine cycles against it with no corpus on the machine. `python3 -m conformance.timing` runs all 217 per-instruction timing rows and compares each with the T states the part spends. The manual contradicts itself in five places: three timing rows, on pages 99, 260 and 269, whose M cycle count disagrees with their own T state breakdown, and two where the prose and a figure disagree. Every place where two sources disagree is in [`conformance/divergences.json`](conformance/divergences.json) with what would settle it.
 
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) lists the 17 questions where fidelity is a claim rather than a measurement, each with the measurement that would close it. Bits 3 and 5 of the flag register and the internal `WZ` register appear nowhere in the 780 pages of Zilog's user manual and data book.
+[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) lists the 18 questions where fidelity is a claim rather than a measurement, each with the measurement that would close it. Bits 3 and 5 of the flag register and the internal `WZ` register appear nowhere in the 780 pages of Zilog's user manual and data book.
 
 ### Asking the die
 

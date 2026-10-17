@@ -471,7 +471,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 手冊單獨處理。[`conformance/hardware.json`](conformance/hardware.json) 載有取自文件的每項事實，連同其原句和頁碼，[`conformance/hardware.test.py`](conformance/hardware.test.py) 在機器上沒有語料庫的情況下，以它檢查型號的常數和機器週期。`python3 -m conformance.timing` 執行全部 217 行逐指令時序，並將每行與晶片耗費的 T 狀態比對。手冊有五處自相矛盾：三行時序，分別在第 99、260 和 269 頁，其 M 週期數與其自身的 T 狀態分解不符；另外兩處是正文與圖表不符。兩個來源出現分歧的每一處，都連同可解決它的方法列於 [`conformance/divergences.json`](conformance/divergences.json)。
 
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出 17 個問題，其中的保真度是一項聲稱而非測量，每個問題都附有可解決它的測量。旗標暫存器的第 3 和第 5 位元以及內部的 `WZ` 暫存器，在 Zilog 用戶手冊和數據手冊合共 780 頁中都沒有出現。
+[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出 18 個問題，其中的保真度是一項聲稱而非測量，每個問題都附有可解決它的測量。旗標暫存器的第 3 和第 5 位元以及內部的 `WZ` 暫存器，在 Zilog 用戶手冊和數據手冊合共 780 頁中都沒有出現。
 
 ### 向晶粒求證
 

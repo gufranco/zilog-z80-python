@@ -60,7 +60,7 @@ class RecordTest(unittest.TestCase):
         self.assertIn("What is deliberately not modelled", self.text)
 
     def test_there_are_open_questions_to_report(self) -> None:
-        self.assertEqual(len(opened()), 17)
+        self.assertEqual(len(opened()), 18)
 
     def test_and_the_closed_ones_are_kept_rather_than_deleted(self) -> None:
         closed = [one for one in divergences() if one["status"] == "closed"]
