@@ -1,14 +1,5 @@
+---
 name: Suite watch
-
-# The suite is pinned by commit so a build is reproducible and a red run always
-# has a commit of its own to explain it. That pin is also how a repository stops
-# noticing that the oracle it is judged against has moved.
-#
-# So this runs weekly against whatever upstream holds now. It never changes the
-# pin on its own. If the newer suite passes it opens a pull request proposing the
-# bump, with the run behind it. If the newer suite fails it opens an issue naming
-# the opcodes that disagree, because either the suite found a real defect here or
-# upstream changed its mind about the hardware. Both are worth a person reading.
 
 on:
   schedule:
@@ -101,15 +92,14 @@ jobs:
           git add conformance/suites.json
           git commit -m "test: move the Z80 suite pin to ${LATEST:0:12}"
           git push -u origin "${branch}"
+          {
+            cat .github/suite-moved.md
+            printf '\nWas %s, now %s.\n\n' "\`${PINNED}\`" "\`${LATEST}\`"
+            cat /tmp/report.txt
+          } > /tmp/pr.md
           gh pr create \
             --title "test: move the Z80 suite pin to ${LATEST:0:12}" \
-            --body-file - <<BODY
-          Upstream has moved and the whole suite still passes against the newer commit, so the pin can follow it. No source change is needed.
-
-          Was \`${PINNED}\`, now \`${LATEST}\`.
-
-          $(cat /tmp/report.txt)
-          BODY
+            --body-file /tmp/pr.md
 
       - name: Report the disagreement
         if: steps.upstream.outputs.moved == 'true' && steps.run.outcome == 'failure'
@@ -119,14 +109,15 @@ jobs:
           PINNED: ${{ steps.upstream.outputs.pinned }}
         run: |
           title="Conformance fails against suite ${LATEST:0:12}"
-          if [ -n "$(gh issue list --search "${title} in:title" --state open --json number --jq '.[].number')" ]; then
+          open=$(gh issue list --search "${title} in:title" \
+            --state open --json number --jq '.[].number')
+          if [ -n "${open}" ]; then
             echo "already reported"
             exit 0
           fi
-          gh issue create --title "${title}" --body-file - <<BODY
-          The pinned suite still passes. A newer upstream commit does not, so either it found a real defect here or upstream changed what it believes the hardware does. The pin has not moved.
-
-          Pinned \`${PINNED}\`, tried \`${LATEST}\`.
-
-          $(cat /tmp/report.txt)
-          BODY
+          {
+            cat .github/suite-failed.md
+            printf '\nPinned %s, tried %s.\n\n' "\`${PINNED}\`" "\`${LATEST}\`"
+            cat /tmp/report.txt
+          } > /tmp/issue.md
+          gh issue create --title "${title}" --body-file /tmp/issue.md

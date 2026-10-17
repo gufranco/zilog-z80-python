@@ -94,6 +94,7 @@ ruff format --check .
 ruff check .
 mypy
 pnpm run format:check
+uvx yamllint==1.38.0 --strict .
 for f in $(find z80 conformance -name '*.test.py' | sort); do python3 "$f"; done
 python3 -m coverage report
 ```
