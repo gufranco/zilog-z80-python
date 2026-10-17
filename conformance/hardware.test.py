@@ -1593,6 +1593,39 @@ class PrintedFactTest(unittest.TestCase):
         # Assert
         self.assertEqual((cpu.registers.iff1, cpu.registers.iff2), (not cleared, not cleared))
 
+    def test_a_nonmaskable_line_held_through_reset_is_not_detected(self) -> None:
+        # Arrange
+        printed = FACTS["nonmaskableDuringReset"]
+        start = FACTS["reset"]["afterThePinReleases"]["firstFetchFrom"]
+        space = memory.SparseMemory()
+        space.write8(start, 0x00)
+        cpu = core.Cpu(space)
+        cpu.nmi_line = True
+        cpu.reset()
+        cpu.registers.sp = STACK
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual((cpu.registers.pc, cpu.registers.sp), (start + 1, STACK), printed["quote"])
+
+    def test_a_nonmaskable_line_lowered_after_reset_is_processed(self) -> None:
+        # Arrange
+        printed = FACTS["nonmaskableDuringReset"]
+        space = memory.SparseMemory()
+        space.write8(FACTS["reset"]["afterThePinReleases"]["firstFetchFrom"], 0x00)
+        cpu = core.Cpu(space)
+        cpu.reset()
+        cpu.registers.sp = STACK
+        cpu.nmi_line = True
+
+        # Act
+        cpu.step()
+
+        # Assert
+        self.assertEqual(cpu.registers.pc, FACTS["interruptModes"]["nmiVector"], printed["quote"])
+
     def test_clearing_the_accumulator_sets_exactly_the_zero_and_parity_bits(self) -> None:
         # Arrange
         bits = FACTS["flagRegister"]["bits"]

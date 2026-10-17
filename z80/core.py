@@ -125,6 +125,7 @@ class Cpu:
     def reset(self) -> Cpu:
         for _ in range(RESET_STATES + RESUME_STATES):
             self.spend()
+        self.nmi_seen = self.nmi_line
         self.registers.reset()
         self.halted = False
         self.steps = 0

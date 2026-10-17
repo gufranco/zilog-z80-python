@@ -2103,9 +2103,13 @@
       "document": "familyDataBook",
       "section": "Questions and Answers, printed page 412",
       "quote": "Since NMI input is \"edge-triggered\" input, if the CPU has active NMI \"during\" reset, CPU won't detect NMI and will execute the instruction at 0000h. If NMI goes low after RESET goes inactive, then CPU will process NMI.",
-      "note": "A line held low across a reset is not an edge, so it is not seen. This package takes a non-maskable request as a call rather than as a level, so it has no way to express a line already low when reset ends, and it does not need one.",
+      "note": "A line held low across a reset is not an edge, so it is not seen. reset() takes the level of nmi_line as the one already seen, so only a transition after the pin releases interrupts.",
       "filePage": 417,
-      "appliesTo": ["upd780c", "z80", "z84c00"]
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "heldBy": [
+        "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_line_held_through_reset_is_not_detected",
+        "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_line_lowered_after_reset_is_processed"
+      ]
     },
     "m1IsNotTristatedDuringReset": {
       "document": "familyDataBook",
