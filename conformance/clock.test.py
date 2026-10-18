@@ -128,5 +128,58 @@ class ClockTest(unittest.TestCase):
             clock.tick()
 
 
+PROGRAM = bytes([0x3E, 0x42, 0x47, 0x21, 0x34, 0x12, 0x77, 0x23, 0x00, 0x18, 0xF5])
+
+
+def a_part() -> Any:
+    cpu = z80.Cpu("z80", z80.Memory(image=PROGRAM, fill=0x00))
+    return cpu.reset()
+
+
+def where(cpu: Any) -> tuple[int, int, int, int, int]:
+    held = cpu.registers
+    return cpu.steps, cpu.cycles, held.pc, held.a, held.hl
+
+
+class ClosedAtABoundaryTest(unittest.TestCase):
+    def test_a_closed_clock_leaves_the_part_where_step_leaves_it(self) -> None:
+        # Arrange
+        stepped, ticked = a_part(), a_part()
+        states = [stepped.step() for _ in range(8)]
+
+        # Act
+        with z80.Clock(ticked) as clock:
+            clock.run_for(sum(states))
+
+        # Assert
+        self.assertEqual(where(ticked), where(stepped))
+
+    def test_and_where_run_for_leaves_it(self) -> None:
+        # Arrange
+        budgeted, ticked = a_part(), a_part()
+        spent = budgeted.run_for(21)
+
+        # Act
+        with z80.Clock(ticked) as clock:
+            clock.run_for(spent)
+
+        # Assert
+        self.assertEqual(where(ticked), where(budgeted))
+
+    def test_a_clock_closed_inside_an_instruction_spends_nothing_more(self) -> None:
+        # Arrange
+        cpu = a_part()
+        cycles, accumulator = cpu.cycles, cpu.registers.a
+
+        # Act
+        with z80.Clock(cpu) as clock:
+            clock.run_for(5)
+
+        # Assert
+        self.assertEqual(
+            (cpu.cycles - cycles, cpu.bus.states, cpu.registers.a), (5, 5, accumulator)
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
