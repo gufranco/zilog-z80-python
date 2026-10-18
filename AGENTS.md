@@ -142,6 +142,31 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 | Fidelity | Where the part and convenience disagree, the part wins. A behaviour that exists only to make a test easier is a defect |
 | Public API | This and the 65xx package present the same surface. See [FAMILY.md](FAMILY.md) |
 
+The linter's ignores in [`pyproject.toml`](pyproject.toml) carry no comments, so
+their reasons live here, beside those of the coverage exclusions:
+
+- `N818`: three exceptions are control flow signals rather than failures, named
+  the way CPython names `StopIteration`. Those that report a failure end in
+  `Error`.
+- `BLE001` and `T201` in `environment.py`: it reports what a machine is, so a
+  check that throws becomes a line in the report rather than ending the run.
+- `N999` in tests: a test file is named after the module it covers, with a dot,
+  so a module and its tests are read together.
+- `T201` in [`conformance/`](conformance): these are command line tools and
+  printing is their output. A logger would put a level and a timestamp in front
+  of a report meant for a person.
+- `BLE001` and `T201` in the doctor: it must survive whatever a check throws and
+  report it, because a narrower catch would let a traceback take the rest of the
+  report with it.
+- Every optional `mypy` error class is on because the errors that matter in a
+  model of hardware are a width, a mask or a `None` crossing a boundary.
+- The `__main__` guard is excluded from coverage: it hands argv to a tested
+  function, and importing the module to cover it would run the tool.
+- `if TYPE_CHECKING:` is excluded: it never runs, and Python 3.14 drops it before
+  coverage sees it while earlier versions do not.
+- A lone ellipsis and a signature ending in one are excluded: a protocol method
+  has no body to run, and the same version split applies.
+
 ## Layout
 
 ```
