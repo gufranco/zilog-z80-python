@@ -102,7 +102,7 @@ each handler would still reach into the same `Cpu`.
 ```bash
 ruff format --check .
 ruff check .
-mypy
+uvx --python 3.12 --with types-setuptools==84.0.0.20260812 mypy==1.14.1
 pnpm run format:check
 uvx yamllint==1.38.0 --strict .
 cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
