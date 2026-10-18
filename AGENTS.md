@@ -25,7 +25,12 @@ Three ways to run it, sharing one place where a T state is spent:
   instruction cannot be cut in half.
 - `Clock(cpu).tick()` advances exactly one T state and stops, on a thread,
   because Python cannot suspend a call stack. Fifty times slower and the only
-  way to change what a read answers mid-instruction.
+  way to change what a read answers mid-instruction. Only the clock's own thread
+  stops: `irq()` or `nmi()` called while it is paused at an instruction boundary
+  acts at once, as between two steps, and its T states count in `cycles` without
+  being ticks. Paused inside an instruction, or inside an interrupt response,
+  there is no such place, so the call raises `InsideInstruction` and changes
+  nothing.
 
 Three inputs are lines rather than events, each read where a document says the
 part reads it: `irq_line` at the final T state, `nmi_line` on its transition,
@@ -34,10 +39,10 @@ state, after that state's activity.
 
 Every cycle passes through `spend()` and nowhere else. `spend()` opens the T
 state and samples the pins; `settle()` closes it, counting it and calling
-`on_cycle`, just before the next access or state and at the end of `step()`. A
-counter kept in one method and a hook called from another drift the first time
-somebody adds a cycle to only one of them, and nothing catches it, so both live
-in `settle()`. Keep it that way.
+`on_cycle`, just before the next access or state and at the end of `step()`,
+`irq()` and `nmi()`. A counter kept in one method and a hook called from another
+drift the first time somebody adds a cycle to only one of them, and nothing
+catches it, so both live in `settle()`. Keep it that way.
 
 ## The authority ladder
 

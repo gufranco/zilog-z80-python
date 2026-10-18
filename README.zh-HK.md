@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,441** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
+**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,446** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
 
 ```python
 from z80 import Cpu, Memory
@@ -233,6 +233,7 @@ pc=0000 hl=724C hl_=1234 im=0 iff1=False
 | `RunLimit` | 經過 `limit` 條指令而檢查始終不成立時，由 `run_until` 引發 |
 | `Truncated` | 位元組在指令中途結束時，由 `decode` 引發 |
 | `ClockClosed` | 時鐘關閉後呼叫 `Clock.tick()` 時引發 |
+| `InsideInstruction` | 在 `Clock` 暫停於一條指令或中斷回應的中途時從外部呼叫 `irq()` 或 `nmi()` 時引發。應 tick 到指令邊界，或設定 `irq_line` 或 `nmi_line` |
 | `__version__` | 已安裝的版本 |
 
 ```python
@@ -348,7 +349,7 @@ True
 
 迭代時鐘會令它一直前進，直至關閉。晶片內部引發的異常會從 `tick()` 再次引發，時鐘隨之關閉。
 
-節拍要等其 T 狀態的工作完成後才停下。推進到某條指令最後一個 T 狀態的時鐘，無論是否關閉，都令晶片處於與 `step()` 相同的狀態。
+節拍要等其 T 狀態的工作完成後才停下。推進到某條指令最後一個 T 狀態的時鐘，無論是否關閉，都令晶片處於與 `step()` 相同的狀態。在時鐘暫停於指令邊界時呼叫的 `irq()` 或 `nmi()` 會像在兩次 `step()` 之間一樣立即生效，其 T 狀態計入 `cpu.cycles`，但不計為 tick。暫停於指令或中斷回應的中途時不存在這樣的位置，因此呼叫會拋出 `InsideInstruction` 且不改變任何狀態：應 tick 到邊界，或設定晶片在手冊所述位置取樣的 `irq_line` 或 `nmi_line`。
 
 晶片在一個執行緒上執行，因為 Python 無法暫停一條指令的呼叫堆疊。每個 T 狀態都是兩個訊號量之間的一次交接，因此時鐘比 `step()` 慢很多倍。追求速度時用 `step()`，需要知道 T 狀態落在何處時用 `Clock`。
 

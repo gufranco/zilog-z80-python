@@ -12,6 +12,7 @@ from . import registers as registers
 from .clock import Clock
 from .errors import (
     ClockClosed,
+    InsideInstruction,
     RunLimit,
     Truncated,
     UnknownCarryRule,
@@ -44,6 +45,7 @@ __all__ = [
     "Clock",
     "ClockClosed",
     "Cpu",
+    "InsideInstruction",
     "Memory",
     "Model",
     "Ports",

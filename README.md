@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,441** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,446** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -233,6 +233,7 @@ pc=0000 hl=724C hl_=1234 im=0 iff1=False
 | `RunLimit` | Raised by `run_until` when `limit` instructions pass and the check never held |
 | `Truncated` | Raised by `decode` when the bytes end inside an instruction |
 | `ClockClosed` | Raised by `Clock.tick()` after the clock was closed |
+| `InsideInstruction` | Raised by `irq()` or `nmi()` called from outside a `Clock` paused inside an instruction or an interrupt response. Tick to the instruction boundary, or set `irq_line` or `nmi_line` |
 | `__version__` | The installed version |
 
 ```python
@@ -348,7 +349,7 @@ The byte at `$0001` changed after the first T state of the opcode fetch, and the
 
 Iterating a clock ticks it until it is closed. An exception raised inside the part is raised again from `tick()`, and the clock closes.
 
-A tick stops only after the work its T state does. A clock that has ticked the last T state of an instruction, open or closed, leaves the part as `step()` does.
+A tick stops only after the work its T state does. A clock that has ticked the last T state of an instruction, open or closed, leaves the part as `step()` does. `irq()` or `nmi()` called while a clock is paused at an instruction boundary acts at once, as it does between two steps, and its T states count in `cpu.cycles` without being ticks. Paused inside an instruction, or inside an interrupt response, there is no such place, so the call raises `InsideInstruction` and changes nothing: tick to the boundary, or set `irq_line` or `nmi_line`, which the part samples where the manual says.
 
 The part runs on a thread, because Python cannot suspend an instruction's call stack. Each T state is a handoff between two semaphores, so a clock runs many times slower than `step()`. Use `step()` for speed and `Clock` when the question is where a T state falls.
 

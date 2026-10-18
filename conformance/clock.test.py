@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import functools
+import hashlib
 import sys
+import threading
 import unittest
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -262,6 +266,174 @@ class EveryAccessStaysOnItsOwnStateTest(unittest.TestCase):
 
         # Assert
         self.assertEqual([paused for paused, _ in seen], [due for _, due in seen])
+
+
+PATIENCE_SECONDS = 10.0
+
+LAST_TWO_STATES = 2
+
+REGISTERS = ("a", "f", "bc", "de", "hl", "pc", "sp", "i", "r", "iff1", "iff2", "im")
+
+
+def within(call: Callable[[], Any]) -> tuple[str, Any]:
+    outcome: list[tuple[str, Any]] = []
+
+    def attempt() -> None:
+        outcome.append(("returned", call()))
+
+    worker = threading.Thread(target=attempt, daemon=True)
+    worker.start()
+    worker.join(PATIENCE_SECONDS)
+    return outcome[0] if outcome else ("still running", None)
+
+
+def refusal(line: str) -> str:
+    return (
+        f"{line}() was called inside an instruction; tick the clock to the instruction "
+        f"boundary, or set {line}_line, which the part samples when the instruction completes"
+    )
+
+
+def an_interruptible_part() -> Any:
+    cpu = a_part()
+    cpu.registers.iff1 = True
+    cpu.registers.iff2 = True
+    cpu.registers.im = 1
+    return cpu
+
+
+def observed(cpu: Any) -> tuple[Any, ...]:
+    held = cpu.registers
+    return (
+        tuple(getattr(held, name, None) for name in REGISTERS),
+        cpu.steps,
+        cpu.cycles,
+        cpu.held(),
+        hashlib.sha256(bytes(cpu.memory.read8(address) for address in range(0x10000))).hexdigest(),
+    )
+
+
+def attempted(call: Callable[[], Any]) -> tuple[str, str]:
+    try:
+        call()
+    except z80.InsideInstruction as refused:
+        return "refused", str(refused)
+    return "taken", ""
+
+
+def stepped_through(instructions: int) -> tuple[Any, ...]:
+    cpu = an_interruptible_part()
+    for _ in range(instructions):
+        cpu.step()
+    return observed(cpu)
+
+
+def first_instruction_states() -> int:
+    return int(an_interruptible_part().step())
+
+
+def offered_between_steps(line: str) -> tuple[Any, ...]:
+    cpu = an_interruptible_part()
+    cpu.step()
+    outcome = attempted(getattr(cpu, line))
+    cpu.step()
+    return outcome, observed(cpu)
+
+
+def offered_to_a_paused_clock(cpu: Any, line: str, ticks: int, afterwards: int) -> Any:
+    clock = z80.Clock(cpu)
+    try:
+        clock.run_for(ticks)
+        outcome = attempted(getattr(cpu, line))
+        clock.run_for(afterwards)
+        return outcome, observed(cpu)
+    finally:
+        clock.close()
+
+
+def offered_at_a_boundary(line: str) -> Any:
+    reference = an_interruptible_part()
+    reference.step()
+    getattr(reference, line)()
+    afterwards = reference.step()
+    cpu = an_interruptible_part()
+    return offered_to_a_paused_clock(cpu, line, first_instruction_states(), afterwards)
+
+
+def offered_inside_an_instruction(line: str) -> Any:
+    first = first_instruction_states()
+    cpu = an_interruptible_part()
+    reference = an_interruptible_part()
+    reference.step()
+    rest = reference.step() - 1
+    return offered_to_a_paused_clock(cpu, line, first + 1, rest)
+
+
+def entered_through_the_line() -> tuple[int, tuple[Any, ...]]:
+    cpu = an_interruptible_part()
+    cpu.irq_line = True
+    before = cpu.cycles
+    cpu.step()
+    return cpu.cycles - before, observed(cpu)
+
+
+def offered_inside_an_entry_the_line_began() -> Any:
+    spent, _ = entered_through_the_line()
+    cpu = an_interruptible_part()
+    cpu.irq_line = True
+    return offered_to_a_paused_clock(cpu, "irq", spent - LAST_TWO_STATES, LAST_TWO_STATES)
+
+
+class AnInterruptOfferedToAPausedClockTest(unittest.TestCase):
+    def test_an_irq_at_an_instruction_boundary_is_taken_as_between_steps(self) -> None:
+        # Arrange
+        expected = offered_between_steps("irq")
+
+        # Act
+        found = within(functools.partial(offered_at_a_boundary, "irq"))
+
+        # Assert
+        self.assertEqual(found, ("returned", expected))
+
+    def test_an_irq_inside_an_instruction_is_refused_and_leaves_no_trace(self) -> None:
+        # Arrange
+        expected = (("refused", refusal("irq")), stepped_through(2))
+
+        # Act
+        found = within(functools.partial(offered_inside_an_instruction, "irq"))
+
+        # Assert
+        self.assertEqual(found, ("returned", expected))
+
+    def test_an_nmi_at_an_instruction_boundary_is_taken_as_between_steps(self) -> None:
+        # Arrange
+        expected = offered_between_steps("nmi")
+
+        # Act
+        found = within(functools.partial(offered_at_a_boundary, "nmi"))
+
+        # Assert
+        self.assertEqual(found, ("returned", expected))
+
+    def test_an_nmi_inside_an_instruction_is_refused_and_leaves_no_trace(self) -> None:
+        # Arrange
+        expected = (("refused", refusal("nmi")), stepped_through(2))
+
+        # Act
+        found = within(functools.partial(offered_inside_an_instruction, "nmi"))
+
+        # Assert
+        self.assertEqual(found, ("returned", expected))
+
+    def test_an_irq_inside_an_entry_the_line_began_is_refused_and_leaves_no_trace(self) -> None:
+        # Arrange
+        expected = (("refused", refusal("irq")), entered_through_the_line()[1])
+
+        # Act
+        found = within(offered_inside_an_entry_the_line_began)
+
+        # Assert
+        self.assertEqual(found, ("returned", expected))
 
 
 if __name__ == "__main__":

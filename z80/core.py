@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from . import blocks, bus, flags, models
-from .errors import RunLimit
+from .errors import InsideInstruction, RunLimit
 from .memory import UNSET_SEED
 from .registers import Registers
 
@@ -34,6 +34,7 @@ VECTOR_MASK = 0xFF
 
 class Cpu:
     __slots__ = (
+        "_inside",
         "_open",
         "bus",
         "carry_rule",
@@ -97,6 +98,8 @@ class Cpu:
         self.on_cycle: Callable[[], None] | None = None
 
         self._open = False
+
+        self._inside = False
 
         self.bus = bus.Bus(self.spend, self.wants_a_wait, recording=recording, shape=shape)
         self.steps = 0
@@ -376,11 +379,15 @@ class Cpu:
 
     def step(self) -> int:
         self.begin()
-        if self.halted:
-            self.halt_cycle()
-            self.keep_flags()
-        else:
-            self.execute(self.opcode_fetch(), None)
+        self._inside = True
+        try:
+            if self.halted:
+                self.halt_cycle()
+                self.keep_flags()
+            else:
+                self.execute(self.opcode_fetch(), None)
+        finally:
+            self._inside = False
         self.sample_pins()
         self.settle()
         return self.bus.states
@@ -422,6 +429,29 @@ class Cpu:
         self.halted = False
 
     def irq(self, vector: int | Callable[[], int] = 0xFF) -> bool:
+        self.refuse_inside("irq")
+        self._inside = True
+        try:
+            taken = self.respond_to_irq(vector)
+        finally:
+            self._inside = False
+        self.settle()
+        return taken
+
+    def nmi(self) -> None:
+        self.refuse_inside("nmi")
+        self._inside = True
+        try:
+            self.respond_to_nmi()
+        finally:
+            self._inside = False
+        self.settle()
+
+    def refuse_inside(self, line: str) -> None:
+        if self._inside:
+            raise InsideInstruction(line)
+
+    def respond_to_irq(self, vector: int | Callable[[], int]) -> bool:
         if not self.registers.iff1 or self.registers.ei or self.deferring_interrupt:
             return False
         reading_the_latch = self.registers.p
@@ -456,7 +486,7 @@ class Cpu:
             self.responding = None
         return True
 
-    def nmi(self) -> None:
+    def respond_to_nmi(self) -> None:
         self.begin_response()
         self.opcode_fetch()
         self.registers.pc = self.registers.pc - 1

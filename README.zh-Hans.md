@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,441** 个测试，**100%** 语句和分支覆盖率，无依赖
+**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,446** 个测试，**100%** 语句和分支覆盖率，无依赖
 
 ```python
 from z80 import Cpu, Memory
@@ -233,6 +233,7 @@ pc=0000 hl=724C hl_=1234 im=0 iff1=False
 | `RunLimit` | 经过 `limit` 条指令而检查条件始终不成立时，由 `run_until` 抛出 |
 | `Truncated` | 字节在指令中途结束时，由 `decode` 抛出 |
 | `ClockClosed` | 时钟关闭后，由 `Clock.tick()` 抛出 |
+| `InsideInstruction` | 在 `Clock` 暂停于一条指令或中断响应的中途时从外部调用 `irq()` 或 `nmi()` 时抛出。应 tick 到指令边界，或设置 `irq_line` 或 `nmi_line` |
 | `__version__` | 已安装的版本 |
 
 ```python
@@ -348,7 +349,7 @@ True
 
 对时钟进行迭代会不断推进它，直到它被关闭。芯片内部抛出的异常会从 `tick()` 再次抛出，并且时钟会关闭。
 
-节拍要等其 T 状态的工作完成后才停下。推进到某条指令最后一个 T 状态的时钟，无论是否关闭，都让芯片处于与 `step()` 相同的状态。
+节拍要等其 T 状态的工作完成后才停下。推进到某条指令最后一个 T 状态的时钟，无论是否关闭，都让芯片处于与 `step()` 相同的状态。在时钟暂停于指令边界时调用的 `irq()` 或 `nmi()` 会像在两次 `step()` 之间一样立即生效，其 T 状态计入 `cpu.cycles`，但不计为 tick。暂停于指令或中断响应的中途时不存在这样的位置，因此调用会抛出 `InsideInstruction` 且不改变任何状态：应 tick 到边界，或设置芯片在手册所述位置采样的 `irq_line` 或 `nmi_line`。
 
 芯片运行在一个线程上，因为 Python 无法挂起一条指令的调用栈。每个 T 状态都是两个信号量之间的一次交接，因此时钟比 `step()` 慢很多倍。追求速度时用 `step()`，关心 T 状态落在哪里时用 `Clock`。
 
