@@ -171,6 +171,11 @@ their reasons live here, beside those of the coverage exclusions:
   coverage sees it while earlier versions do not.
 - A lone ellipsis and a signature ending in one are excluded: a protocol method
   has no body to run, and the same version split applies.
+- `@unittest\.skipUnless\(A_PART,`,
+  `@unittest\.skipUnless\(A_PART and BUILDABLE,` and
+  `^def accounts_for_a_reset\(` in the coverage exclusions: this member is not a
+  part, so the family tests that build a `Chip` and account for its reset are
+  skipped here and their bodies never run.
 
 ## Layout
 
