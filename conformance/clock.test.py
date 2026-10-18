@@ -181,5 +181,88 @@ class ClosedAtABoundaryTest(unittest.TestCase):
         )
 
 
+def ticked_open(budget: int) -> tuple[int, int, int, int, int]:
+    cpu = a_part()
+    clock = z80.Clock(cpu)
+    try:
+        clock.run_for(budget)
+        return where(cpu)
+    finally:
+        clock.close()
+
+
+class OpenAtABoundaryTest(unittest.TestCase):
+    def test_an_open_clock_shows_the_part_where_step_leaves_it(self) -> None:
+        # Arrange
+        stepped = a_part()
+        states = [stepped.step() for _ in range(8)]
+
+        # Act
+        found = ticked_open(sum(states))
+
+        # Assert
+        self.assertEqual(found, where(stepped))
+
+    def test_including_the_load_its_first_instruction_ends_on(self) -> None:
+        # Arrange
+        stepped = a_part()
+        states = stepped.step()
+
+        # Act
+        found = ticked_open(states)
+
+        # Assert
+        self.assertEqual(found, where(stepped))
+
+
+class Watched:
+    __slots__ = ("base", "inner", "parts", "paused", "seen")
+
+    def __init__(self, inner: Any) -> None:
+        self.inner = inner
+        self.parts: list[Any] = []
+        self.paused = 0
+        self.base = 0
+        self.seen: list[tuple[int, int]] = []
+
+    def noted(self, address: int) -> int:
+        for part in self.parts:
+            self.seen.append((self.paused, self.base + part.bus.states))
+        return address
+
+    def read8(self, address: int) -> int:
+        return int(self.inner.read8(self.noted(address)))
+
+    def write8(self, address: int, value: int) -> None:
+        self.inner.write8(self.noted(address), value)
+
+    def pause(self) -> None:
+        self.paused += 1
+
+
+def watched_run(instructions: int) -> list[tuple[int, int]]:
+    memory = Watched(z80.Memory(image=PROGRAM, fill=0x00))
+    cpu = z80.Cpu("z80", memory)
+    cpu.reset()
+    memory.parts.append(cpu)
+    cpu.on_cycle = memory.pause
+    for _ in range(instructions):
+        memory.base = memory.paused
+        cpu.step()
+    return memory.seen
+
+
+class EveryAccessStaysOnItsOwnStateTest(unittest.TestCase):
+    def test_no_access_is_made_before_the_state_ahead_of_it_has_paused(self) -> None:
+        # Arrange
+        instructions = 8
+
+        # Act
+        seen = watched_run(instructions)
+
+        # Assert
+        self.assertEqual([paused for paused, _ in seen], [due for _, due in seen])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -32,9 +32,12 @@ part reads it: `irq_line` at the final T state, `nmi_line` on its transition,
 `wait_line` after T2 of every machine cycle. `on_cycle` is called once per T
 state, after that state's activity.
 
-Every cycle passes through `spend()` and nowhere else. A counter kept in one
-method and a hook called from another drift the first time somebody adds a cycle
-to only one of them, and nothing catches it. Keep it that way.
+Every cycle passes through `spend()` and nowhere else. `spend()` opens the T
+state and samples the pins; `settle()` closes it, counting it and calling
+`on_cycle`, just before the next access or state and at the end of `step()`. A
+counter kept in one method and a hook called from another drift the first time
+somebody adds a cycle to only one of them, and nothing catches it, so both live
+in `settle()`. Keep it that way.
 
 ## The authority ladder
 

@@ -7,20 +7,10 @@ from typing import Any
 from .errors import ClockClosed
 
 
-def guarded(clock: Clock, kind: type[Any]) -> type[Any]:
-    def mark(bus: Any, address: int, value: int | None, pins: str) -> None:
-        if clock.closed:
-            raise _Closed
-        kind.mark(bus, address, value, pins)
-
-    return type(f"Clocked{kind.__name__}", (kind,), {"__slots__": (), "mark": mark})
-
-
 class Clock:
     __slots__ = (
         "_arrived",
         "_failure",
-        "_kind",
         "_previous",
         "_resume",
         "_worker",
@@ -37,9 +27,7 @@ class Clock:
         self._arrived = threading.Semaphore(0)
         self._failure: BaseException | None = None
         self._previous = cpu.on_cycle
-        self._kind = type(cpu.bus)
         cpu.on_cycle = self._reached_a_cycle
-        cpu.bus.__class__ = guarded(self, self._kind)
         self._worker = threading.Thread(target=self._run, daemon=True)
         self._worker.start()
 
@@ -52,12 +40,13 @@ class Clock:
             pass
         except BaseException as failure:  # noqa: BLE001
             self._failure = failure
-        self.cpu.bus.__class__ = self._kind
         self._arrived.release()
 
     def _reached_a_cycle(self) -> None:
         self._arrived.release()
         self._resume.acquire()
+        if self.closed:
+            raise _Closed
 
     def tick(self) -> int:
         if self.closed:

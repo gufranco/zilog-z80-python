@@ -126,11 +126,11 @@ class Bus:
         self.states = 0
 
     def mark(self, address: int, value: int | None, pins: str) -> None:
+        self.on_state()
         self.states += 1
         self.address = address & ADDRESS_MASK
         if self.recording:
             self.log.append((self.address, value, pins))
-        self.on_state()
 
     def spend(
         self,

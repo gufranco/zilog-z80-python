@@ -34,6 +34,7 @@ VECTOR_MASK = 0xFF
 
 class Cpu:
     __slots__ = (
+        "_open",
         "bus",
         "carry_rule",
         "cycles",
@@ -95,6 +96,8 @@ class Cpu:
 
         self.on_cycle: Callable[[], None] | None = None
 
+        self._open = False
+
         self.bus = bus.Bus(self.spend, self.wants_a_wait, recording=recording, shape=shape)
         self.steps = 0
         self.cycles = 0
@@ -108,14 +111,22 @@ class Cpu:
         self.deferring_interrupt = False
 
     def spend(self) -> None:
-        self.cycles += 1
+        self.settle()
         self.sampled_irq = self.irq_line
         self.nmi_at_deadline = self.nmi_in_last_state
         self.nmi_in_last_state = self.nmi_line
+        self._open = True
+
+    def settle(self) -> None:
+        if not self._open:
+            return
+        self._open = False
+        self.cycles += 1
         if self.on_cycle is not None:
             self.on_cycle()
 
     def wants_a_wait(self) -> bool:
+        self.settle()
         return self.wait_line
 
     def sample_pins(self) -> bool:
@@ -135,10 +146,12 @@ class Cpu:
         self.registers.reset()
         self.halted = False
         self.steps = 0
+        self.settle()
         return self
 
     def read8(self, address: int) -> int:
         address &= 0xFFFF
+        self.settle()
         value = self.memory.read8(address)
         self.bus.read(address, value)
         return value
@@ -146,6 +159,7 @@ class Cpu:
     def write8(self, address: int, value: int) -> None:
         address &= 0xFFFF
         value &= 0xFF
+        self.settle()
         self.memory.write8(address, value)
         self.bus.write(address, value)
 
@@ -154,6 +168,7 @@ class Cpu:
 
     def port_read(self, address: int) -> int:
         address &= 0xFFFF
+        self.settle()
         value = self.ports.read(address) if self.ports is not None else self.floating_output
         self.bus.port_read(address, value)
         return value & 0xFF
@@ -161,6 +176,7 @@ class Cpu:
     def port_write(self, address: int, value: int) -> None:
         address &= 0xFFFF
         value &= 0xFF
+        self.settle()
         if self.ports is not None:
             self.ports.write(address, value)
         self.bus.port_write(address, value)
@@ -203,6 +219,7 @@ class Cpu:
 
     def answered(self, address: int) -> int:
         assert self.responding is not None
+        self.settle()
         value = self.responding() & 0xFF
         self.bus.read(address & 0xFFFF, value)
         return value
@@ -210,6 +227,7 @@ class Cpu:
     def opcode_fetch(self) -> int:
         counter = self.registers.pc
         refresh = (self.registers.i << 8) | self.registers.r
+        self.settle()
         if self.responding is not None:
             opcode = self.responding() & 0xFF
         else:
@@ -364,6 +382,7 @@ class Cpu:
         else:
             self.execute(self.opcode_fetch(), None)
         self.sample_pins()
+        self.settle()
         return self.bus.states
 
     def run_for(self, cycles: int) -> int:
@@ -387,6 +406,7 @@ class Cpu:
     def halt_cycle(self) -> None:
         counter = self.registers.pc
         refresh = (self.registers.i << 8) | self.registers.r
+        self.settle()
         self.bus.fetch(counter, refresh, self.memory.read8(counter & 0xFFFF))
         self.registers.tick_refresh()
 
@@ -413,6 +433,7 @@ class Cpu:
         if isinstance(vector, int):
             answering, first = None, vector
         else:
+            self.settle()
             answering, first = vector, vector()
         answer = self.acknowledge(first)
         if self.registers.im == 1:

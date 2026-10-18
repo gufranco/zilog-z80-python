@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,435** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,438** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -86,7 +86,7 @@ Everything below is exported from `z80`. Nothing else is public.
 | `irq_line` | The maskable request as a level, sampled at the final T state of each instruction |
 | `nmi_line` | The non-maskable request. The transition interrupts; holding it does not interrupt again |
 | `wait_line` | Read after T2 of every machine cycle. Each T state it stays set repeats T2 |
-| `on_cycle` | Called once per T state, after that state's bus activity |
+| `on_cycle` | Called once per T state, at its end: after that state's bus activity and the work done before the next state |
 | `cycles` | T states since the part was built, across resets |
 | `steps` | Instructions since the last reset |
 | `halted` | Whether a `HALT` is executing; each `HALT` cycle costs 4 T states |
@@ -347,6 +347,8 @@ The byte at `$0001` changed after the first T state of the opcode fetch, and the
 | `cycles`, `closed` | The count of ticks, and whether the clock is closed |
 
 Iterating a clock ticks it until it is closed. An exception raised inside the part is raised again from `tick()`, and the clock closes.
+
+A tick stops only after the work its T state does. A clock that has ticked the last T state of an instruction, open or closed, leaves the part as `step()` does.
 
 The part runs on a thread, because Python cannot suspend an instruction's call stack. Each T state is a handoff between two semaphores, so a clock runs many times slower than `step()`. Use `step()` for speed and `Clock` when the question is where a T state falls.
 
