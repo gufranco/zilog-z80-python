@@ -24,29 +24,68 @@ def ticking(*seconds: float) -> Any:
 
 
 class MeasurementTest(unittest.TestCase):
-    def _timed(self, seconds: Sequence[float]) -> speed.Timed:
+    def timing_of(self, seconds: Sequence[float]) -> speed.Timed:
         return speed.Timed("z80", instructions=1000, seconds=seconds)
 
     def test_the_median_is_the_middle_of_the_runs(self) -> None:
-        self.assertEqual(self._timed([0.1, 0.2, 0.9]).median, 0.2)
+        # Arrange
+        seconds = [0.1, 0.2, 0.9]
+
+        # Act
+        found = self.timing_of(seconds)
+
+        # Assert
+        self.assertEqual(found.median, 0.2)
 
     def test_and_a_single_run_is_its_own_median(self) -> None:
-        self.assertEqual(self._timed([0.5]).median, 0.5)
+        # Arrange
+        seconds = [0.5]
+
+        # Act
+        found = self.timing_of(seconds)
+
+        # Assert
+        self.assertEqual(found.median, 0.5)
 
     def test_the_rate_is_t_states_over_the_median(self) -> None:
-        self.assertEqual(self._timed([0.1, 0.2, 0.9]).rate, 5000)
+        # Arrange
+        seconds = [0.1, 0.2, 0.9]
+
+        # Act
+        found = self.timing_of(seconds)
+
+        # Assert
+        self.assertEqual(found.rate, 5000)
 
     def test_one_slow_run_moves_the_median_less_than_it_moves_a_mean(self) -> None:
-        steady = self._timed([0.1, 0.1, 0.1])
-        hiccup = self._timed([0.1, 0.1, 9.9])
+        # Arrange
+        runs = ([0.1, 0.1, 0.1], [0.1, 0.1, 9.9])
 
+        # Act
+        steady, hiccup = (self.timing_of(seconds) for seconds in runs)
+
+        # Assert
         self.assertEqual(steady.median, hiccup.median)
 
     def test_a_run_faster_than_the_floor_beats_it(self) -> None:
-        self.assertTrue(self._timed([0.001]).beats(100))
+        # Arrange
+        found = self.timing_of([0.001])
+
+        # Act
+        beaten = found.beats(100)
+
+        # Assert
+        self.assertIs(beaten, True)
 
     def test_and_one_slower_does_not(self) -> None:
-        self.assertFalse(self._timed([10.0]).beats(1000))
+        # Arrange
+        found = self.timing_of([10.0])
+
+        # Act
+        beaten = found.beats(1000)
+
+        # Assert
+        self.assertIs(beaten, False)
 
     def test_a_run_exactly_at_the_floor_beats_it(self) -> None:
         found = speed.Timed("z80", instructions=1000, seconds=[1.0])
@@ -54,7 +93,14 @@ class MeasurementTest(unittest.TestCase):
         self.assertTrue(found.beats(1000))
 
     def test_a_measurement_prints_as_the_rate_it_found(self) -> None:
-        self.assertIn("T states per second", repr(self._timed([0.1])))
+        # Arrange
+        found = self.timing_of([0.1])
+
+        # Act
+        printed = repr(found)
+
+        # Assert
+        self.assertIn("T states per second", printed)
 
 
 class RunTest(unittest.TestCase):
@@ -77,6 +123,16 @@ class RunTest(unittest.TestCase):
         found = speed.timed(instructions=64, repeats=1, clock=ticking(0.1))
 
         self.assertEqual(found.rate, 640)
+
+    def test_a_run_left_to_its_own_clock_measures_real_time(self) -> None:
+        # Arrange
+        instructions = 64
+
+        # Act
+        found = speed.timed(instructions=instructions, repeats=2)
+
+        # Assert
+        self.assertEqual((len(found.seconds), all(one > 0 for one in found.seconds)), (2, True))
 
 
 class ReportTest(unittest.TestCase):
@@ -137,36 +193,40 @@ class OptionTest(unittest.TestCase):
 
 
 class EntryTest(unittest.TestCase):
-    def _run(self, argv: Sequence[str], **held: Any) -> tuple[int, str]:
+    def invoked(self, argv: Sequence[str], **held: Any) -> tuple[int, str]:
         said: list[str] = []
         code = speed.main(argv, say=said.append, **held)
         return code, " ".join(said)
 
     def test_a_run_that_beats_the_floor_passes(self) -> None:
-        code, said = self._run(
-            [],
-            floor=100,
-            run=lambda **_options: speed.Timed("z80", 1000, [0.001]),
-        )
+        # Arrange
+        timed = speed.Timed("z80", 1000, [0.001])
 
-        self.assertEqual(code, 0)
-        self.assertNotIn("below the floor", said)
+        # Act
+        code, said = self.invoked([], floor=100, run=lambda **_options: timed)
+
+        # Assert
+        self.assertEqual((code, "below the floor" in said), (0, False))
 
     def test_a_run_that_does_not_fails_and_says_so(self) -> None:
-        code, said = self._run(
-            [],
-            floor=1_000_000,
-            run=lambda **_options: speed.Timed("z80", 1000, [1.0]),
-        )
+        # Arrange
+        timed = speed.Timed("z80", 1000, [1.0])
 
-        self.assertEqual(code, 1)
-        self.assertIn("below the floor", said)
+        # Act
+        code, said = self.invoked([], floor=1_000_000, run=lambda **_options: timed)
+
+        # Assert
+        self.assertEqual((code, "below the floor" in said), (1, True))
 
     def test_an_unusable_option_is_reported_rather_than_raised(self) -> None:
-        code, said = self._run(["--nonsense"])
+        # Arrange
+        argv = ["--nonsense"]
 
-        self.assertEqual(code, 2)
-        self.assertIn("--nonsense", said)
+        # Act
+        code, said = self.invoked(argv)
+
+        # Assert
+        self.assertEqual((code, "--nonsense" in said), (2, True))
 
 
 if __name__ == "__main__":

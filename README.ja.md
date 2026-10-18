@@ -8,7 +8,7 @@ Zilog Z80、NEC µPD780C、Zilog Z84C00をPythonで実装したものです。1�
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3**種類のパーツ、**1,604,000**件の適合性ケースと**22,005,372**Tステートを比較して失敗は**0**件、テスト**1,422**件、ステートメントとブランチのカバレッジ**100%**、依存関係なし
+**3**種類のパーツ、**1,604,000**件の適合性ケースと**22,005,372**Tステートを比較して失敗は**0**件、テスト**1,424**件、ステートメントとブランチのカバレッジ**100%**、依存関係なし
 
 ```python
 from z80 import Cpu, Memory
@@ -91,7 +91,7 @@ python3 z80/doctor.py
 | `steps` | 最後のリセット以降の命令数です |
 | `halted` | `HALT`を実行中かどうかです。`HALT`サイクルはそれぞれ4Tステートかかります |
 | `registers` | 後述の`Registers`ファイルです |
-| `bus` | 最後の命令です。`states`はそのTステート数、`cycles`はマシンサイクルごとの`(state, kind)`のリスト、`log`はTステートごとの`(address, value, pins)`のリストです。2つのリストは`recording=True`のときだけ埋まります |
+| `bus` | 最後の命令です。`states`はそのTステート数、`cycles`はマシンサイクルごとの`(state, kind)`のリスト、`log`はTステートごとの`(address, value, pins)`のリストです。2つのリストは`recording=True`のときだけ埋まります。`kind`は`fetch`、`read`、`write`、`portRead`、`portWrite`、`acknowledge`のいずれかです |
 | `memory`、`ports` | パーツの構築に使われたものです |
 | `model` | 正規のモデル名です |
 
@@ -469,7 +469,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 コーパスのコミットは[`conformance/suites.json`](conformance/suites.json)で固定されており、週次のジョブがupstreamのheadに対して実行され、プルリクエストまたはissueを作成します。何もパースしなかった実行も、すべてをチェックした実行と同じく0で終了するため、各ランナーはチェックしたケース数を表示します。
 
-マニュアルは別に管理しています。[`conformance/hardware.json`](conformance/hardware.json)は、文書から取ったすべての事実をその文とページとともに保持し、[`conformance/hardware.test.py`](conformance/hardware.test.py)は、マシン上にコーパスがない状態で、モデルの定数とマシンサイクルをそれに照らしてチェックします。`python3 -m conformance.timing`は、命令ごとのタイミング行217行をすべて実行し、それぞれをパーツが費やすTステート数と比較します。マニュアルは5か所で自己矛盾しています。3か所は99、260、269ページのタイミング行で、Mサイクル数が自身のTステートの内訳と一致しません。残りの2か所は本文と図が一致しません。2つの情報源が食い違うすべての箇所は、それを決着させる方法とともに[`conformance/divergences.json`](conformance/divergences.json)にあります。
+マニュアルは別に管理しています。[`conformance/hardware.json`](conformance/hardware.json)は、文書から取ったすべての事実をその文とページとともに保持し、[`conformance/hardware.test.py`](conformance/hardware.test.py)とその隣の`hardware_*.test.py`ファイルは、マシン上にコーパスがない状態でパーツを動かし、マシンサイクルを1つずつそれに照らしてチェックします。`python3 -m conformance.timing`は、命令ごとのタイミング行217行をすべて実行し、それぞれをパーツが費やすTステート数と比較します。マニュアルは5か所で自己矛盾しています。3か所は99、260、269ページのタイミング行で、Mサイクル数が自身のTステートの内訳と一致しません。残りの2か所は本文と図が一致しません。2つの情報源が食い違うすべての箇所は、それを決着させる方法とともに[`conformance/divergences.json`](conformance/divergences.json)にあります。
 
 [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)には、忠実性が測定ではなく主張にとどまっている18の問いが、それぞれを解決する測定とともに列挙されています。フラグレジスタのビット3とビット5、および内部の`WZ`レジスタは、Zilogのユーザーマニュアルとデータブックの780ページのどこにも登場しません。
 

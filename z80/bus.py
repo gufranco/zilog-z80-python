@@ -99,10 +99,10 @@ class Bus:
 
     def __init__(
         self,
+        on_state: Callable[[], None],
+        waiting: Callable[[], bool],
         recording: bool = False,
         shape: str = MANUAL,
-        on_state: Callable[[], None] | None = None,
-        waiting: Callable[[], bool] | None = None,
     ) -> None:
         if shape not in SHAPES:
             raise UnknownShape(f"{shape} is not a pin shape; there are {', '.join(SHAPES)}")
@@ -111,7 +111,7 @@ class Bus:
         self.on_state = on_state
         self.recording = recording
         self.shape = shape
-        self.log: list[tuple[int | None, int | None, str]] = []
+        self.log: list[tuple[int, int | None, str]] = []
         self.cycles: list[tuple[int, str]] = []
         self.states = 0
         self.address = 0
@@ -125,14 +125,12 @@ class Bus:
         self.cycles.clear()
         self.states = 0
 
-    def mark(self, address: int | None, value: int | None, pins: str) -> None:
+    def mark(self, address: int, value: int | None, pins: str) -> None:
         self.states += 1
-        if address is not None:
-            self.address = address & ADDRESS_MASK
+        self.address = address & ADDRESS_MASK
         if self.recording:
-            self.log.append((None if address is None else address & ADDRESS_MASK, value, pins))
-        if self.on_state is not None:
-            self.on_state()
+            self.log.append((self.address, value, pins))
+        self.on_state()
 
     def spend(
         self,
@@ -146,7 +144,7 @@ class Bus:
         pins = COLUMNS[cycle] if self.follows_the_manual else recorded
         for index, (address, value, held) in enumerate(zip(addresses, values, pins, strict=True)):
             self.mark(address, value, held)
-            if index == SAMPLE_WAIT_AFTER and self.waiting is not None:
+            if index == SAMPLE_WAIT_AFTER:
                 while self.waiting():
                     self.mark(address, None, held)
 

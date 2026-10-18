@@ -12,9 +12,7 @@ from typing import Any, NoReturn, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import doctor
-from z80.core import Cpu
-from z80.memory import SparseMemory
+from z80 import MODELS, doctor
 
 
 class Complaint(Exception):
@@ -93,12 +91,14 @@ class ExaminationTest(unittest.TestCase):
         self.assertEqual(names.count("z80"), 1)
 
     def test_and_every_part_it_can_build(self) -> None:
-        from z80 import models
+        # Arrange
+        models = sorted(MODELS)
 
+        # Act
         names = [one.name for one in doctor.examine()]
 
-        for model in models.MODELS:
-            self.assertIn(model, names, model)
+        # Assert
+        self.assertEqual([model for model in models if model not in names], [])
 
     def test_and_where_it_looks_for_suites(self) -> None:
         self.assertIn("looking in", [one.name for one in doctor.examine()])
@@ -120,17 +120,19 @@ class ExaminationTest(unittest.TestCase):
         self.assertIn("Complaint: the core exploded", found[0].detail)
 
     def test_a_part_that_builds_and_will_not_reset_is_reported_as_broken(self) -> None:
-        class WillNotReset(Cpu):
-            @override
+        # Arrange
+        class WillNotReset:
             def reset(self) -> NoReturn:
                 raise Complaint("the pin did nothing")
 
-        def build(_name: str) -> Cpu:
-            return WillNotReset(SparseMemory())
+        def build(_name: str) -> Any:
+            return WillNotReset()
 
+        # Act
         found = [one for one in doctor.examine(build=build) if one.name == "z80"]
 
-        self.assertFalse(found[0].ok)
+        # Assert
+        self.assertEqual((found[0].ok, found[0].detail), (False, "Complaint: the pin did nothing"))
 
     def test_a_part_that_builds_reports_where_the_reset_left_it(self) -> None:
         found = [one for one in doctor.examine() if one.name == "z80"]
@@ -146,85 +148,126 @@ class ExaminationTest(unittest.TestCase):
 
 class DeclaredTest(unittest.TestCase):
     def test_what_the_definition_names_is_reported(self) -> None:
-        found = doctor._declared(a_definition)
+        # Arrange
+        read = a_definition
 
-        self.assertTrue(found.ok)
-        self.assertIn("1 suites: z80", found.detail)
+        # Act
+        found = doctor.check_declared(read)
+
+        # Assert
+        self.assertEqual((found.ok, found.detail), (True, "1 suites: z80"))
 
     def test_an_absent_definition_is_reported_rather_than_raised(self) -> None:
+        # Arrange
         def missing() -> NoReturn:
             raise FileNotFoundError(2, "No such file or directory")
 
-        found = doctor._declared(missing)
+        # Act
+        found = doctor.check_declared(missing)
 
+        # Assert
         self.assertTrue(found.ok)
         self.assertIn("normal state of an install", found.detail)
 
     def test_a_definition_that_will_not_parse_is_reported_rather_than_hidden(self) -> None:
+        # Arrange
         def broken() -> NoReturn:
             raise Complaint("the definition exploded")
 
-        found = doctor._declared(broken)
+        # Act
+        found = doctor.check_declared(broken)
 
+        # Assert
         self.assertFalse(found.ok)
         self.assertIn("Complaint: the definition exploded", found.detail)
 
     def test_a_definition_naming_nothing_is_not_well(self) -> None:
-        found = doctor._declared(lambda: {"suites": []})
+        # Arrange
+        empty: dict[str, Any] = {"suites": []}
 
-        self.assertFalse(found.ok)
+        # Act
+        found = doctor.check_declared(lambda: empty)
+
+        # Assert
+        self.assertIs(found.ok, False)
 
 
 class SuiteTest(unittest.TestCase):
     def test_a_complete_suite_is_well(self) -> None:
-        with a_cache(4) as where:
-            found = doctor._suites(a_definition, Path(where))
+        # Arrange
+        where = self.enterContext(a_cache(4))
 
-        self.assertTrue(found[0].ok)
-        self.assertIn("4 files", found[0].detail)
+        # Act
+        found = doctor.check_suites(a_definition, Path(where))
+
+        # Assert
+        self.assertEqual((found[0].ok, "4 files" in found[0].detail), (True, True))
 
     def test_and_names_the_commit_it_is_pinned_at(self) -> None:
-        with a_cache(4) as where:
-            found = doctor._suites(a_definition, Path(where))
+        # Arrange
+        where = self.enterContext(a_cache(4))
 
+        # Act
+        found = doctor.check_suites(a_definition, Path(where))
+
+        # Assert
         self.assertIn("ebe1875", found[0].detail)
 
     def test_a_partial_fetch_is_not_well(self) -> None:
-        with a_cache(2) as where:
-            found = doctor._suites(a_definition, Path(where))
+        # Arrange
+        where = self.enterContext(a_cache(2))
 
-        self.assertFalse(found[0].ok)
-        self.assertIn("the definition names 4", found[0].detail)
+        # Act
+        found = doctor.check_suites(a_definition, Path(where))
+
+        # Assert
+        self.assertEqual((found[0].ok, "the definition names 4" in found[0].detail), (False, True))
 
     def test_and_says_why_that_matters(self) -> None:
-        with a_cache(2) as where:
-            found = doctor._suites(a_definition, Path(where))
+        # Arrange
+        where = self.enterContext(a_cache(2))
 
+        # Act
+        found = doctor.check_suites(a_definition, Path(where))
+
+        # Assert
         self.assertIn("reports a pass", str(found[0].advice))
 
     def test_a_suite_nobody_fetched_is_the_ordinary_case(self) -> None:
-        with tempfile.TemporaryDirectory() as where:
-            found = doctor._suites(a_definition, Path(where))
+        # Arrange
+        where = self.enterContext(a_cache(0))
 
-        self.assertTrue(found[0].ok)
-        self.assertIn("fresh checkout", found[0].detail)
+        # Act
+        found = doctor.check_suites(a_definition, Path(where))
+
+        # Assert
+        self.assertEqual((found[0].ok, "fresh checkout" in found[0].detail), (True, True))
 
     def test_a_definition_that_is_absent_leaves_nothing_to_report(self) -> None:
+        # Arrange
         def missing() -> NoReturn:
             raise FileNotFoundError(2, "No such file or directory")
 
-        self.assertEqual(doctor._suites(missing, Path("/nowhere")), [])
+        # Act
+        found = doctor.check_suites(missing, Path("/nowhere"))
+
+        # Assert
+        self.assertEqual(found, [])
 
     def test_a_definition_that_will_not_parse_is_reported_here_too(self) -> None:
+        # Arrange
         def broken() -> NoReturn:
             raise Complaint("the definition exploded")
 
-        found = doctor._suites(broken, Path("/nowhere"))
+        # Act
+        found = doctor.check_suites(broken, Path("/nowhere"))
 
+        # Assert
         self.assertFalse(found[0].ok)
         self.assertIn("Complaint", found[0].detail)
 
     def test_a_suite_directory_that_cannot_be_read_is_reported(self) -> None:
+        # Arrange
         class Refuses(Path):
             @override
             def glob(self, *_args: Any, **_kwargs: Any) -> NoReturn:
@@ -234,23 +277,36 @@ class SuiteTest(unittest.TestCase):
             def __truediv__(self, _other: Any) -> "Refuses":
                 return self
 
-        found = doctor._suite(DECLARED["suites"][0], Refuses("/nowhere"))
+        # Act
+        found = doctor.check_suite(DECLARED["suites"][0], Refuses("/nowhere"))
 
-        self.assertFalse(found.ok)
-        self.assertIn("could not be read", found.detail)
+        # Assert
+        self.assertEqual((found.ok, "could not be read" in found.detail), (False, True))
 
     def test_a_suite_with_no_stated_file_count_is_taken_as_it_is(self) -> None:
-        with a_cache(2) as where:
-            found = doctor._suite({"name": "z80", "path": "v1"}, Path(where))
+        # Arrange
+        where = self.enterContext(a_cache(2))
 
-        self.assertTrue(found.ok)
+        # Act
+        found = doctor.check_suite({"name": "z80", "path": "v1"}, Path(where))
+
+        # Assert
+        self.assertIs(found.ok, True)
 
 
 class DefinitionTest(unittest.TestCase):
     def test_the_definition_is_read_from_the_conformance_directory(self) -> None:
-        held = doctor._read_definition()
+        # Arrange
+        expected = doctor.DEFINITION
 
-        self.assertIn("suites", held)
+        # Act
+        held = doctor.read_definition()
+
+        # Assert
+        self.assertEqual(
+            (expected.parent.name, expected.name, held["suites"][0]["name"]),
+            ("conformance", "suites.json", "z80"),
+        )
 
 
 class ReportTest(unittest.TestCase):
@@ -326,17 +382,22 @@ class PathTest(unittest.TestCase):
         self.assertEqual(doctor.VERSION, found.group(1))
 
     def test_a_version_file_naming_nothing_reads_as_unknown(self) -> None:
+        # Arrange
         where = Path(tempfile.mkdtemp()) / "version.py"
         where.write_text("NOTHING = 1\n")
 
-        self.assertEqual(doctor._version(where), "unknown")
+        # Act
+        found = doctor.installed_version(where)
+
+        # Assert
+        self.assertEqual(found, "unknown")
 
     def test_a_root_that_is_not_on_the_path_is_put_there(self) -> None:
         # Arrange
         path: list[str] = []
 
         # Act
-        added = doctor._reachable(Path("/somewhere"), path)
+        added = doctor.reachable(Path("/somewhere"), path)
 
         # Assert
         self.assertEqual((added, path), (True, ["/somewhere"]))
@@ -346,7 +407,7 @@ class PathTest(unittest.TestCase):
         path = ["/somewhere"]
 
         # Act
-        added = doctor._reachable(Path("/somewhere"), path)
+        added = doctor.reachable(Path("/somewhere"), path)
 
         # Assert
         self.assertEqual((added, path), (False, ["/somewhere"]))

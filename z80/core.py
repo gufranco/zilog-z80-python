@@ -95,9 +95,7 @@ class Cpu:
 
         self.on_cycle: Callable[[], None] | None = None
 
-        self.bus = bus.Bus(
-            recording=recording, shape=shape, on_state=self.spend, waiting=self.wants_a_wait
-        )
+        self.bus = bus.Bus(self.spend, self.wants_a_wait, recording=recording, shape=shape)
         self.steps = 0
         self.cycles = 0
         self.halted = False

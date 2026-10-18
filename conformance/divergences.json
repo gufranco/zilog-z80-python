@@ -181,7 +181,7 @@
         "source": "Zilog UM008011-0816, manual page 12"
       },
       "packageFollows": "document",
-      "consequence": "Cpu.interrupt and Cpu.nonmaskable are implemented and cost the thirteen, thirteen, nineteen and eleven T states the manual's own totals give. conformance/hardware.test.py checks those totals. No recording checks the pins, because the corpus contains none.",
+      "consequence": "Cpu.interrupt and Cpu.nonmaskable are implemented and cost the thirteen, thirteen, nineteen and eleven T states the manual's own totals give. conformance/hardware_interrupts.test.py checks those totals. No recording checks the pins, because the corpus contains none.",
       "why": "The generator does emit entries for the interrupt request and for reset, and the published corpus leaves both out. Neither would settle anything if it were published: each case is an ordinary instruction stepped from the given state, with the opcode at the program counter deciding the transcript, so the interrupt entry is not a recording of an acknowledge cycle at all.",
       "wouldSettleIt": [
         "A logic capture of a real Z80 answering an interrupt, which would give the pins and the length together.",

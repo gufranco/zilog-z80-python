@@ -4,11 +4,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import errors, opcodes
+from z80 import Truncated, decode, disassemble
 
 
 def render(program: list[int], at: int = 0x8000) -> str:
-    return opcodes.decode(bytes(program), 0, at).text
+    return decode(bytes(program), 0, at).text
 
 
 class SimpleTest(unittest.TestCase):
@@ -119,46 +119,106 @@ class ExtendedTest(unittest.TestCase):
 
 class LengthTest(unittest.TestCase):
     def test_an_instruction_reports_how_many_bytes_it_took(self) -> None:
-        self.assertEqual(opcodes.decode(bytes([0x21, 0x34, 0x12]), 0, 0).size, 3)
+        # Arrange
+        data = bytes([0x21, 0x34, 0x12])
+
+        # Act
+        found = decode(data, 0, 0)
+
+        # Assert
+        self.assertEqual(found.size, 3)
 
     def test_a_prefixed_instruction_counts_its_prefix(self) -> None:
-        self.assertEqual(opcodes.decode(bytes([0xDD, 0x7E, 0x05]), 0, 0).size, 3)
+        # Arrange
+        data = bytes([0xDD, 0x7E, 0x05])
+
+        # Act
+        found = decode(data, 0, 0)
+
+        # Assert
+        self.assertEqual(found.size, 3)
 
     def test_a_doubly_prefixed_instruction_counts_all_four(self) -> None:
-        self.assertEqual(opcodes.decode(bytes([0xDD, 0xCB, 0x05, 0x46]), 0, 0).size, 4)
+        # Arrange
+        data = bytes([0xDD, 0xCB, 0x05, 0x46])
+
+        # Act
+        found = decode(data, 0, 0)
+
+        # Assert
+        self.assertEqual(found.size, 4)
 
     def test_an_instruction_cut_short_by_the_end_of_the_data_is_refused(self) -> None:
-        with self.assertRaises(errors.Truncated):
-            opcodes.decode(bytes([0x21, 0x34]), 0, 0)
+        # Arrange
+        data = bytes([0x21, 0x34])
+
+        # Act
+        attempt = lambda: decode(data, 0, 0)  # noqa: E731
+
+        # Assert
+        self.assertRaises(Truncated, attempt)
 
     def test_a_prefix_with_nothing_after_it_is_refused_too(self) -> None:
-        with self.assertRaises(errors.Truncated):
-            opcodes.decode(bytes([0xDD]), 0, 0)
+        # Arrange
+        data = bytes([0xDD])
+
+        # Act
+        attempt = lambda: decode(data, 0, 0)  # noqa: E731
+
+        # Assert
+        self.assertRaises(Truncated, attempt)
 
 
 class ListingTest(unittest.TestCase):
     def test_a_run_of_bytes_becomes_a_run_of_instructions(self) -> None:
-        listing = opcodes.disassemble(bytes([0x00, 0x00, 0xC9]), 0x8000)
+        # Arrange
+        data = bytes([0x00, 0x00, 0xC9])
 
+        # Act
+        listing = disassemble(data, 0x8000)
+
+        # Assert
         self.assertEqual([entry.text for entry in listing], ["nop", "nop", "ret"])
 
     def test_each_instruction_knows_where_it_sat(self) -> None:
-        listing = opcodes.disassemble(bytes([0x00, 0xC9]), 0x8000)
+        # Arrange
+        data = bytes([0x00, 0xC9])
 
+        # Act
+        listing = disassemble(data, 0x8000)
+
+        # Assert
         self.assertEqual([entry.address for entry in listing], [0x8000, 0x8001])
 
     def test_a_trailing_byte_that_cannot_finish_is_shown_as_data(self) -> None:
-        listing = opcodes.disassemble(bytes([0x00, 0x21]), 0x8000)
+        # Arrange
+        data = bytes([0x00, 0x21])
 
+        # Act
+        listing = disassemble(data, 0x8000)
+
+        # Assert
         self.assertEqual(listing[-1].text, "db $21")
 
     def test_and_the_listing_picks_up_again_from_the_byte_after_it(self) -> None:
-        listing = opcodes.disassemble(bytes([0x00, 0x21, 0x34]), 0x8000)
+        # Arrange
+        data = bytes([0x00, 0x21, 0x34])
 
+        # Act
+        listing = disassemble(data, 0x8000)
+
+        # Assert
         self.assertEqual([entry.text for entry in listing], ["nop", "db $21", "inc (hl)"])
 
     def test_an_empty_run_produces_an_empty_listing(self) -> None:
-        self.assertEqual(opcodes.disassemble(b"", 0x8000), [])
+        # Arrange
+        data = b""
+
+        # Act
+        listing = disassemble(data, 0x8000)
+
+        # Assert
+        self.assertEqual(listing, [])
 
 
 if __name__ == "__main__":

@@ -48,7 +48,7 @@ class Timed:
         return f"<Timed {self.part}, {self.rate:,.0f} T states per second>"
 
 
-def _clock() -> float:  # pragma: no cover
+def _clock() -> float:
     return time.perf_counter()
 
 

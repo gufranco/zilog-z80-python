@@ -1,11 +1,11 @@
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import Ports, SparseMemory, core, opcodes
-from z80.core import Cpu
+from z80 import Cpu, Ports, SparseMemory, decode, disassemble
 
 AT = 0x8000
 
@@ -26,11 +26,11 @@ def program(prefix: tuple[int, ...], opcode: int) -> list[int]:
     return [*prefix, opcode]
 
 
-def machine(bytes_: list[int], state: dict[str, int]) -> Cpu:
+def machine(bytes_: list[int], state: dict[str, int]) -> Any:
     space = SparseMemory(seed=3)
     for offset, value in enumerate(bytes_):
         space.write8(AT + offset, value)
-    cpu = core.Cpu(space, Ports(seed=3))
+    cpu = Cpu("z80", space, ports=Ports(seed=3))
     cpu.registers.pc = AT
     cpu.registers.sp = 0x9000
     cpu.registers.hl = 0x4000
@@ -96,59 +96,87 @@ class ExecutionTest(unittest.TestCase):
         self.assertEqual((cpu.registers.pc, cpu.halted, cpu.steps), (0x0000, False, 0))
 
     def test_a_machine_with_no_ports_still_runs_the_instructions_that_use_them(self) -> None:
+        # Arrange
         space = SparseMemory(seed=3)
         for offset, value in enumerate([0xED, 0x40]):
             space.write8(AT + offset, value)
-        cpu = core.Cpu(space, None)
+        cpu = Cpu("z80", space)
         cpu.registers.pc = AT
 
+        # Act
         cpu.step()
 
+        # Assert
         self.assertEqual(cpu.registers.pc, AT + 2)
 
     def test_a_machine_with_no_ports_survives_every_instruction_that_reaches_one(self) -> None:
+        # Arrange
         for bytes_ in ([0xD3, 0x10], [0xDB, 0x10], [0xED, 0x41], [0xED, 0xA2], [0xED, 0xA3]):
             space = SparseMemory(seed=3)
             for offset, value in enumerate(bytes_):
                 space.write8(AT + offset, value)
-            cpu = core.Cpu(space, None)
+            cpu = Cpu("z80", space)
             cpu.registers.pc = AT
             cpu.registers.bc = 0x0102
 
+            # Act
             cpu.step()
 
+            # Assert
             self.assertGreater(cpu.registers.pc, 0, str(bytes_))
 
 
 class ListingTest(unittest.TestCase):
     def test_every_instruction_in_the_whole_space_has_a_name(self) -> None:
+        # Arrange
         for prefix in PREFIXES:
             for opcode in range(0x100):
                 bytes_ = bytes([*program(prefix, opcode), 0x34, 0x12])
 
-                found = opcodes.decode(bytes_, 0, AT)
+                # Act
+                found = decode(bytes_, 0, AT)
 
+                # Assert
                 self.assertTrue(found.text.strip(), f"{bytes_.hex()}")
 
     def test_no_two_prefixes_produce_the_same_name_for_the_index_registers(self) -> None:
-        first = opcodes.decode(bytes([0xDD, 0x7E, 0x05]), 0, AT).text
-        second = opcodes.decode(bytes([0xFD, 0x7E, 0x05]), 0, AT).text
+        # Arrange
+        prefixes = (0xDD, 0xFD)
 
-        self.assertNotEqual(first, second)
+        # Act
+        names = [decode(bytes([prefix, 0x7E, 0x05]), 0, AT).text for prefix in prefixes]
+
+        # Assert
+        self.assertEqual(names, ["ld a,(ix+$05)", "ld a,(iy+$05)"])
 
     def test_a_run_of_every_opcode_disassembles_without_stopping(self) -> None:
-        listing = opcodes.disassemble(bytes(range(0x100)) * 2, AT)
+        # Arrange
+        data = bytes(range(0x100)) * 2
 
-        self.assertTrue(listing)
+        # Act
+        listing = disassemble(data, AT)
+
+        # Assert
+        self.assertEqual(sum(one.size for one in listing), len(data))
 
     def test_a_decoded_instruction_keeps_the_bytes_it_came_from(self) -> None:
-        found = opcodes.decode(bytes([0x21, 0x34, 0x12]), 0, AT)
+        # Arrange
+        data = bytes([0x21, 0x34, 0x12])
 
-        self.assertEqual(found.raw, bytes([0x21, 0x34, 0x12]))
+        # Act
+        found = decode(data, 0, AT)
+
+        # Assert
+        self.assertEqual(found.raw, data)
 
     def test_a_decoded_instruction_prints_as_its_address_and_its_name(self) -> None:
-        found = opcodes.decode(bytes([0x00]), 0, AT)
+        # Arrange
+        data = bytes([0x00])
 
+        # Act
+        found = decode(data, 0, AT)
+
+        # Assert
         self.assertEqual(repr(found), "<8000 nop>")
 
 

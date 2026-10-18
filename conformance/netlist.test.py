@@ -342,44 +342,59 @@ class ResolutionTest(Fixture):
         self.assertEqual(part.unsettled, 1)
 
     def test_the_rails_are_never_queued_for_resolution(self) -> None:
+        # Arrange
         part = self.part()
         queued: list[int] = []
 
-        part._queue(netlist.GROUND, queued)
+        # Act
+        part.enqueue(netlist.GROUND, queued)
 
+        # Assert
         self.assertEqual(queued, [])
 
     def test_a_net_is_queued_once_however_many_times_it_is_reached(self) -> None:
+        # Arrange
         part = self.part()
         queued: list[int] = []
 
-        part._queue(17, queued)
-        part._queue(17, queued)
+        # Act
+        part.enqueue(17, queued)
+        part.enqueue(17, queued)
 
+        # Assert
         self.assertEqual(queued, [17])
 
     def test_resolving_a_rail_does_nothing(self) -> None:
+        # Arrange
         part = self.part()
         before = bytes(part.state)
 
-        part._resolve(netlist.POWER, [])
+        # Act
+        part.resolve(netlist.POWER, [])
 
+        # Assert
         self.assertEqual(bytes(part.state), before)
 
     def test_a_group_seeded_on_a_rail_is_just_that_rail(self) -> None:
+        # Arrange
         part = self.part()
 
-        part._collect(netlist.GROUND)
+        # Act
+        part.collect_group(netlist.GROUND)
 
-        self.assertEqual(part._group, [netlist.GROUND])
+        # Assert
+        self.assertEqual(part.group, [netlist.GROUND])
 
     def test_a_net_reached_through_the_far_end_of_a_transistor_joins_the_group(self) -> None:
+        # Arrange
         part = self.part()
         part.on[2] = 1
 
-        part._regroup(19)
+        # Act
+        part.regroup(19)
 
-        self.assertIn(17, part._group)
+        # Assert
+        self.assertIn(17, part.group)
 
     def test_a_net_going_low_leaves_an_already_open_transistor_alone(self) -> None:
         part = self.part()
@@ -608,19 +623,22 @@ class MeasuredRatherThanTakenTest(unittest.TestCase):
         self.assertNotEqual(part.bus("reg_b", 8), 0x9A)
 
     def test_loading_the_pullup_entries_stops_the_netlist_ever_resting(self) -> None:
+        # Arrange
         held = (netlist.ROOT / "transdefs.js").read_text().splitlines()
         flagged = [line for line in held if line.rstrip().endswith("true,],")]
         with tempfile.TemporaryDirectory() as hold:
             spare = Path(hold) / "transdefs.js"
             spare.write_text("\n".join(line.replace("true,", "false,") for line in flagged) + "\n")
             part = netlist.Simulation()
-            part._read_transistors(spare)
+            part.read_transistors(spare)
 
+        # Act
         part.reset()
         part.load(netlist.SAMPLE)
         for _ in range(netlist.DEFAULT_HALF_CYCLES):
             part.half_cycle()
 
+        # Assert
         self.assertEqual(
             (len(flagged), part.unsettled > 0), (netlist.TRANSISTORS_THAT_ARE_PULLUPS, True)
         )

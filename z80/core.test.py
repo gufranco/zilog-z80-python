@@ -5,15 +5,19 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from z80 import Ports, SparseMemory, core, errors, flags
-from z80.core import Cpu
+from conformance.bench import FLAG, RECORD
+from z80 import Cpu, Ports, RunLimit, SparseMemory
+
+RESET = RECORD["facts"]["reset"]
+
+RESET_COST = RESET["minimumClockCycles"] + RESET["afterThePinReleases"]["states"]
 
 
-def machine(program: list[int], at: int = 0x8000, **fields: Any) -> tuple[Cpu, SparseMemory]:
+def machine(program: list[int], at: int = 0x8000, **fields: Any) -> tuple[Any, SparseMemory]:
     space = SparseMemory(seed=1)
     for offset, value in enumerate(program):
         space.write8(at + offset, value)
-    cpu = core.Cpu(space, Ports(seed=1))
+    cpu = Cpu("z80", space, ports=Ports(seed=1))
     cpu.registers.pc = at
     cpu.registers.sp = 0xFFFE
     cpu.registers.af = 0x0000
@@ -72,81 +76,111 @@ class LoadTest(unittest.TestCase):
 
 class ArithmeticTest(unittest.TestCase):
     def test_an_add_sets_carry_when_it_leaves_the_byte(self) -> None:
+        # Arrange
         cpu, _ = machine([0xC6, 0x01], a=0xFF)
 
+        # Act
         cpu.step()
 
+        # Assert
         self.assertEqual(cpu.registers.a, 0x00)
-        self.assertTrue(cpu.registers.f & flags.C)
-        self.assertTrue(cpu.registers.f & flags.Z)
+        self.assertEqual(cpu.registers.f & FLAG["c"], FLAG["c"])
+        self.assertEqual(cpu.registers.f & FLAG["z"], FLAG["z"])
 
     def test_an_add_sets_the_half_carry_from_the_low_nibble(self) -> None:
+        # Arrange
         cpu, _ = machine([0xC6, 0x01], a=0x0F)
 
+        # Act
         cpu.step()
 
-        self.assertTrue(cpu.registers.f & flags.H)
+        # Assert
+        self.assertEqual(cpu.registers.f & FLAG["h"], FLAG["h"])
 
     def test_an_add_reports_overflow_when_the_sign_is_wrong(self) -> None:
+        # Arrange
         cpu, _ = machine([0xC6, 0x01], a=0x7F)
 
+        # Act
         cpu.step()
 
-        self.assertTrue(cpu.registers.f & flags.PV)
+        # Assert
+        self.assertEqual(cpu.registers.f & FLAG["pv"], FLAG["pv"])
 
     def test_an_add_clears_the_subtract_flag(self) -> None:
-        cpu, _ = machine([0xC6, 0x01], a=0x00, f=flags.N)
+        # Arrange
+        cpu, _ = machine([0xC6, 0x01], a=0x00, f=FLAG["n"])
 
+        # Act
         cpu.step()
 
-        self.assertFalse(cpu.registers.f & flags.N)
+        # Assert
+        self.assertEqual(cpu.registers.f & FLAG["n"], 0)
 
     def test_a_subtract_sets_it(self) -> None:
+        # Arrange
         cpu, _ = machine([0xD6, 0x01], a=0x02)
 
+        # Act
         cpu.step()
 
-        self.assertTrue(cpu.registers.f & flags.N)
+        # Assert
+        self.assertEqual(cpu.registers.f & FLAG["n"], FLAG["n"])
 
     def test_a_compare_takes_its_hidden_bits_from_the_operand(self) -> None:
+        # Arrange
         cpu, _ = machine([0xFE, 0x28], a=0xFF)
 
+        # Act
         cpu.step()
 
-        self.assertEqual(cpu.registers.f & (flags.X | flags.Y), flags.X | flags.Y)
+        # Assert
+        self.assertEqual(cpu.registers.f & (FLAG["x"] | FLAG["y"]), FLAG["x"] | FLAG["y"])
 
     def test_a_subtract_takes_them_from_the_result(self) -> None:
+        # Arrange
         cpu, _ = machine([0xD6, 0xD7], a=0xFF)
 
+        # Act
         cpu.step()
 
-        self.assertEqual(cpu.registers.f & (flags.X | flags.Y), flags.X | flags.Y)
+        # Assert
+        self.assertEqual(cpu.registers.f & (FLAG["x"] | FLAG["y"]), FLAG["x"] | FLAG["y"])
 
 
 class LogicTest(unittest.TestCase):
     def test_an_and_sets_the_half_carry_and_clears_the_carry(self) -> None:
+        # Arrange
         cpu, _ = machine([0xE6, 0x0F], a=0xFF)
 
+        # Act
         cpu.step()
 
+        # Assert
         self.assertEqual(cpu.registers.a, 0x0F)
-        self.assertTrue(cpu.registers.f & flags.H)
-        self.assertFalse(cpu.registers.f & flags.C)
+        self.assertEqual(cpu.registers.f & FLAG["h"], FLAG["h"])
+        self.assertEqual(cpu.registers.f & FLAG["c"], 0)
 
     def test_an_or_clears_both(self) -> None:
+        # Arrange
         cpu, _ = machine([0xF6, 0x0F], a=0xF0)
 
+        # Act
         cpu.step()
 
+        # Assert
         self.assertEqual(cpu.registers.a, 0xFF)
-        self.assertFalse(cpu.registers.f & flags.H)
+        self.assertEqual(cpu.registers.f & FLAG["h"], 0)
 
     def test_a_logical_operation_reports_parity_rather_than_overflow(self) -> None:
+        # Arrange
         cpu, _ = machine([0xE6, 0x03], a=0xFF)
 
+        # Act
         cpu.step()
 
-        self.assertTrue(cpu.registers.f & flags.PV)
+        # Assert
+        self.assertEqual(cpu.registers.f & FLAG["pv"], FLAG["pv"])
 
 
 class ExchangeTest(unittest.TestCase):
@@ -213,10 +247,13 @@ class ControlTest(unittest.TestCase):
         self.assertEqual(cpu.registers.pc, 0x7FFE)
 
     def test_a_conditional_jump_not_taken_costs_only_its_operand(self) -> None:
-        cpu, _ = machine([0xC2, 0x34, 0x12], f=flags.Z)
+        # Arrange
+        cpu, _ = machine([0xC2, 0x34, 0x12], f=FLAG["z"])
 
+        # Act
         cpu.step()
 
+        # Assert
         self.assertEqual(cpu.registers.pc, 0x8003)
 
     def test_a_restart_goes_to_its_fixed_address(self) -> None:
@@ -245,18 +282,24 @@ class RefreshTest(unittest.TestCase):
 
 class ResetTest(unittest.TestCase):
     def test_a_reset_puts_the_program_counter_at_the_bottom(self) -> None:
-        cpu = core.Cpu(SparseMemory(seed=1), Ports(seed=1))
+        # Arrange
+        cpu = Cpu("z80", SparseMemory(seed=1), ports=Ports(seed=1))
+
+        # Act
         cpu.reset()
 
+        # Assert
         self.assertEqual(cpu.registers.pc, 0x0000)
 
     def test_a_reset_leaves_the_working_registers_holding_what_they_held(self) -> None:
-        first = core.Cpu(SparseMemory(), Ports(), seed=1)
-        first.reset()
-        second = core.Cpu(SparseMemory(), Ports(), seed=2)
-        second.reset()
+        # Arrange
+        parts = [Cpu("z80", SparseMemory(), ports=Ports(), seed=seed) for seed in (1, 2)]
 
-        self.assertNotEqual(first.registers.hl, second.registers.hl)
+        # Act
+        held = [part.reset().registers.hl for part in parts]
+
+        # Assert
+        self.assertNotEqual(held[0], held[1])
 
 
 class ClockTest(unittest.TestCase):
@@ -284,12 +327,15 @@ class ClockTest(unittest.TestCase):
         self.assertEqual(spent, 12)
 
     def test_the_tally_survives_a_reset_because_a_clock_does_not_rewind(self) -> None:
+        # Arrange
         cpu, _ = machine([0x00])
         cpu.step()
 
+        # Act
         cpu.reset()
 
-        self.assertEqual(cpu.cycles, 4 + core.RESET_STATES + core.RESUME_STATES)
+        # Assert
+        self.assertEqual(cpu.cycles, 4 + RESET_COST)
 
     def test_a_reset_costs_the_pin_hold_and_the_two_that_follow_it(self) -> None:
         cpu, _ = machine([0x00])
@@ -300,18 +346,25 @@ class ClockTest(unittest.TestCase):
         self.assertEqual(cpu.cycles - before, 5)
 
     def test_and_those_two_are_spent_after_the_pin_releases(self) -> None:
+        # Arrange
         cpu, _ = machine([0x00])
         before = cpu.cycles
 
+        # Act
         cpu.reset()
 
-        self.assertEqual(cpu.cycles - before, core.RESET_STATES + core.RESUME_STATES)
+        # Assert
+        self.assertEqual(cpu.cycles - before, RESET_COST)
 
     def test_a_bounded_run_gives_up_rather_than_hanging(self) -> None:
+        # Arrange
         cpu, _ = machine([0xC3, 0x00, 0x80])
 
-        with self.assertRaises(errors.RunLimit):
-            cpu.run_until(lambda _: False, limit=50)
+        # Act
+        attempt = lambda: cpu.run_until(lambda _: False, limit=50)  # noqa: E731
+
+        # Assert
+        self.assertRaises(RunLimit, attempt)
 
     def test_a_bounded_run_that_reaches_its_condition_does_not_raise(self) -> None:
         cpu, _ = machine([0x00, 0x00])

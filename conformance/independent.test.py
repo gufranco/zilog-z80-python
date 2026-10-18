@@ -8,15 +8,21 @@ from typing import Any, override
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from z80 import Cpu, flags, memory  # noqa: E402
+from z80 import Cpu, SparseMemory  # noqa: E402
 
 HELD = json.loads((Path(__file__).resolve().parent / "independent.json").read_text())
+
+BITS = json.loads((Path(__file__).resolve().parent / "hardware.json").read_text())["facts"][
+    "flagRegister"
+]["bits"]
+
+UNDOCUMENTED = (1 << BITS["x"]) | (1 << BITS["y"])
 
 START = 0x0100
 
 
 def run(program: Sequence[int], **setup: int) -> Any:
-    space = memory.SparseMemory()
+    space = SparseMemory()
     for offset, byte in enumerate(program):
         space.write8(START + offset, byte)
     cpu = Cpu("z80", space)
@@ -122,26 +128,24 @@ class InterruptAcceptanceTest(unittest.TestCase):
         self.assertFalse(self.taken((0xFB,), sp=0x8000, im=1))
 
     def test_a_return_from_interrupt_holds_it_when_the_two_disagreed(self) -> None:
-        space = memory.SparseMemory()
-        space.write8(START, 0xED)
-        space.write8(START + 1, 0x45)
-        cpu = Cpu("z80", space)
-        cpu.registers.pc, cpu.registers.sp = START, 0x8000
-        cpu.registers.iff1, cpu.registers.iff2, cpu.registers.im = False, True, 1
-        cpu.step()
+        # Arrange
+        cpu = run((0xED, 0x45), sp=0x8000, iff1=False, iff2=True, im=1)
 
-        self.assertFalse(cpu.irq(0xFF))
+        # Act
+        taken = cpu.irq(0xFF)
+
+        # Assert
+        self.assertIs(taken, False)
 
     def test_and_does_not_when_they_agreed(self) -> None:
-        space = memory.SparseMemory()
-        space.write8(START, 0xED)
-        space.write8(START + 1, 0x45)
-        cpu = Cpu("z80", space)
-        cpu.registers.pc, cpu.registers.sp = START, 0x8000
-        cpu.registers.iff1, cpu.registers.iff2, cpu.registers.im = True, True, 1
-        cpu.step()
+        # Arrange
+        cpu = run((0xED, 0x45), sp=0x8000, iff1=True, iff2=True, im=1)
 
-        self.assertTrue(cpu.irq(0xFF))
+        # Act
+        taken = cpu.irq(0xFF)
+
+        # Assert
+        self.assertIs(taken, True)
 
     def test_the_record_names_the_rule_the_manual_does_not_carry(self) -> None:
         rules = HELD["interruptAcceptance"]["rules"]
@@ -151,7 +155,7 @@ class InterruptAcceptanceTest(unittest.TestCase):
 
 class ModeZeroTest(unittest.TestCase):
     def machine(self, model: str = "z80") -> Any:
-        space = memory.SparseMemory()
+        space = SparseMemory()
         space.write8(START, 0x00)
         cpu = Cpu(model, space)
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
@@ -166,7 +170,8 @@ class ModeZeroTest(unittest.TestCase):
         self.assertEqual(cpu.registers.pc, START)
 
     def test_a_jump_still_reaches_where_it_was_told_to(self) -> None:
-        space = memory.SparseMemory()
+        # Arrange
+        space = SparseMemory()
         space.write8(START, 0x00)
         space.write8(START + 1, 0x34)
         space.write8(START + 2, 0x12)
@@ -174,8 +179,10 @@ class ModeZeroTest(unittest.TestCase):
         cpu.registers.pc, cpu.registers.sp = START, 0x8000
         cpu.registers.iff1, cpu.registers.im = True, 0
 
+        # Act
         cpu.irq(0xC3)
 
+        # Assert
         self.assertNotEqual(cpu.registers.pc, START)
 
     def test_a_single_byte_response_leaves_the_counter_alone_too(self) -> None:
@@ -191,7 +198,7 @@ class ModeZeroTest(unittest.TestCase):
 
 class ModeTwoVectorTest(unittest.TestCase):
     def landed(self, vector: int) -> int:
-        space = memory.SparseMemory()
+        space = SparseMemory()
         space.write8(START, 0x00)
         for address, value in ((0x00FE, 0x11), (0x00FF, 0x22), (0x0100, 0x33)):
             space.write8(address, value)
@@ -216,7 +223,7 @@ class ModeTwoVectorTest(unittest.TestCase):
 
 class ResponseCostTest(unittest.TestCase):
     def spent(self, mode: int, vector: int = 0xFF, nonmaskable: bool = False) -> int:
-        cpu = Cpu("z80", memory.SparseMemory())
+        cpu = Cpu("z80", SparseMemory())
         cpu.registers.sp, cpu.registers.pc = 0x8000, START
         cpu.registers.iff1, cpu.registers.im = True, mode
         if nonmaskable:
@@ -245,13 +252,14 @@ class ResponseCostTest(unittest.TestCase):
 
 class CarryRuleTest(unittest.TestCase):
     def carried(self, model: str, latch: int, f: int, a: int) -> int:
-        space = memory.SparseMemory()
+        space = SparseMemory()
         space.write8(START, 0x37)
         cpu = Cpu(model, space)
         cpu.registers.pc, cpu.registers.a, cpu.registers.f = START, a, f
         cpu.registers.q = latch
         cpu.step()
-        return cpu.registers.f & (flags.X | flags.Y)
+        held: int = cpu.registers.f & UNDOCUMENTED
+        return held
 
     def test_a_zilog_part_combines_the_accumulator_with_the_flags_when_the_latch_is_clear(
         self,

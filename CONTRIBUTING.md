@@ -15,11 +15,12 @@ uvx ruff@0.16.3 check .
 uvx mypy@1.14.1
 pnpm install --frozen-lockfile && pnpm run format:check
 uvx yamllint==1.38.0 --strict .
-python3 -m coverage erase
+cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
+"${cov[@]}" erase
 for f in $(find z80 conformance -name '*.test.py' | sort); do
-  python3 -m coverage run -a "$f" || echo "FAILED $f"
+  "${cov[@]}" run -a "$f" || echo "FAILED $f"
 done
-python3 -m coverage report
+"${cov[@]}" report
 python3 -m conformance.fetch ~/.cache/conformance-suites
 python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
 python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
@@ -39,8 +40,8 @@ back however correct it looks.
    manual UM008011-0816, pinned fact by fact with the sentence each figure came
    from, including all 184 of its per-instruction timing rows. It decides
    anything Zilog printed, and
-   [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the
-   model's constants and its timing against it.
+   [`conformance/hardware.test.py`](conformance/hardware.test.py), with the
+   `hardware_*.test.py` files beside it, runs the model's timing against it.
 2. The suite pinned in [`conformance/suites.json`](conformance/suites.json)
    decides what the manual does not: the two undocumented flag bits, the internal
    `WZ` register, the `Q` latch, every opcode the manual does not list, and where
@@ -64,9 +65,13 @@ repository root is the same check.
 
 ## Tests
 
-A test file sits beside the module it covers and is named after it. Test bodies
-carry no comments: arrange, act and assert are separated by one blank line each,
-and the test name says what behaviour is being pinned.
+A test file sits beside the module it covers and is named after it. Past 500
+lines it is split by subject into files named after what they hold. A test
+drives the package only through what `z80` exports and what the README documents
+on what those return, never through an inner module or a private name. Arrange,
+act and assert are each opened by their bare marker and separated by one blank
+line, those markers are the only comments a test carries, and the test name says
+what behaviour is being pinned.
 
 Tests that need a file nobody can distribute are skipped rather than passed when
 that file is absent, and they live apart from the rest so the coverage gate stays

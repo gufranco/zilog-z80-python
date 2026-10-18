@@ -4,16 +4,27 @@ import sys
 import unittest
 from collections.abc import Sequence
 from pathlib import Path
-from typing import override
+from typing import Any, override
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from z80 import core, flags, memory  # noqa: E402
+from z80 import Cpu, SparseMemory  # noqa: E402
 
 HELD = json.loads((Path(__file__).resolve().parent / "instruction-flags.json").read_text())
 
-BIT = {"S": flags.S, "Z": flags.Z, "H": flags.H, "P/V": flags.PV, "N": flags.N, "C": flags.C}
+PRINTED = json.loads((Path(__file__).resolve().parent / "hardware.json").read_text())["facts"][
+    "flagRegister"
+]["bits"]
+
+BIT = {
+    "S": 1 << PRINTED["s"],
+    "Z": 1 << PRINTED["z"],
+    "H": 1 << PRINTED["h"],
+    "P/V": 1 << PRINTED["pv"],
+    "N": 1 << PRINTED["n"],
+    "C": 1 << PRINTED["c"],
+}
 
 START = 0x0100
 
@@ -31,14 +42,14 @@ class ScriptedPorts:
         return None
 
 
-def machine(program: Sequence[int], seed: int, finishing: str | None) -> core.Cpu:
+def machine(program: Sequence[int], seed: int, finishing: str | None) -> Any:
     generator = random.Random(seed)
-    space = memory.SparseMemory()
+    space = SparseMemory()
     for offset, byte in enumerate(program):
         space.write8(START + offset, byte)
     for address in range(0x2000, 0x2010):
         space.write8(address, generator.randrange(256))
-    cpu = core.Cpu(space, ports=ScriptedPorts(generator))
+    cpu = Cpu("z80", space, ports=ScriptedPorts(generator))
     cpu.registers.pc = START
     cpu.registers.a = generator.randrange(256)
     cpu.registers.f = generator.randrange(256)
@@ -64,10 +75,10 @@ def finishing_kind(name: str) -> str | None:
 
 def holds(name: str, flag: str, rule: str, seed: int) -> bool:
     cpu = machine(HELD["encodings"][name], seed, finishing_kind(name))
-    mask = BIT[flag]
-    before = cpu.registers.f
+    mask: int = BIT[flag]
+    before: int = cpu.registers.f
     cpu.step()
-    after = cpu.registers.f
+    after: int = cpu.registers.f
     if rule == "is reset":
         return not after & mask
     if rule == "is set":
@@ -141,17 +152,18 @@ class AbsoluteTest(unittest.TestCase):
 
 class BitInstructionTest(unittest.TestCase):
     def after(self, program: Sequence[int]) -> tuple[int, int]:
-        space = memory.SparseMemory()
+        space = SparseMemory()
         for offset, byte in enumerate(program):
             space.write8(START + offset, byte)
-        cpu = core.Cpu(space)
+        cpu = Cpu("z80", space)
         cpu.registers.pc = START
         cpu.registers.hl = cpu.registers.ix = cpu.registers.iy = 0x2000
         cpu.registers.f = 0x00
         cpu.step()
-        return cpu.registers.f & flags.H, cpu.registers.f & flags.N
+        return cpu.registers.f & BIT["H"], cpu.registers.f & BIT["N"]
 
     def test_every_form_sets_the_half_carry_and_resets_the_negate(self) -> None:
+        # Arrange
         forms = {
             "register": (0xCB, 0x40),
             "through the pair": (0xCB, 0x46),
@@ -159,9 +171,11 @@ class BitInstructionTest(unittest.TestCase):
             "indexed by iy": (0xFD, 0xCB, 0x00, 0x46),
         }
 
+        # Act
         found = {name: self.after(program) for name, program in forms.items()}
 
-        self.assertEqual(set(found.values()), {(flags.H, 0)})
+        # Assert
+        self.assertEqual(set(found.values()), {(BIT["H"], 0)})
 
 
 class BlockTransferTest(unittest.TestCase):
@@ -177,27 +191,30 @@ class BlockTransferTest(unittest.TestCase):
             self.written = value
 
     def parity(self, value: int) -> int:
-        return flags.PV if bin(value & 0xFF).count("1") % 2 == 0 else 0
+        return BIT["P/V"] if bin(value & 0xFF).count("1") % 2 == 0 else 0
 
     def input_step(self, program: Sequence[int], value: int, b: int, c: int) -> int:
-        space = memory.SparseMemory()
+        space = SparseMemory()
         for offset, byte in enumerate(program):
             space.write8(START + offset, byte)
-        cpu = core.Cpu(space, ports=self.Port(value))
+        cpu = Cpu("z80", space, ports=self.Port(value))
         cpu.registers.pc, cpu.registers.b, cpu.registers.c = START, b, c
         cpu.registers.hl, cpu.registers.f = 0x2000, 0x00
         cpu.step()
         return int(cpu.registers.f)
 
     def test_the_negate_flag_carries_bit_seven_of_the_byte_moved(self) -> None:
-        wrong = [
-            value
-            for value in (0x00, 0x7F, 0x80, 0xFF)
-            if bool(self.input_step((0xED, 0xA2), value, 0x40, 0x10) & flags.N)
-            != bool(value & 0x80)
-        ]
+        # Arrange
+        values = (0x00, 0x7F, 0x80, 0xFF)
 
-        self.assertEqual(wrong, [])
+        # Act
+        negated = {
+            value: bool(self.input_step((0xED, 0xA2), value, 0x40, 0x10) & BIT["N"])
+            for value in values
+        }
+
+        # Assert
+        self.assertEqual(negated, {0x00: False, 0x7F: False, 0x80: True, 0xFF: True})
 
     def runs(self) -> list[tuple[int, int, int, int]]:
         return [
@@ -216,21 +233,31 @@ class BlockTransferTest(unittest.TestCase):
     def test_the_carry_and_half_carry_come_from_a_sum_the_manual_never_mentions(
         self,
     ) -> None:
+        # Arrange
+        runs = self.runs()
+
+        # Act
         wrong = [
             (b, c, value)
-            for b, c, value, f in self.runs()
-            if (bool(f & flags.C), bool(f & flags.H)) != (value + ((c + 1) & 0xFF) > 0xFF,) * 2
+            for b, c, value, f in runs
+            if (bool(f & BIT["C"]), bool(f & BIT["H"])) != (value + ((c + 1) & 0xFF) > 0xFF,) * 2
         ]
 
+        # Assert
         self.assertEqual(wrong, [])
 
     def test_and_the_parity_flag_from_the_same_sum(self) -> None:
+        # Arrange
+        runs = self.runs()
+
+        # Act
         wrong = [
             (b, c, value)
-            for b, c, value, f in self.runs()
-            if f & flags.PV != self.parity(((value + ((c + 1) & 0xFF)) & 7) ^ ((b - 1) & 0xFF))
+            for b, c, value, f in runs
+            if f & BIT["P/V"] != self.parity(((value + ((c + 1) & 0xFF)) & 7) ^ ((b - 1) & 0xFF))
         ]
 
+        # Assert
         self.assertEqual(wrong, [])
 
     def test_the_sum_the_manual_never_mentions_does_overflow_for_some_of_these(
@@ -243,24 +270,32 @@ class BlockTransferTest(unittest.TestCase):
         self.assertTrue(carried)
 
     def test_an_output_instruction_moves_the_byte_the_other_way(self) -> None:
+        # Arrange
         port = self.Port(0x00)
-        space = memory.SparseMemory()
+        space = SparseMemory()
         for offset, byte in enumerate((0xED, 0xA3)):
             space.write8(START + offset, byte)
         space.write8(0x2000, 0x5A)
-        cpu = core.Cpu(space, ports=port)
+        cpu = Cpu("z80", space, ports=port)
         cpu.registers.pc, cpu.registers.b, cpu.registers.c = START, 0x40, 0x10
         cpu.registers.hl = 0x2000
 
+        # Act
         cpu.step()
 
+        # Assert
         self.assertEqual(port.written, 0x5A)
 
     def test_the_manual_says_the_carry_is_untouched_and_it_is_not(self) -> None:
-        held = self.input_step((0xED, 0xA2), 0xFF, 0x40, 0x10)
+        # Arrange
+        program = (0xED, 0xA2)
 
+        # Act
+        held = self.input_step(program, 0xFF, 0x40, 0x10)
+
+        # Assert
         self.assertEqual(
-            (HELD["rules"]["INI"]["C"], bool(held & flags.C)), ("is not affected", True)
+            (HELD["rules"]["INI"]["C"], bool(held & BIT["C"])), ("is not affected", True)
         )
 
 

@@ -32,7 +32,7 @@ jobs:
       - name: Install the newest tools, unpinned on purpose
         run: |
           python -m pip install --disable-pip-version-check \
-            --upgrade ruff mypy coverage
+            --upgrade ruff mypy coverage setuptools
 
       - name: Formatting, as the newest formatter sees it
         run: ruff format --check .
@@ -83,4 +83,10 @@ jobs:
         run: python -m coverage report
 
       - name: Timing against the manufacturer's own figures
-        run: python conformance/hardware.test.py
+        run: |
+          status=0
+          for file in conformance/hardware*.test.py; do
+            python "${file}" || status=1
+          done
+          exit "${status}"
+        shell: bash

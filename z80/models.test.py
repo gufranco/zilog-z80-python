@@ -1,213 +1,413 @@
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import z80
-from z80 import Cpu, Ports, SparseMemory, bus, errors, models
-from z80.core import Cpu as Part
+from conformance.bench import pins_of, ran
+from z80 import (
+    MODELS,
+    Cpu,
+    Model,
+    Ports,
+    SparseMemory,
+    UnknownCarryRule,
+    UnknownModelError,
+)
+
+CARRY_RULES = ("zilog", "nec")
+
+
+def described(name: str) -> Model:
+    return MODELS[Cpu(name).model]
+
+
+def bare_output_from(name: str) -> int:
+    space = SparseMemory(seed=1)
+    space.write8(0x8000, 0xED)
+    space.write8(0x8001, 0x71)
+    ports = Ports(seed=1)
+    cpu = Cpu(name, space, ports=ports)
+    cpu.registers.pc = 0x8000
+    cpu.registers.bc = 0x1234
+    cpu.step()
+    sent: int = ports.log[-1][1]
+    return sent
+
+
+def stored(part: Any) -> set[int]:
+    return {part.memory.read8(address) for address in range(0x40)}
+
+
+def refusal(case: unittest.TestCase, model: str | None) -> str:
+    with case.assertRaises(UnknownModelError) as raised:
+        Cpu(model)
+    return str(raised.exception)
 
 
 class CatalogueTest(unittest.TestCase):
-    def test_the_family_covers_the_original_part(self) -> None:
-        self.assertIn("z80", models.MODELS)
+    def test_the_family_covers_the_three_parts(self) -> None:
+        # Arrange
+        expected = {"z80", "z84c00", "upd780c"}
 
-    def test_and_the_later_one_that_answers_differently(self) -> None:
-        self.assertIn("z84c00", models.MODELS)
+        # Act
+        named = set(MODELS)
 
-    def test_and_the_second_source_that_is_not_a_copy(self) -> None:
-        self.assertIn("upd780c", models.MODELS)
+        # Assert
+        self.assertEqual(named, expected)
 
     def test_every_model_names_a_carry_rule_somebody_measured(self) -> None:
-        rules = {model.carry_rule for model in models.MODELS.values()}
+        # Arrange
+        models = MODELS.values()
 
-        self.assertLessEqual(rules, set(models.CARRY_RULES))
+        # Act
+        rules = {model.carry_rule for model in models}
+
+        # Assert
+        self.assertLessEqual(rules, set(CARRY_RULES))
 
     def test_a_carry_rule_nobody_measured_is_refused(self) -> None:
-        with self.assertRaises(errors.UnknownCarryRule):
-            models.Model("invented", "a part nobody made", 0x00, carry_rule="guessed")
+        # Arrange
+        rule = "guessed"
+
+        # Act
+        attempt = lambda: Model("invented", "a part nobody made", 0x00, carry_rule=rule)  # noqa: E731
+
+        # Assert
+        self.assertRaises(UnknownCarryRule, attempt)
 
     def test_every_model_says_whether_a_suite_stands_behind_it(self) -> None:
-        held = {model.name: model.verified for model in models.MODELS.values()}
+        # Arrange
+        models = MODELS.values()
 
+        # Act
+        held = {model.name: model.verified for model in models}
+
+        # Assert
         self.assertEqual(held, {"z80": True, "z84c00": False, "upd780c": False})
 
     def test_the_two_zilog_parts_differ_only_in_what_the_bare_output_sends(self) -> None:
-        zilog, cmos = models.lookup("z80"), models.lookup("z84c00")
+        # Arrange
+        names = ("z80", "z84c00")
 
+        # Act
+        zilog, cmos = (described(name) for name in names)
+
+        # Assert
         self.assertEqual(
             (zilog.carry_rule == cmos.carry_rule, zilog.floating_output == cmos.floating_output),
             (True, False),
         )
 
     def test_and_the_nec_part_differs_only_in_where_the_carry_bits_come_from(self) -> None:
-        zilog, nec = models.lookup("z80"), models.lookup("upd780c")
+        # Arrange
+        names = ("z80", "upd780c")
 
+        # Act
+        zilog, nec = (described(name) for name in names)
+
+        # Assert
         self.assertEqual(
             (zilog.carry_rule == nec.carry_rule, zilog.floating_output == nec.floating_output),
             (False, True),
         )
 
     def test_every_model_says_what_it_is(self) -> None:
-        for model in models.MODELS.values():
-            self.assertTrue(model.summary.strip())
+        # Arrange
+        models = MODELS.values()
+
+        # Act
+        silent = [model.name for model in models if not model.summary.strip()]
+
+        # Assert
+        self.assertEqual(silent, [])
 
     def test_a_model_prints_as_something_a_person_can_read(self) -> None:
-        self.assertIn("z80", repr(models.lookup("z80")))
+        # Arrange
+        model = described("z80")
+
+        # Act
+        printed = repr(model)
+
+        # Assert
+        self.assertEqual(printed, "<Model z80, output with no source sends 0x00>")
 
 
 class NameTest(unittest.TestCase):
     def test_a_model_is_found_by_its_own_name(self) -> None:
-        self.assertEqual(models.lookup("z80").name, "z80")
+        # Arrange
+        name = "z80"
+
+        # Act
+        found = described(name)
+
+        # Assert
+        self.assertEqual(found.name, "z80")
 
     def test_case_does_not_matter(self) -> None:
-        self.assertEqual(models.lookup("Z80").name, "z80")
+        # Arrange
+        name = "Z80"
+
+        # Act
+        found = described(name)
+
+        # Assert
+        self.assertEqual(found.name, "z80")
 
     def test_neither_do_the_separators_people_write(self) -> None:
-        self.assertEqual(models.lookup("Z84-C00").name, "z84c00")
+        # Arrange
+        name = "Z84-C00"
+
+        # Act
+        found = described(name)
+
+        # Assert
+        self.assertEqual(found.name, "z84c00")
 
     def test_an_alias_reaches_the_part_it_names(self) -> None:
-        self.assertEqual(models.lookup("mostekmk3880").name, "z80")
+        # Arrange
+        name = "mostekmk3880"
+
+        # Act
+        found = described(name)
+
+        # Assert
+        self.assertEqual(found.name, "z80")
 
     def test_a_part_with_its_own_behaviour_is_its_own_model(self) -> None:
-        self.assertEqual(models.lookup("upd780c").name, "upd780c")
+        # Arrange
+        name = "upd780c"
+
+        # Act
+        found = described(name)
+
+        # Assert
+        self.assertEqual(found.name, "upd780c")
 
     def test_a_part_this_core_does_not_implement_is_refused(self) -> None:
-        for name in ("z180", "ez80"):
-            with self.assertRaises(errors.UnknownModelError):
-                models.lookup(name)
+        # Arrange
+        names = ("z180", "ez80")
+
+        # Act
+        refused = {name: refusal(self, name) for name in names}
+
+        # Assert
+        self.assertEqual(
+            refused,
+            {
+                name: f"{name} is not a model this family covers; it has upd780c, z80, z84c00"
+                for name in names
+            },
+        )
 
     def test_a_name_no_part_answers_to_is_refused(self) -> None:
-        with self.assertRaises(errors.UnknownModelError):
-            models.lookup("6502")
+        # Arrange
+        name = "6502"
+
+        # Act
+        attempt = lambda: described(name)  # noqa: E731
+
+        # Assert
+        self.assertRaises(UnknownModelError, attempt)
 
     def test_and_the_refusal_lists_what_there_is(self) -> None:
-        with self.assertRaises(errors.UnknownModelError) as caught:
-            models.lookup("nothing")
+        # Arrange
+        name = "nothing"
 
-        self.assertIn("z80", str(caught.exception))
+        # Act
+        said = refusal(self, name)
+
+        # Assert
+        self.assertEqual(
+            said, "nothing is not a model this family covers; it has upd780c, z80, z84c00"
+        )
 
 
 class BuildTest(unittest.TestCase):
     def test_a_model_builds_a_machine_that_knows_which_one_it_is(self) -> None:
-        cpu = Cpu("z80", SparseMemory(), ports=Ports())
+        # Arrange
+        name = "z80"
 
+        # Act
+        cpu = Cpu(name, SparseMemory(), ports=Ports())
+
+        # Assert
         self.assertEqual(cpu.model, "z80")
 
     def test_a_machine_it_builds_draws_the_pins_the_manual_draws(self) -> None:
-        cpu = Cpu("z80", SparseMemory(), ports=Ports())
+        # Arrange
+        cpu = ran((0x06, 0x42))
 
-        self.assertTrue(cpu.bus.follows_the_manual)
+        # Act
+        pins = pins_of(cpu, "read")
+
+        # Assert
+        self.assertEqual(pins, ["r-m-", "r-m-", "----"])
 
     def test_and_the_other_shape_reaches_it_like_any_other_option(self) -> None:
-        cpu = Cpu("z80", SparseMemory(), shape=bus.RECORDING)
+        # Arrange
+        cpu = ran((0x06, 0x42), shape="recording")
 
-        self.assertFalse(cpu.bus.follows_the_manual)
+        # Act
+        pins = pins_of(cpu, "read")
+
+        # Assert
+        self.assertEqual(pins, ["----", "r-m-", "----"])
 
     def test_a_machine_carries_the_carry_rule_its_model_names(self) -> None:
-        held = {name: Cpu(name, SparseMemory()).carry_rule for name in models.MODELS}
+        # Arrange
+        setup = {"a": 0x00, "f": 0x28, "q": 0x00}
 
-        self.assertEqual(held, {"z80": "zilog", "z84c00": "zilog", "upd780c": "nec"})
+        # Act
+        held = {name: ran((0x37,), setup, model=name).registers.f & 0x28 for name in MODELS}
+
+        # Assert
+        self.assertEqual(
+            held,
+            {name: 0x28 if MODELS[name].carry_rule == "zilog" else 0x00 for name in MODELS},
+        )
 
     def test_the_two_rules_disagree_where_the_latch_is_what_decides(self) -> None:
-        answers = set()
-        for name in ("z80", "upd780c"):
-            space = SparseMemory()
-            space.write8(0x0100, 0x37)
-            cpu = Cpu(name, space)
-            cpu.registers.pc, cpu.registers.a, cpu.registers.f = 0x0100, 0x00, 0x28
-            cpu.registers.q = 0
-            cpu.step()
-            answers.add(cpu.registers.f & 0x28)
+        # Arrange
+        setup = {"a": 0x00, "f": 0x28, "q": 0x00}
 
-        self.assertEqual(len(answers), 2)
+        # Act
+        answers = {
+            ran((0x37,), setup, model=name).registers.f & 0x28 for name in ("z80", "upd780c")
+        }
+
+        # Assert
+        self.assertEqual(answers, {0x28, 0x00})
 
     def test_the_original_part_sends_zero_for_the_output_with_no_source(self) -> None:
-        cpu, ports = self.machine("z80")
+        # Arrange
+        name = "z80"
 
-        cpu.step()
+        # Act
+        sent = bare_output_from(name)
 
-        self.assertEqual(ports.log[-1][1], 0x00)
+        # Assert
+        self.assertEqual(sent, 0x00)
 
     def test_the_later_part_sends_every_bit_instead(self) -> None:
-        cpu, ports = self.machine("z84c00")
+        # Arrange
+        name = "z84c00"
 
-        cpu.step()
+        # Act
+        sent = bare_output_from(name)
 
-        self.assertEqual(ports.log[-1][1], 0xFF)
-
-    def machine(self, name: str) -> tuple[Part, Ports]:
-        space = SparseMemory(seed=1)
-        space.write8(0x8000, 0xED)
-        space.write8(0x8001, 0x71)
-        ports = Ports(seed=1)
-        cpu = Cpu(name, space, ports=ports)
-        cpu.registers.pc = 0x8000
-        cpu.registers.bc = 0x1234
-        return cpu, ports
+        # Assert
+        self.assertEqual(sent, 0xFF)
 
 
 class QuietStoreTest(unittest.TestCase):
     def test_a_fill_puts_that_byte_everywhere(self) -> None:
-        part = z80.Cpu("z80", fill=0)
+        # Arrange
+        fill = 0x00
 
-        self.assertEqual({part.memory.read8(address) for address in range(0x40)}, {0})
+        # Act
+        part = z80.Cpu("z80", fill=fill)
+
+        # Assert
+        self.assertEqual(stored(part), {0x00})
 
     def test_and_any_byte_works_rather_than_only_zero(self) -> None:
-        part = z80.Cpu("z80", fill=0xAA)
+        # Arrange
+        fill = 0xAA
 
-        self.assertEqual({part.memory.read8(address) for address in range(0x40)}, {0xAA})
+        # Act
+        part = z80.Cpu("z80", fill=fill)
+
+        # Assert
+        self.assertEqual(stored(part), {0xAA})
 
     def test_without_one_the_store_is_scrambled_rather_than_cleared(self) -> None:
-        part = z80.Cpu("z80")
+        # Arrange
+        model = "z80"
 
-        held = {part.memory.read8(address) for address in range(0x40)}
+        # Act
+        part = z80.Cpu(model)
 
-        self.assertNotEqual(held, {0})
+        # Assert
+        self.assertGreater(len(stored(part)), 1)
 
     def test_and_a_store_handed_in_is_left_alone(self) -> None:
+        # Arrange
         own = z80.Memory(fill=0xAA)
 
-        part = z80.Cpu("z80", own, fill=0)
+        # Act
+        part: Any = z80.Cpu("z80", own, fill=0)
 
-        self.assertIs(part.memory, own)
-        self.assertEqual({part.memory.read8(address) for address in range(0x40)}, {0xAA})
+        # Assert
+        self.assertEqual((part.memory is own, stored(part)), (True, {0xAA}))
 
 
 class NamingNoneTest(unittest.TestCase):
     def test_building_without_naming_a_model_is_refused(self) -> None:
-        with self.assertRaises(errors.UnknownModelError):
-            z80.Cpu()
+        # Arrange
+        arguments: dict[str, Any] = {}
+
+        # Act
+        attempt = lambda: z80.Cpu(**arguments)  # noqa: E731
+
+        # Assert
+        self.assertRaises(UnknownModelError, attempt)
 
     def test_and_the_refusal_names_every_model_there_is(self) -> None:
-        with self.assertRaises(errors.UnknownModelError) as caught:
-            z80.Cpu()
+        # Arrange
+        model = None
 
-        missing = [name for name in z80.MODELS if name not in str(caught.exception)]
+        # Act
+        said = refusal(self, model)
 
-        self.assertEqual(missing, [])
+        # Assert
+        self.assertEqual([name for name in z80.MODELS if name not in said], [])
 
     def test_and_says_it_will_not_choose_rather_than_only_that_it_cannot(self) -> None:
-        with self.assertRaises(errors.UnknownModelError) as caught:
-            z80.Cpu()
+        # Arrange
+        model = None
 
-        self.assertIn("will not choose", str(caught.exception))
+        # Act
+        said = refusal(self, model)
 
-    def test_the_lookup_underneath_refuses_the_same_way(self) -> None:
-        with self.assertRaises(errors.UnknownModelError):
-            models.lookup(None)
+        # Assert
+        self.assertEqual(
+            said,
+            "no model was named, and this package will not choose one for you."
+            " Name one of: upd780c, z80, z84c00",
+        )
 
     def test_a_model_that_is_named_is_built(self) -> None:
-        held = z80.Cpu(sorted(z80.MODELS)[0])
+        # Arrange
+        name = sorted(z80.MODELS)[0]
 
+        # Act
+        held = z80.Cpu(name)
+
+        # Assert
         self.assertEqual(type(held).__name__, "Cpu")
 
     def test_nothing_named_describe_is_published(self) -> None:
-        self.assertFalse(hasattr(z80, "describe"))
+        # Arrange
+        package = z80
+
+        # Act
+        published = hasattr(package, "describe")
+
+        # Assert
+        self.assertIs(published, False)
 
     def test_and_no_default_model_is_published_either(self) -> None:
-        self.assertFalse(hasattr(z80, "DEFAULT_MODEL"))
+        # Arrange
+        package = z80
+
+        # Act
+        published = hasattr(package, "DEFAULT_MODEL")
+
+        # Assert
+        self.assertIs(published, False)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,422** 个测试，**100%** 语句和分支覆盖率，无依赖
+**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,424** 个测试，**100%** 语句和分支覆盖率，无依赖
 
 ```python
 from z80 import Cpu, Memory
@@ -91,7 +91,7 @@ python3 z80/doctor.py
 | `steps` | 自上次复位以来的指令数 |
 | `halted` | 是否正在执行 `HALT`；每个 `HALT` 周期耗费 4 个 T 状态 |
 | `registers` | 下文的 `Registers` 寄存器组 |
-| `bus` | 上一条指令：`states`，其 T 状态数；`cycles`，每个机器周期一个 `(state, kind)` 的列表；`log`，每个 T 状态一个 `(address, value, pins)` 的列表。这两个列表仅在 `recording=True` 时填充 |
+| `bus` | 上一条指令：`states`，其 T 状态数；`cycles`，每个机器周期一个 `(state, kind)` 的列表；`log`，每个 T 状态一个 `(address, value, pins)` 的列表。这两个列表仅在 `recording=True` 时填充。`kind` 是 `fetch`、`read`、`write`、`portRead`、`portWrite` 或 `acknowledge` 之一 |
 | `memory`、`ports` | 构建芯片时传入的对象 |
 | `model` | 规范型号名称 |
 
@@ -469,7 +469,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 语料库的提交固定在 [`conformance/suites.json`](conformance/suites.json) 中。每周有一个任务对照上游最新提交运行，并开启一个拉取请求或议题。每个运行器都会打印它检查了多少用例，因为什么都没解析的运行与检查了全部内容的运行一样，都会以 0 退出。
 
-手册单独对照。[`conformance/hardware.json`](conformance/hardware.json) 收录了取自文档的每一条事实，并附有原句和页码。[`conformance/hardware.test.py`](conformance/hardware.test.py) 在机器上没有语料库的情况下，据此检查型号的常量和机器周期。`python3 -m conformance.timing` 运行全部 217 行逐指令时序，并将每一行与芯片实际耗费的 T 状态比对。手册有五处自相矛盾：三行时序，分别在第 99、260 和 269 页，其 M 周期数与它们自己的 T 状态分解不符；另外两处是正文与插图不一致。两个来源出现分歧的每一处都记录在 [`conformance/divergences.json`](conformance/divergences.json) 中，并附有能够解决它的依据。
+手册单独对照。[`conformance/hardware.json`](conformance/hardware.json) 收录了取自文档的每一条事实，并附有原句和页码。[`conformance/hardware.test.py`](conformance/hardware.test.py) 及其旁边的 `hardware_*.test.py` 文件在机器上没有语料库的情况下运行芯片，据此逐个检查其机器周期。`python3 -m conformance.timing` 运行全部 217 行逐指令时序，并将每一行与芯片实际耗费的 T 状态比对。手册有五处自相矛盾：三行时序，分别在第 99、260 和 269 页，其 M 周期数与它们自己的 T 状态分解不符；另外两处是正文与插图不一致。两个来源出现分歧的每一处都记录在 [`conformance/divergences.json`](conformance/divergences.json) 中，并附有能够解决它的依据。
 
 [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出了 18 个问题，在这些问题上保真度仍是一种声明而不是测量结果，每个问题都附有能关闭它的测量。标志寄存器的第 3 位和第 5 位以及内部的 `WZ` 寄存器，在 Zilog 用户手册和数据手册共 780 页中都没有出现。
 

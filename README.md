@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,422** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,424** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -91,7 +91,7 @@ Everything below is exported from `z80`. Nothing else is public.
 | `steps` | Instructions since the last reset |
 | `halted` | Whether a `HALT` is executing; each `HALT` cycle costs 4 T states |
 | `registers` | The `Registers` file below |
-| `bus` | The last instruction: `states`, its T state count; `cycles`, a list of `(state, kind)` per machine cycle; `log`, a list of `(address, value, pins)` per T state. The two lists fill only with `recording=True` |
+| `bus` | The last instruction: `states`, its T state count; `cycles`, a list of `(state, kind)` per machine cycle; `log`, a list of `(address, value, pins)` per T state. The two lists fill only with `recording=True`. `kind` is `fetch`, `read`, `write`, `portRead`, `portWrite` or `acknowledge` |
 | `memory`, `ports` | What the part was built with |
 | `model` | The canonical model name |
 
@@ -469,7 +469,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 The corpus commit is pinned in [`conformance/suites.json`](conformance/suites.json), and a weekly job runs against upstream's head and opens a pull request or an issue. Each runner prints how many cases it checked, because a run that parsed nothing exits 0 just like one that checked everything.
 
-The manual is held separately. [`conformance/hardware.json`](conformance/hardware.json) carries every fact taken from a document with its sentence and page, and [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the model's constants and machine cycles against it with no corpus on the machine. `python3 -m conformance.timing` runs all 217 per-instruction timing rows and compares each with the T states the part spends. The manual contradicts itself in five places: three timing rows, on pages 99, 260 and 269, whose M cycle count disagrees with their own T state breakdown, and two where the prose and a figure disagree. Every place where two sources disagree is in [`conformance/divergences.json`](conformance/divergences.json) with what would settle it.
+The manual is held separately. [`conformance/hardware.json`](conformance/hardware.json) carries every fact taken from a document with its sentence and page, and [`conformance/hardware.test.py`](conformance/hardware.test.py) and the `hardware_*.test.py` files beside it run the part against it, machine cycle by machine cycle, with no corpus on the machine. `python3 -m conformance.timing` runs all 217 per-instruction timing rows and compares each with the T states the part spends. The manual contradicts itself in five places: three timing rows, on pages 99, 260 and 269, whose M cycle count disagrees with their own T state breakdown, and two where the prose and a figure disagree. Every place where two sources disagree is in [`conformance/divergences.json`](conformance/divergences.json) with what would settle it.
 
 [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) lists the 18 questions where fidelity is a claim rather than a measurement, each with the measurement that would close it. Bits 3 and 5 of the flag register and the internal `WZ` register appear nowhere in the 780 pages of Zilog's user manual and data book.
 

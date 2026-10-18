@@ -72,10 +72,10 @@
         "dataSampledInState": 3,
         "firstMachineCycleStates": [4, 5, 6],
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_a_fetch_carries_the_counter_then_the_refresh_address",
-          "conformance/hardware.test.py::PrintedFactTest.test_a_fetch_takes_its_data_in_the_state_the_manual_samples_it",
-          "conformance/hardware.test.py::PrintedFactTest.test_every_first_machine_cycle_the_bus_bounds_is_a_printed_length",
-          "conformance/hardware.test.py::FigureEdgeTest.test_a_fetch_draws_the_columns_figure_5_gives_it"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_a_fetch_carries_the_counter_then_the_refresh_address",
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_a_fetch_takes_its_data_in_the_state_the_manual_samples_it",
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_every_first_machine_cycle_the_bus_bounds_is_a_printed_length",
+          "conformance/hardware_figures.test.py::FigureEdgeTest.test_a_fetch_draws_the_columns_figure_5_gives_it"
         ]
       },
       "memoryReadOrWrite": {
@@ -83,8 +83,8 @@
         "quote": "Figure 6 shows the timing of memory read or write cycles other than an op code fetch cycle. These cycles are generally three clock periods long unless wait states are requested by memory through the WAIT signal.",
         "manualPage": 9,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_a_memory_read_and_write_each_take_the_printed_states",
-          "conformance/hardware.test.py::MachineCycleShapeTest.test_a_memory_access_is_as_long_as_the_manual_says"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_a_memory_read_and_write_each_take_the_printed_states",
+          "conformance/hardware_cycles.test.py::MachineCycleShapeTest.test_a_memory_access_is_as_long_as_the_manual_says"
         ]
       },
       "inputOrOutput": {
@@ -94,9 +94,9 @@
         "why": "This is why an I/O machine cycle is four T states where a memory access is three. The wait is not requested by the device and cannot be declined.",
         "manualPage": 10,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_a_port_cycle_is_a_memory_cycle_plus_the_inserted_wait",
-          "conformance/hardware.test.py::MachineCycleShapeTest.test_a_port_access_is_as_long_as_the_manual_says",
-          "conformance/hardware.test.py::MachineCycleShapeTest.test_the_port_access_carries_the_wait_the_manual_says_is_inserted"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_a_port_cycle_is_a_memory_cycle_plus_the_inserted_wait",
+          "conformance/hardware_cycles.test.py::MachineCycleShapeTest.test_a_port_access_is_as_long_as_the_manual_says",
+          "conformance/hardware_cycles.test.py::MachineCycleShapeTest.test_the_port_access_carries_the_wait_the_manual_says_is_inserted"
         ]
       },
       "interruptAcknowledge": {
@@ -117,8 +117,8 @@
         "columns": ["----", "----", "---i", "---i", "--m-", "----"],
         "columnsNote": "Figure 9 draws six of the seven and stops during the refresh. The seventh is the internal state that makes this a five state M1, the figure does not say where within the cycle it falls, and it is spent by the response rather than by this cycle, which is where a restart already spends the fifth state of its own M1. Either grouping gives the same total.",
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_an_accepted_interrupt_opens_with_the_cycle_figure_9_draws",
-          "conformance/hardware.test.py::MachineCycleShapeTest.test_which_the_response_spends_beyond_its_two_stack_writes"
+          "conformance/hardware_responses.test.py::PrintedFactTest.test_an_accepted_interrupt_opens_with_the_cycle_figure_9_draws",
+          "conformance/hardware_cycles.test.py::MachineCycleShapeTest.test_which_the_response_spends_beyond_its_two_stack_writes"
         ]
       },
       "nonmaskableInterrupt": {
@@ -126,7 +126,7 @@
         "manualPage": 13,
         "restartsAt": 102,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_response_ignores_the_byte_it_fetches_and_restarts"
+          "conformance/hardware_responses.test.py::PrintedFactTest.test_a_nonmaskable_response_ignores_the_byte_it_fetches_and_restarts"
         ]
       },
       "halt": {
@@ -134,8 +134,8 @@
         "why": "A halted part is not idle on the bus. It keeps fetching so that dynamic memory keeps being refreshed, which is why a model that stops issuing cycles while halted is not modelling this part.",
         "manualPage": 14,
         "heldBy": [
-          "conformance/hardware.test.py::HaltTest.test_a_halted_cycle_is_a_fetch_whose_data_is_ignored",
-          "conformance/hardware.test.py::HaltTest.test_the_halt_state_repeats_its_fetch_every_cycle"
+          "conformance/hardware_halt_and_reset.test.py::HaltTest.test_a_halted_cycle_is_a_fetch_whose_data_is_ignored",
+          "conformance/hardware_halt_and_reset.test.py::HaltTest.test_the_halt_state_repeats_its_fetch_every_cycle"
         ]
       },
       "figureEdges": {
@@ -321,7 +321,7 @@
         "page": 6,
         "document": "userManual",
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_mreq_marks_the_addresses_memory_is_read_or_written_at"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_mreq_marks_the_addresses_memory_is_read_or_written_at"
         ]
       },
       "iorq": {
@@ -329,7 +329,7 @@
         "page": 6,
         "document": "userManual",
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_iorq_puts_the_port_on_the_lower_half_of_the_address_bus"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_iorq_puts_the_port_on_the_lower_half_of_the_address_bus"
         ]
       },
       "rd": {
@@ -337,7 +337,7 @@
         "page": 6,
         "document": "userManual",
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_rd_is_asserted_only_in_cycles_that_read"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_rd_is_asserted_only_in_cycles_that_read"
         ]
       },
       "wr": {
@@ -345,7 +345,7 @@
         "page": 7,
         "document": "userManual",
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_wr_is_asserted_only_while_the_data_bus_holds_the_stored_value"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_wr_is_asserted_only_while_the_data_bus_holds_the_stored_value"
         ]
       },
       "rfsh": {
@@ -376,16 +376,16 @@
         "appliesTo": ["upd780c", "z80", "z84c00"],
         "firstFetchFrom": 0,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_a_reset_spends_the_pin_time_and_the_two_states_after_it",
-          "conformance/hardware.test.py::PrintedFactTest.test_the_first_fetch_after_a_reset_is_from_the_printed_address"
+          "conformance/hardware_halt_and_reset.test.py::PrintedFactTest.test_a_reset_spends_the_pin_time_and_the_two_states_after_it",
+          "conformance/hardware_halt_and_reset.test.py::PrintedFactTest.test_the_first_fetch_after_a_reset_is_from_the_printed_address"
         ]
       },
       "appliesTo": ["upd780c", "z80", "z84c00"],
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_a_reset_spends_the_pin_time_and_the_two_states_after_it",
-        "conformance/hardware.test.py::PrintedFactTest.test_a_reset_clears_the_interrupt_enable_as_the_manual_says",
-        "conformance/hardware.test.py::ResetTest.test_reset_clears_what_the_manual_says_it_clears",
-        "conformance/hardware.test.py::ResetTest.test_and_leaves_the_interrupt_mode_where_the_manual_says"
+        "conformance/hardware_halt_and_reset.test.py::PrintedFactTest.test_a_reset_spends_the_pin_time_and_the_two_states_after_it",
+        "conformance/hardware_halt_and_reset.test.py::PrintedFactTest.test_a_reset_clears_the_interrupt_enable_as_the_manual_says",
+        "conformance/hardware_halt_and_reset.test.py::ResetTest.test_reset_clears_what_the_manual_says_it_clears",
+        "conformance/hardware_halt_and_reset.test.py::ResetTest.test_and_leaves_the_interrupt_mode_where_the_manual_says"
       ]
     },
     "flagRegister": {
@@ -420,8 +420,8 @@
       "nmiVectorQuote": "NMI is always recognized at the end of the current instruction, independent of the status of the interrupt enable flip-flop, and automatically forces the CPU to restart at location 0066h.",
       "appliesTo": ["upd780c", "z80", "z84c00"],
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_the_mode_instructions_select_the_printed_number_of_modes",
-        "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_request_waits_for_the_instruction_and_ignores_the_enable"
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_the_mode_instructions_select_the_printed_number_of_modes",
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_a_nonmaskable_request_waits_for_the_instruction_and_ignores_the_enable"
       ]
     },
     "instructionTiming": {
@@ -1959,7 +1959,7 @@
         "machineCycles": [4, 3],
         "quote": "This example indicates that the instruction consists of two machine cycles. The first cycle contains 4 clock periods/T states). The second cycle contains 3 clock periods, for a total of 7 clock periods/T states. The instruction executes in 1.75 microseconds.",
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_a_fetch_then_a_read_is_the_shape_the_notation_example_draws"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_a_fetch_then_a_read_is_the_shape_the_notation_example_draws"
         ]
       },
       "howItWasRead": "Read twice, from the two descriptions of the same pages, and the record is what both agree on. The first reading rendered each page at 300 dots per inch and took the column boundaries from the header cells. The second parsed the document's own text layer, which carries all 152 tables. Neither is clean on its own: the recogniser drops a lone digit, and the text layer prints SBC A, (lY+d) and RRC (lY+d) with a lowercase L for the index register. Where one dropped a cell the other supplied it, and where a value could be had from neither it was re-rendered alone until two crops agreed.",
@@ -1982,11 +1982,11 @@
         "iffQuote": "When a nonmaskable interrupt is accepted, IFF1 resets to prevent further interrupts until reenabled by the programmer. Therefore, after a nonmaskable interrupt is accepted, maskable interrupts are disabled but the previous state of IFF1 is saved so that the complete state of the CPU just prior to the nonmaskable interrupt can be restored at any time.",
         "manualPage": 19,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_interrupt_keeps_the_previous_enable_in_iff2",
-          "conformance/hardware.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
-          "conformance/hardware.test.py::InterruptResponseTest.test_the_nonmaskable_line_costs_what_a_restart_costs",
-          "conformance/hardware.test.py::InterruptResponseTest.test_the_nonmaskable_line_lands_where_the_manual_says",
-          "conformance/hardware.test.py::InterruptResponseTest.test_and_takes_the_nonmaskable_one_anyway"
+          "conformance/hardware_responses.test.py::PrintedFactTest.test_a_nonmaskable_interrupt_keeps_the_previous_enable_in_iff2",
+          "conformance/hardware_responses.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
+          "conformance/hardware_interrupts.test.py::InterruptResponseTest.test_the_nonmaskable_line_costs_what_a_restart_costs",
+          "conformance/hardware_interrupts.test.py::InterruptResponseTest.test_the_nonmaskable_line_lands_where_the_manual_says",
+          "conformance/hardware_interrupts.test.py::InterruptResponseTest.test_and_takes_the_nonmaskable_one_anyway"
         ]
       },
       "mode0": {
@@ -1998,8 +1998,8 @@
         "manualPage": 19,
         "addedStates": 2,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_mode_zero_runs_what_the_device_supplies_at_two_more_than_its_cost",
-          "conformance/hardware.test.py::InterruptResponseTest.test_reset_leaves_the_part_in_the_mode_the_manual_names"
+          "conformance/hardware_responses.test.py::PrintedFactTest.test_mode_zero_runs_what_the_device_supplies_at_two_more_than_its_cost",
+          "conformance/hardware_interrupts.test.py::InterruptResponseTest.test_reset_leaves_the_part_in_the_mode_the_manual_names"
         ]
       },
       "mode1": {
@@ -2011,9 +2011,9 @@
         "inferred": "tStates",
         "manualPage": 19,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
-          "conformance/hardware.test.py::InterruptResponseTest.test_mode_one_costs_the_two_more_the_manual_adds",
-          "conformance/hardware.test.py::InterruptResponseTest.test_mode_one_lands_where_the_manual_says"
+          "conformance/hardware_responses.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
+          "conformance/hardware_interrupts.test.py::InterruptResponseTest.test_mode_one_costs_the_two_more_the_manual_adds",
+          "conformance/hardware_interrupts.test.py::InterruptResponseTest.test_mode_one_lands_where_the_manual_says"
         ]
       },
       "mode2": {
@@ -2023,9 +2023,9 @@
         "vectorQuote": "The upper eight bits of this pointer is formed from the contents of the I Register. The I register must be loaded with the applicable value by the programmer, such as LD I, A. A CPU reset clears the I Register so that it is initialized to 0. The lower eight bits of the pointer must be supplied by the interrupting device. Only seven bits are required from the interrupting device, because the least-significant bit must be a 0.",
         "manualPage": 20,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
-          "conformance/hardware.test.py::PrintedFactTest.test_mode_two_jumps_through_the_table_the_i_register_points_into",
-          "conformance/hardware.test.py::InterruptResponseTest.test_mode_two_costs_the_nineteen_the_manual_prints"
+          "conformance/hardware_responses.test.py::PrintedFactTest.test_every_response_spends_the_machine_cycles_the_manual_breaks_it_into",
+          "conformance/hardware_responses.test.py::PrintedFactTest.test_mode_two_jumps_through_the_table_the_i_register_points_into",
+          "conformance/hardware_interrupts.test.py::InterruptResponseTest.test_mode_two_costs_the_nineteen_the_manual_prints"
         ]
       },
       "maskableIffQuote": "When the CPU accepts a maskable interrupt, both IFF1 and IFF2 are automatically reset, inhibiting further interrupts until the programmer issues a new El instruction.",
@@ -2048,7 +2048,7 @@
         "appliesTo": ["z80"],
         "whyOnlyThatPart": "The quote names the split itself: the CMOS part had it fixed, so z84c00 is out. The NEC second source is NMOS and does not clear the flag either, which is a difference this package already models as interrupt_clears_parity, true on z80 alone. So the defect is the Zilog NMOS part's, and naming all three NMOS-or-not would contradict the model.",
         "heldBy": [
-          "conformance/hardware.test.py::ParityDefectTest.test_the_parts_the_defect_affects_lose_the_flag_and_the_fixed_one_keeps_it",
+          "conformance/hardware_interrupts.test.py::ParityDefectTest.test_the_parts_the_defect_affects_lose_the_flag_and_the_fixed_one_keeps_it",
           "conformance/hardware.test.py::ModelScopeTest.test_the_parity_defect_is_the_one_fact_that_is_not_every_part"
         ]
       },
@@ -2056,10 +2056,10 @@
       "maskableClears": ["iff1", "iff2"],
       "instructionsHeldOffAfterEnable": 1,
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_an_accepted_maskable_interrupt_resets_both_flip_flops",
-        "conformance/hardware.test.py::PrintedFactTest.test_an_enable_holds_a_request_off_for_the_printed_number_of_instructions",
-        "conformance/hardware.test.py::PrintedFactTest.test_a_request_present_in_the_final_state_is_taken",
-        "conformance/hardware.test.py::PrintedFactTest.test_a_request_gone_by_the_final_state_is_not"
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_an_accepted_maskable_interrupt_resets_both_flip_flops",
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_an_enable_holds_a_request_off_for_the_printed_number_of_instructions",
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_a_request_present_in_the_final_state_is_taken",
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_a_request_gone_by_the_final_state_is_not"
       ]
     },
     "halt": {
@@ -2072,10 +2072,10 @@
       "appliesTo": ["upd780c", "z80", "z84c00"],
       "sampledInState": 4,
       "heldBy": [
-        "conformance/hardware.test.py::HaltTest.test_a_halted_step_costs_a_whole_fetch",
-        "conformance/hardware.test.py::HaltTest.test_a_halted_cycle_is_a_fetch_whose_data_is_ignored",
-        "conformance/hardware.test.py::HaltTest.test_the_halt_state_repeats_its_fetch_every_cycle",
-        "conformance/hardware.test.py::HaltTest.test_an_interrupt_sampled_in_the_printed_state_ends_the_halt"
+        "conformance/hardware_halt_and_reset.test.py::HaltTest.test_a_halted_step_costs_a_whole_fetch",
+        "conformance/hardware_halt_and_reset.test.py::HaltTest.test_a_halted_cycle_is_a_fetch_whose_data_is_ignored",
+        "conformance/hardware_halt_and_reset.test.py::HaltTest.test_the_halt_state_repeats_its_fetch_every_cycle",
+        "conformance/hardware_halt_and_reset.test.py::HaltTest.test_an_interrupt_sampled_in_the_printed_state_ends_the_halt"
       ]
     },
     "technicalManualAmended": {
@@ -2096,7 +2096,7 @@
       "appliesTo": ["upd780c", "z80", "z84c00"],
       "acknowledges": 1,
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_mode_zero_takes_a_restart_with_a_single_acknowledge"
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_mode_zero_takes_a_restart_with_a_single_acknowledge"
       ]
     },
     "nonmaskableDuringReset": {
@@ -2107,8 +2107,8 @@
       "filePage": 417,
       "appliesTo": ["upd780c", "z80", "z84c00"],
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_line_held_through_reset_is_not_detected",
-        "conformance/hardware.test.py::PrintedFactTest.test_a_nonmaskable_line_lowered_after_reset_is_processed"
+        "conformance/hardware_halt_and_reset.test.py::PrintedFactTest.test_a_nonmaskable_line_held_through_reset_is_not_detected",
+        "conformance/hardware_halt_and_reset.test.py::PrintedFactTest.test_a_nonmaskable_line_lowered_after_reset_is_processed"
       ]
     },
     "m1IsNotTristatedDuringReset": {
@@ -2140,8 +2140,8 @@
       "appliesTo": ["upd780c", "z80", "z84c00"],
       "deadlineStatesBeforeTheEnd": 2,
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_an_edge_that_lands_before_the_deadline_is_taken_at_the_boundary",
-        "conformance/hardware.test.py::PrintedFactTest.test_an_edge_that_lands_in_the_last_state_waits_for_the_next_boundary"
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_an_edge_that_lands_before_the_deadline_is_taken_at_the_boundary",
+        "conformance/hardware_responses.test.py::PrintedFactTest.test_an_edge_that_lands_in_the_last_state_waits_for_the_next_boundary"
       ]
     }
   },
@@ -2158,7 +2158,7 @@
       "assembled": true,
       "assembledNote": "A row of the instruction table rather than a sentence: the column headings and the cell beneath each one, read across. Every word is the manual's and the order is the table's, so no search for a run of words can place it. This is the only quote on this entry, so the marker silences nothing beside it.",
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
+        "conformance/hardware_cycles.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
       ]
     },
     {
@@ -2173,7 +2173,7 @@
       "assembled": true,
       "assembledNote": "A row of the instruction table rather than a sentence: the column headings and the cell beneath each one, read across. Every word is the manual's and the order is the table's, so no search for a run of words can place it. This is the only quote on this entry, so the marker silences nothing beside it.",
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
+        "conformance/hardware_cycles.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
       ]
     },
     {
@@ -2186,7 +2186,7 @@
       "verifiedOn": "the rendered page image, 2026-08-21",
       "kind": "timingTableMisprint",
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
+        "conformance/hardware_cycles.test.py::PrintedFactTest.test_every_misprinted_machine_cycle_count_is_run_as_the_reading"
       ]
     },
     {
@@ -2204,11 +2204,11 @@
         "why": "Prose elsewhere in the same document says outright that a memory access outside a fetch has half a clock cycle more than a fetch does, which is exactly what the two figures show and the opposite of what the summary on page 9 implies.",
         "additionalStates": 0.5,
         "heldBy": [
-          "conformance/hardware.test.py::PrintedFactTest.test_a_plain_read_holds_its_strobes_half_a_state_past_a_fetch"
+          "conformance/hardware_cycles.test.py::PrintedFactTest.test_a_plain_read_holds_its_strobes_half_a_state_past_a_fetch"
         ]
       },
       "heldBy": [
-        "conformance/hardware.test.py::PrintedFactTest.test_a_plain_read_holds_its_strobes_half_a_state_past_a_fetch"
+        "conformance/hardware_cycles.test.py::PrintedFactTest.test_a_plain_read_holds_its_strobes_half_a_state_past_a_fetch"
       ]
     },
     {

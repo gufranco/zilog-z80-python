@@ -84,7 +84,7 @@ class Netlist:
         self._read_names(root / "nodenames.js")
         self._check_fixed_nets()
         self._read_pullups(root / "segdefs.js")
-        self._read_transistors(root / "transdefs.js")
+        self.read_transistors(root / "transdefs.js")
         self._check_pullup_entries()
 
     def _check_fixed_nets(self) -> None:
@@ -120,7 +120,7 @@ class Netlist:
             self.pullup[number] = 1 if "+" in fields[1] else 0
         self.pullups = sum(self.pullup)
 
-    def _read_transistors(self, path: Path) -> None:
+    def read_transistors(self, path: Path) -> None:
         for raw in path.read_text().splitlines():
             if not raw.startswith("["):
                 continue
@@ -165,7 +165,7 @@ class Netlist:
 class Simulation(Netlist):
     def __init__(self, where: Path | str | None = None, manifest: Path | str | None = None) -> None:
         super().__init__(where, manifest)
-        self._group: list[int] = []
+        self.group: list[int] = []
         self._grouped = bytearray(MAX_NETS)
         self._queued = bytearray(MAX_NETS)
         self.half_cycles = 0
@@ -182,8 +182,8 @@ class Simulation(Netlist):
             if n not in (GROUND, POWER) and (self.gates[n] or self.channels[n])
         ]
 
-    def _collect(self, start: int) -> None:
-        group = self._group
+    def collect_group(self, start: int) -> None:
+        members = self.group
         seen = self._grouped
         stack = [start]
         while stack:
@@ -191,7 +191,7 @@ class Simulation(Netlist):
             if seen[n]:
                 continue
             seen[n] = 1
-            group.append(n)
+            members.append(n)
             if n in (GROUND, POWER):
                 continue
             joined: list[int] = []
@@ -201,18 +201,18 @@ class Simulation(Netlist):
                 joined.append(self.second_of[t] if self.first_of[t] == n else self.first_of[t])
             stack.extend(reversed(joined))
 
-    def _regroup(self, n: int) -> None:
-        for one in self._group:
+    def regroup(self, n: int) -> None:
+        for one in self.group:
             self._grouped[one] = 0
-        self._group = []
-        self._collect(n)
+        self.group = []
+        self.collect_group(n)
 
     def _value(self) -> int:
         if self._grouped[GROUND]:
             return 0
         if self._grouped[POWER]:
             return 1
-        for n in self._group:
+        for n in self.group:
             if self.pullup[n]:
                 return 1
             if self.pulldown[n]:
@@ -221,7 +221,7 @@ class Simulation(Netlist):
                 return 1
         return 0
 
-    def _queue(self, n: int, into: list[int]) -> None:
+    def enqueue(self, n: int, into: list[int]) -> None:
         if n in (GROUND, POWER):
             return
         if self._queued[n]:
@@ -229,12 +229,12 @@ class Simulation(Netlist):
         self._queued[n] = 1
         into.append(n)
 
-    def _resolve(self, n: int, into: list[int]) -> None:
+    def resolve(self, n: int, into: list[int]) -> None:
         if n in (GROUND, POWER):
             return
-        self._regroup(n)
+        self.regroup(n)
         level = self._value()
-        for one in self._group:
+        for one in self.group:
             if self.state[one] == level:
                 continue
             self.state[one] = level
@@ -242,13 +242,13 @@ class Simulation(Netlist):
                 for t in self.gates[one]:
                     if not self.on[t]:
                         self.on[t] = 1
-                        self._queue(self.first_of[t], into)
+                        self.enqueue(self.first_of[t], into)
             else:
                 for t in self.gates[one]:
                     if self.on[t]:
                         self.on[t] = 0
-                        self._queue(self.first_of[t], into)
-                        self._queue(self.second_of[t], into)
+                        self.enqueue(self.first_of[t], into)
+                        self.enqueue(self.second_of[t], into)
 
     def settle(self, seeds: Sequence[int]) -> None:
         pending = list(seeds)
@@ -259,7 +259,7 @@ class Simulation(Netlist):
             for n in pending:
                 self._queued[n] = 0
             for n in pending:
-                self._resolve(n, following)
+                self.resolve(n, following)
             pending = following
         self.unsettled += 1
 

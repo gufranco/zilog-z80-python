@@ -13,7 +13,7 @@ evidence that they did.
 - [ ] `ruff format --check .` and `ruff check .` are clean
 - [ ] `mypy` reports nothing
 - [ ] Every test file runs, and coverage is 100% of statements and branches
-- [ ] `conformance/hardware.test.py` still holds every figure to the manual
+- [ ] `conformance/hardware*.test.py` still hold every figure to the manual
 
 ## If this changes what the processor does
 
@@ -33,8 +33,9 @@ is still a change to what the part does.
 ## If this changes a number the manual prints
 
 Say which page. `conformance/hardware.json` carries the page for every one of
-the 184 timing rows, and `conformance/hardware.test.py` reads the figure from
-there rather than repeating it, so a citation is a check that can fail.
+the 184 timing rows, and `conformance/hardware_load_timing.test.py` and
+`conformance/hardware_operation_timing.test.py` read the figure from there
+rather than repeating it, so a citation is a check that can fail.
 
 The manual contradicts itself on three pages. All three are recorded, and the
 breakdown wins over the M Cycles column. A fourth would need the same treatment:

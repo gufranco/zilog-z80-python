@@ -138,15 +138,17 @@ class AgainstTheDieTest(unittest.TestCase):
 
 class MainTest(unittest.TestCase):
     def test_a_refused_run_writes_nothing(self) -> None:
-        def _refuse() -> list[dict[str, Any]]:
+        # Arrange
+        def refuse() -> list[dict[str, Any]]:
             raise wz.netlist.Missing("no netlist here")
 
-        with tempfile.TemporaryDirectory() as where:
-            out = Path(where) / "wz.json"
+        out = Path(tempfile.mkdtemp()) / "wz.json"
 
-            code = wz.main([str(out)], read=_refuse)
+        # Act
+        code = wz.main([str(out)], read=refuse)
 
-            self.assertEqual((code, out.is_file()), (1, False))
+        # Assert
+        self.assertEqual((code, out.is_file()), (1, False))
 
     def test_an_uncalibrated_run_writes_nothing_either(self) -> None:
         with tempfile.TemporaryDirectory() as where:

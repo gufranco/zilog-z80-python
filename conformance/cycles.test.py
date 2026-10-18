@@ -8,7 +8,11 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from conformance import cycles
-from z80 import bus
+from z80 import Cpu, Memory
+
+MANUAL = "manual"
+
+RECORDING = "recording"
 
 SUITE = Path.home() / ".cache" / "conformance-suites" / "z80" / "v1"
 
@@ -48,10 +52,24 @@ WIDE: dict[str, Any] = {
 
 class ShapeTest(unittest.TestCase):
     def test_the_recorded_shape_is_what_a_run_gets_without_asking(self) -> None:
-        self.assertEqual(cycles.options(["somewhere"])[3], bus.RECORDING)
+        # Arrange
+        argv = ["somewhere"]
+
+        # Act
+        found = cycles.options(argv)
+
+        # Assert
+        self.assertEqual(found[3], RECORDING)
 
     def test_the_manual_shape_can_be_asked_for(self) -> None:
-        self.assertEqual(cycles.options(["somewhere", "--shape", "manual"])[3], bus.MANUAL)
+        # Arrange
+        argv = ["somewhere", "--shape", "manual"]
+
+        # Act
+        found = cycles.options(argv)
+
+        # Assert
+        self.assertEqual(found[3], MANUAL)
 
     def test_a_shape_that_is_neither_is_refused(self) -> None:
         with self.assertRaises(cycles.Usage):
@@ -62,10 +80,24 @@ class ShapeTest(unittest.TestCase):
             cycles.options(["somewhere", "--shape"])
 
     def test_a_widened_case_is_reproduced_in_the_manual_shape(self) -> None:
-        self.assertEqual(cycles.check(WIDE, bus.MANUAL).differences, [])
+        # Arrange
+        case = WIDE
+
+        # Act
+        found = cycles.check(case, MANUAL)
+
+        # Assert
+        self.assertEqual(found.differences, [])
 
     def test_and_the_state_that_went_unchecked_is_counted(self) -> None:
-        self.assertEqual(cycles.check(WIDE, bus.MANUAL).skipped, 1)
+        # Arrange
+        case = WIDE
+
+        # Act
+        found = cycles.check(case, MANUAL)
+
+        # Assert
+        self.assertEqual(found.skipped, 1)
 
     def test_the_recorded_shape_counts_no_skips_because_it_makes_none(self) -> None:
         self.assertEqual(cycles.check(NOP).skipped, 0)
@@ -80,23 +112,36 @@ class ShapeTest(unittest.TestCase):
         self.assertEqual(cycles.run([str(suite_of([WIDE]))]), 1)
 
     def test_a_difference_outside_an_opening_state_is_still_reported(self) -> None:
-        wrong = dict(WIDE)
-        wrong["cycles"] = [*WIDE["cycles"][:3], [0xA610, None, "r-m-"]]
+        # Arrange
+        wrong = {**WIDE, "cycles": [*WIDE["cycles"][:3], [0xA610, None, "r-m-"]]}
 
-        self.assertNotEqual(cycles.check(wrong, bus.MANUAL).differences, [])
+        # Act
+        found = cycles.check(wrong, MANUAL)
+
+        # Assert
+        self.assertEqual(len(found.differences), 1)
 
     def test_the_opening_states_come_from_the_bus_rather_than_the_pins(self) -> None:
-        line = bus.Bus(recording=True)
-        line.read(0x2000, 0x42)
-        line.fetch(0x1234, 0x5678, 0xAB)
+        # Arrange
+        cpu = Cpu("z80", Memory(image=bytes([0x06, 0x42])), recording=True)
+        cpu.registers.pc = 0x0000
+        cpu.step()
 
-        self.assertEqual(cycles.opening_states(line.cycles), {0, 3})
+        # Act
+        found = cycles.opening_states(cpu.bus.cycles)
+
+        # Assert
+        self.assertEqual(found, {0, 4})
 
     def test_a_cycle_the_generator_draws_in_full_is_not_skipped(self) -> None:
-        line = bus.Bus(recording=True)
-        line.port_read(0x8000, 0x42)
+        # Arrange
+        drawn = [(0, "portRead")]
 
-        self.assertEqual(cycles.opening_states(line.cycles), set())
+        # Act
+        found = cycles.opening_states(drawn)
+
+        # Assert
+        self.assertEqual(found, set())
 
 
 class ComparisonTest(unittest.TestCase):

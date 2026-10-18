@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,422** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
+**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,424** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
 
 ```python
 from z80 import Cpu, Memory
@@ -91,7 +91,7 @@ python3 z80/doctor.py
 | `steps` | 自上次重設以來的指令數 |
 | `halted` | 是否正在執行 `HALT`；每個 `HALT` 週期耗費 4 個 T 狀態 |
 | `registers` | 下文的 `Registers` 暫存器組 |
-| `bus` | 最後一條指令：`states`，其 T 狀態數；`cycles`，每個機器週期一個 `(state, kind)` 的列表；`log`，每個 T 狀態一個 `(address, value, pins)` 的列表。這兩個列表只在 `recording=True` 時填入 |
+| `bus` | 最後一條指令：`states`，其 T 狀態數；`cycles`，每個機器週期一個 `(state, kind)` 的列表；`log`，每個 T 狀態一個 `(address, value, pins)` 的列表。這兩個列表只在 `recording=True` 時填入。`kind` 是 `fetch`、`read`、`write`、`portRead`、`portWrite` 或 `acknowledge` 其中之一 |
 | `memory`、`ports` | 建立晶片時使用的物件 |
 | `model` | 正式型號名稱 |
 
@@ -469,7 +469,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 語料庫的提交固定在 [`conformance/suites.json`](conformance/suites.json)，每週有一個作業以上游的最新提交執行，並開啟拉取請求或問題。每個執行器都會印出它檢查了多少個案例，因為什麼都沒解析的執行，與檢查了全部內容的執行一樣以 0 結束。
 
-手冊單獨處理。[`conformance/hardware.json`](conformance/hardware.json) 載有取自文件的每項事實，連同其原句和頁碼，[`conformance/hardware.test.py`](conformance/hardware.test.py) 在機器上沒有語料庫的情況下，以它檢查型號的常數和機器週期。`python3 -m conformance.timing` 執行全部 217 行逐指令時序，並將每行與晶片耗費的 T 狀態比對。手冊有五處自相矛盾：三行時序，分別在第 99、260 和 269 頁，其 M 週期數與其自身的 T 狀態分解不符；另外兩處是正文與圖表不符。兩個來源出現分歧的每一處，都連同可解決它的方法列於 [`conformance/divergences.json`](conformance/divergences.json)。
+手冊單獨處理。[`conformance/hardware.json`](conformance/hardware.json) 載有取自文件的每項事實，連同其原句和頁碼，[`conformance/hardware.test.py`](conformance/hardware.test.py) 及其旁邊的 `hardware_*.test.py` 檔案在機器上沒有語料庫的情況下運行晶片，以它逐個檢查其機器週期。`python3 -m conformance.timing` 執行全部 217 行逐指令時序，並將每行與晶片耗費的 T 狀態比對。手冊有五處自相矛盾：三行時序，分別在第 99、260 和 269 頁，其 M 週期數與其自身的 T 狀態分解不符；另外兩處是正文與圖表不符。兩個來源出現分歧的每一處，都連同可解決它的方法列於 [`conformance/divergences.json`](conformance/divergences.json)。
 
 [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出 18 個問題，其中的保真度是一項聲稱而非測量，每個問題都附有可解決它的測量。旗標暫存器的第 3 和第 5 位元以及內部的 `WZ` 暫存器，在 Zilog 用戶手冊和數據手冊合共 780 頁中都沒有出現。
 

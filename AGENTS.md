@@ -67,8 +67,8 @@ failures, undocumented opcodes and the two undocumented flag bits included.
 **Settled: cycles.** [`conformance/cycles.py`](conformance/cycles.py) compares
 22,005,372 T states against the recording, pin by pin. The bus shape is also held
 to the manual's own figures by
-[`conformance/hardware.test.py`](conformance/hardware.test.py), which needs no
-corpus on the machine.
+[`conformance/hardware.test.py`](conformance/hardware.test.py) and the
+`hardware_*.test.py` files beside it, which need no corpus on the machine.
 
 **Settled: the flag rules the manual states absolutely.** 126 of them, extracted
 from the Condition Bits Affected block of all 131 instruction pages and fuzzed.
@@ -87,6 +87,16 @@ what the corpus carries. The default is `manual`; the corpus runner asks for
 `recording`. This is a modelling choice, not a fact about silicon, and it is
 recorded as one.
 
+## Why `core.py` is one file
+
+`z80/core.py` runs past 500 lines and is kept whole under the exception for a
+single engine sharing intermediate state. It is one `Cpu` class. Every
+instruction handler in it reads and writes the same register file, bus, `Q`
+latch and interrupt latches inside one instruction, and every T state passes
+through its one `spend()`. Splitting the handlers into mixins or modules would
+spread that shared state across files without narrowing any interface, since
+each handler would still reach into the same `Cpu`.
+
 ## Every gate, in the order to run them
 
 ```bash
@@ -95,8 +105,12 @@ ruff check .
 mypy
 pnpm run format:check
 uvx yamllint==1.38.0 --strict .
-for f in $(find z80 conformance -name '*.test.py' | sort); do python3 "$f"; done
-python3 -m coverage report
+cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
+"${cov[@]}" erase
+for f in $(find z80 conformance -name '*.test.py' | sort); do
+  "${cov[@]}" run -a "$f" || echo "FAILED $f"
+done
+"${cov[@]}" report
 ```
 
 The conformance run needs the corpus, which is fetched rather than vendored:
@@ -113,7 +127,8 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 |:------|:-----|
 | Language | Python only |
 | Comments | None in source, and a docstring counts as one |
-| Test layout | `<module>.test.py` beside the module it covers |
+| Test layout | `<module>.test.py` beside the module it covers, split by subject into files named after what they hold once one passes 500 lines |
+| Test reach | Only what `z80` exports and what the README documents on what those return. No test imports an inner module or touches a private name; [`conformance/bench.py`](conformance/bench.py) builds a part with a program loaded |
 | Test shape | Arrange, act, assert, each opened by its bare marker |
 | Coverage | 100% statements and branches, enforced |
 | Types | `mypy` at strict, plus every optional error class |
@@ -136,6 +151,7 @@ z80/
   memory.py      flat and sparse memories that start filled, never cleared
   models.py      the three parts, by name and alias
 conformance/
+  bench.py       a part built with a program loaded, for the tests that run one
   suites.json    which corpus, at which commit
   fetch.py       getting it
   singlestep.py  running it, state by state
