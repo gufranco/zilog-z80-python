@@ -190,6 +190,7 @@ z80/
   models.py      the three parts, by name and alias
 conformance/
   bench.py       a part built with a program loaded, for the tests that run one
+  synthetic_netlist.py  a made-up netlist written to a folder, for the netlist tests
   suites.json    which corpus, at which commit
   fetch.py       getting it
   singlestep.py  running it, state by state
