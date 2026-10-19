@@ -215,7 +215,9 @@ class TimingTableTest(unittest.TestCase):
         kinds = {entry["kind"] for entry in contradictions}
 
         # Assert
-        self.assertEqual(kinds, {"timingTableMisprint", "proseVersusFigure"})
+        self.assertEqual(
+            kinds, {"timingTableMisprint", "proseVersusFigure", "timingTableVersusProse"}
+        )
 
     def test_the_prose_a_figure_or_a_sibling_page_contradicts_is_quoted(self) -> None:
         # Arrange

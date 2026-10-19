@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,446** 个测试，**100%** 语句和分支覆盖率，无依赖
+**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,459** 个测试，**100%** 语句和分支覆盖率，无依赖
 
 ```python
 from z80 import Cpu, Memory
@@ -81,19 +81,21 @@ python3 z80/doctor.py
 
 ### 引脚与状态
 
-| 属性              | 含义                                                                                                                                                                                                                                                                    |
-| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `irq_line`        | 以电平表示的可屏蔽请求，在每条指令的最后一个 T 状态采样                                                                                                                                                                                                                 |
-| `nmi_line`        | 不可屏蔽请求。跳变会触发中断；保持不变不会再次中断                                                                                                                                                                                                                      |
-| `wait_line`       | 在每个机器周期的 T2 之后读取。它每保持置位一个 T 状态，T2 就重复一次                                                                                                                                                                                                    |
-| `on_cycle`        | 每个 T 状态调用一次，在其结束时：在该状态的总线活动以及下一个状态之前的工作之后                                                                                                                                                                                         |
-| `cycles`          | 自芯片构建以来的 T 状态数，跨越复位累计                                                                                                                                                                                                                                 |
-| `steps`           | 自上次复位以来的指令数                                                                                                                                                                                                                                                  |
-| `halted`          | 是否正在执行 `HALT`；每个 `HALT` 周期耗费 4 个 T 状态                                                                                                                                                                                                                   |
-| `registers`       | 下文的 `Registers` 寄存器组                                                                                                                                                                                                                                             |
-| `bus`             | 上一条指令：`states`，其 T 状态数；`cycles`，每个机器周期一个 `(state, kind)` 的列表；`log`，每个 T 状态一个 `(address, value, pins)` 的列表。这两个列表仅在 `recording=True` 时填充。`kind` 是 `fetch`、`read`、`write`、`portRead`、`portWrite` 或 `acknowledge` 之一 |
-| `memory`、`ports` | 构建芯片时传入的对象                                                                                                                                                                                                                                                    |
-| `model`           | 规范型号名称                                                                                                                                                                                                                                                            |
+| 属性              | 含义                                                                                                                                                                                                                                                                                                                                 |
+| :---------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `irq_line`        | 以电平表示的可屏蔽请求，在每条指令的最后一个 T 状态采样                                                                                                                                                                                                                                                                              |
+| `nmi_line`        | 不可屏蔽请求。跳变会触发中断；保持不变不会再次中断                                                                                                                                                                                                                                                                                   |
+| `wait_line`       | 在每个机器周期的 T2 之后读取。它每保持置位一个 T 状态，T2 就重复一次                                                                                                                                                                                                                                                                 |
+| `busreq_line`     | 总线请求。在每个机器周期最后一个 T 状态开始时，以及总线浮空的每个状态开始时读取。只要读到它置位，芯片就让总线再浮空一个 T 状态                                                                                                                                                                                                       |
+| `busack`          | 总线应答。在总线浮空的每个 T 状态的 `on_cycle` 中为真                                                                                                                                                                                                                                                                                |
+| `on_cycle`        | 每个 T 状态调用一次，在其结束时：在该状态的总线活动以及下一个状态之前的工作之后                                                                                                                                                                                                                                                      |
+| `cycles`          | 自芯片构建以来的 T 状态数，跨越复位累计                                                                                                                                                                                                                                                                                              |
+| `steps`           | 自上次复位以来的指令数                                                                                                                                                                                                                                                                                                               |
+| `halted`          | 是否正在执行 `HALT`；每个 `HALT` 周期耗费 4 个 T 状态                                                                                                                                                                                                                                                                                |
+| `registers`       | 下文的 `Registers` 寄存器组                                                                                                                                                                                                                                                                                                          |
+| `bus`             | 上一条指令：`states`，其 T 状态数；`cycles`，每个机器周期一个 `(state, kind)` 的列表；`log`，每个 T 状态一个 `(address, value, pins)` 的列表。这两个列表仅在 `recording=True` 时填充。`kind` 是 `fetch`、`read`、`write`、`portRead`、`portWrite`、`acknowledge` 或 `busAvailable` 之一。总线浮空的状态记录为 `(None, None, "----")` |
+| `memory`、`ports` | 构建芯片时传入的对象                                                                                                                                                                                                                                                                                                                 |
+| `model`           | 规范型号名称                                                                                                                                                                                                                                                                                                                         |
 
 ```python
 from z80 import Cpu, Memory
@@ -118,6 +120,29 @@ print(cpu.step(), seen)
 ```
 
 `ld a,n` 耗费 7 个 T 状态。在操作码取指的 T2 之后读取等待线时，它仍然置位，一个状态之后再次读取时也仍然置位，因此 T2 重复两次，该指令耗费 9 个。`on_cycle` 看到了其中的每一个。
+
+```python
+from z80 import Cpu, Memory
+
+cpu = Cpu("z80", Memory(image=bytes([0x00, 0x00])), recording=True)
+cpu.reset()
+floated = []
+
+
+def each_state() -> None:
+    floated.append(cpu.busack)
+    cpu.busreq_line = len(floated) == 3
+
+
+cpu.on_cycle = each_state
+print(cpu.step(), floated, cpu.bus.log[-1])
+```
+
+```
+5 [False, False, False, False, True] (None, None, '----')
+```
+
+请求在第三个状态结束时置位，因此芯片在第四个状态，即取指的最后一个状态，看到它，并在其后让总线浮空一个状态。`busack` 在该状态中为真，其日志条目既没有地址也没有数据。在交出总线的边界上，可屏蔽中断请求不被接受，不可屏蔽中断则等到总线归还之后。
 
 ### 中断
 
@@ -472,7 +497,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 语料库的提交固定在 [`conformance/suites.json`](conformance/suites.json) 中。每周有一个任务对照上游最新提交运行，并开启一个拉取请求或议题。每个运行器都会打印它检查了多少用例，因为什么都没解析的运行与检查了全部内容的运行一样，都会以 0 退出。
 
-手册单独对照。[`conformance/hardware.json`](conformance/hardware.json) 收录了取自文档的每一条事实，并附有原句和页码。[`conformance/hardware.test.py`](conformance/hardware.test.py) 及其旁边的 `hardware_*.test.py` 文件在机器上没有语料库的情况下运行芯片，据此逐个检查其机器周期。`python3 -m conformance.timing` 运行全部 217 行逐指令时序，并将每一行与芯片实际耗费的 T 状态比对。手册有五处自相矛盾：三行时序，分别在第 99、260 和 269 页，其 M 周期数与它们自己的 T 状态分解不符；另外两处是正文与插图不一致。两个来源出现分歧的每一处都记录在 [`conformance/divergences.json`](conformance/divergences.json) 中，并附有能够解决它的依据。
+手册单独对照。[`conformance/hardware.json`](conformance/hardware.json) 收录了取自文档的每一条事实，并附有原句和页码。[`conformance/hardware.test.py`](conformance/hardware.test.py) 及其旁边的 `hardware_*.test.py` 文件在机器上没有语料库的情况下运行芯片，据此逐个检查其机器周期。`python3 -m conformance.timing` 运行全部 217 行逐指令时序，并将每一行与芯片实际耗费的 T 状态比对。手册有六处自相矛盾：三行时序，分别在第 99、260 和 269 页，其 M 周期数与它们自己的 T 状态分解不符；两处是正文与插图不一致；还有从第 298 页起的块输入各行，其分解把内存写入放在端口读取之前，而它们自己的描述顺序正好相反。两个来源出现分歧的每一处都记录在 [`conformance/divergences.json`](conformance/divergences.json) 中，并附有能够解决它的依据。
 
 [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出了 18 个问题，在这些问题上保真度仍是一种声明而不是测量结果，每个问题都附有能关闭它的测量。标志寄存器的第 3 位和第 5 位以及内部的 `WZ` 寄存器，在 Zilog 用户手册和数据手册共 780 页中都没有出现。
 

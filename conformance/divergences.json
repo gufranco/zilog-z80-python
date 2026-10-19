@@ -282,8 +282,8 @@
       ]
     },
     {
-      "id": "bus-request-not-modelled",
-      "severity": "outOfScope",
+      "id": "bus-request-and-acknowledge",
+      "severity": "low",
       "status": "closed",
       "topic": "The bus request and acknowledge cycle.",
       "documentSays": {
@@ -294,10 +294,11 @@
         "document": "userManual",
         "source": "Zilog UM008011-0816, manual page 11"
       },
-      "packageFollows": "neither",
-      "consequence": "There is no way to ask for the buses here, and no cycle in which this core reports them floating. Nothing about the registers or memory changes during such a cycle, so no state comparison could see its absence either.",
-      "why": "The same distinction as a requested wait state. A device taking the bus is a property of the board, and the length of the cycle is decided by that device rather than by the processor. Refreshing during a long hold is also the external controller's job, which the manual says outright.",
-      "wouldReopenIt": "A caller that can hold the line, at which point the sampling rule above says when the part lets go and the manual's figure says which signals float."
+      "packageFollows": "document",
+      "consequence": "busreq_line is read at the start of the last T state of every machine cycle and of every floating state. While it is seen set the part floats the bus one T state at a time, logged with no address and no data, and busack reads true inside on_cycle for each of those states. A maskable request is not accepted at a boundary where the bus was given up, and a nonmaskable edge is answered once the bus comes back. facts.busRequest in hardware.json holds the sentences and the tests.",
+      "why": "Figure 8 and the two sentences beside it print every edge this needs, and the Clock gives a caller a T state at which to hold the line.",
+      "wouldReopenIt": "A capture of a real part placing the floating states anywhere other than the ends of the machine cycles the timing table prints.",
+      "howItWasClosed": "Modelled, and held to the manual's sentences and to the end of every machine cycle the timing table prints."
     },
     {
       "id": "power-down-is-a-stopped-clock",
@@ -626,6 +627,25 @@
       "settledBy": "The pages were read twice more, and the record is what both readings agree on. The first rendered each page at 300 dots per inch and took the column boundaries from the header cells rather than assuming them. The second parsed the document's own text layer, which carries all 152 tables and had not been the problem: the earlier reading had a parser that assumed one page layout where the manual uses two, and that took the nearest text as a name. The numbers were never in doubt. The image read reproduced the record's totals and breakdowns exactly on 107 pages, the text read agrees with the repaired table on every genuine row, and every apparent difference was a cell one reading dropped rather than a value the record had wrong.",
       "whatChanged": "43 rows renamed, 33 rows added, and one row removed from the instruction table, which now holds 217 rows over 152 pages. The removed row is the manual's own worked example of its notation on page 69, which names no instruction; it sits under facts.instructionTiming.notationExample with the paragraph that explains it. Two checks were added so the reading cannot rot again: every row must name a mnemonic the package's disassembler emits, and the only mnemonics it emits that the table lacks must be the undecodable-byte fallback and the undocumented SLL.",
       "wouldReopenIt": "A row whose instruction field names no mnemonic the package implements, a page whose row count disagrees with what the page prints, or a later revision of the manual setting the tables differently. The first is checked on every run."
+    },
+    {
+      "id": "block-input-breakdown-order",
+      "severity": "contradiction",
+      "status": "closed",
+      "topic": "The order the four block input pages print their last two machine cycles in.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "INI, INIR, IND and INDR are (4, 5, 3, 4), while their description reads the port before writing memory and Figure 7 gives an input cycle four states.",
+        "quote": "Then one byte from the selected port is placed on the data bus and written to the CPU. The contents of the HL register pair are then placed on the address bus and the input byte is written to the corresponding location of memory.",
+        "page": 298,
+        "document": "userManual",
+        "source": "Zilog UM008011-0816, manual pages 298, 300, 302 and 304"
+      },
+      "packageFollows": "document",
+      "consequence": "The four run as fetch 4, fetch 5, input 4 and write 3. The totals are the printed ones, and a bus request is granted at the ends of those machine cycles rather than at the ends the breakdown prints.",
+      "why": "The description and Figure 7 agree with each other and the breakdown disagrees with both. The breakdown is the order OUTI prints, for the instruction that reads memory first.",
+      "howItWasFound": "By holding a bus request at the end of every machine cycle of every documented row and comparing where the part let go with the breakdown. These four rows were the only ones that parted.",
+      "wouldReopenIt": "A Zilog erratum, or a later revision of the manual printing a different breakdown."
     }
   ]
 }

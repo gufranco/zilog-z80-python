@@ -2078,6 +2078,51 @@
         "conformance/hardware_halt_and_reset.test.py::HaltTest.test_an_interrupt_sampled_in_the_printed_state_ends_the_halt"
       ]
     },
+    "busRequest": {
+      "document": "userManual",
+      "section": "Bus Request/Acknowledge Cycle, Figure 8",
+      "page": 11,
+      "quote": "The BUSREQ signal is sampled by the CPU with the rising edge of the most recent clock period of any machine cycle. If the BUSREQ signal is active, the CPU sets its address, data, and tristate control signals to the high-impedance state with the rising edge of the next clock pulse.",
+      "pinQuote": "BUSREQ. Bus Request (input, active Low). Bus Request contains a higher priority than NMI and is always recognized at the end of the current machine cycle.",
+      "figureReading": "Read off the rendered page of Figure 8 on printed page 12: the request is sampled in the last T state of a machine cycle, BUSACK falls in the first Tx state that follows it and stays low through every Tx state, the request is sampled again in each Tx state, and the Tx state in which it is first seen released is the last one before T1 of the next machine cycle. Address, data, MREQ, RD, WR, IORQ and RFSH float for every Tx state.",
+      "model": "busreq_line is read at the start of the last T state of each machine cycle and at the start of each floating state; while it was seen held the part spends floating states, logged with no address and no data, and busack reads true in each. A machine cycle ends where the manual's per-instruction breakdown ends it, so the internal states of an instruction are grouped the way its timing row groups them.",
+      "breakdownNotFollowedOn": ["INI", "INIR", "IND", "INDR"],
+      "whyNotFollowedThere": "Those four rows print (4, 5, 3, 4) while the same pages say the port is read before memory is written and Figure 7 gives an input cycle four states. The divergence block-input-breakdown-order records it.",
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "heldBy": [
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_a_request_seen_in_the_last_state_floats_the_bus_after_the_cycle",
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_a_request_withdrawn_before_the_last_state_is_not_seen",
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_the_bus_floats_for_as_long_as_the_request_is_held",
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_nothing_drives_the_bus_while_it_floats",
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_every_documented_instruction_lets_go_at_its_printed_machine_cycle_ends",
+        "conformance/hardware_bus_request.test.py::ClockTest.test_a_clock_paused_in_a_floating_state_shows_the_acknowledge",
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_the_floating_states_are_their_own_entry_among_the_cycles"
+      ],
+      "readInStatesBeforeTheEnd": 1,
+      "floatingStatesForEachStateHeld": 1,
+      "floatingLogEntry": [null, null, "----"],
+      "cycleKind": "busAvailable",
+      "acknowledgedWhileFloating": true,
+      "valuesNote": "Read off Figure 8: the request is sampled in the last state of the machine cycle, one state before its end; each Tx state samples it again, so the bus floats for as many states as the request is seen held; BUSACK is low through every Tx state; and address, data and the control strobes float. The log entry and the cycle kind are how this package reports a floating state."
+    },
+    "busRequestHoldsOffInterrupts": {
+      "document": "userManual",
+      "section": "Bus Request/Acknowledge Cycle",
+      "page": 12,
+      "quote": "During a bus request cycle, the CPU cannot be interrupted by either an NMI or an INT signal.",
+      "model": "A maskable request sampled at the last state of an instruction whose final machine cycle gave up the bus is not accepted at that boundary, which is the interrupt section's own condition that the signal is not accepted if the BUSREQ signal is active. A nonmaskable edge is answered once the floating states end.",
+      "appliesTo": ["upd780c", "z80", "z84c00"],
+      "heldBy": [
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_a_maskable_request_is_not_taken_at_a_boundary_that_gave_up_the_bus",
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_but_it_is_taken_at_the_next_boundary_if_still_held",
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_a_nonmaskable_edge_waits_out_the_floating_states"
+      ],
+      "maskableAcceptedAtThatBoundary": false,
+      "maskableRestart": 56,
+      "nonmaskableRestart": 102,
+      "nonmaskableStates": 11,
+      "valuesNote": "The restart addresses and the eleven states of a nonmaskable response are the interrupt section's figures, repeated here so these tests read them beside the sentence they hold."
+    },
     "technicalManualAmended": {
       "document": "familyDataBook",
       "section": "Questions and Answers, printed page 413",
@@ -2226,6 +2271,28 @@
       },
       "heldBy": [
         "conformance/hardware.test.py::PrintedFactTest.test_every_bit_form_sets_the_half_carry_and_resets_the_negate"
+      ]
+    },
+    {
+      "id": "block-input-breakdown-order",
+      "manualPage": 298,
+      "instruction": "INI, and IND, INIR and INDR on pages 302, 300 and 304",
+      "printedQuote": "16 (4, 5, 3, 4)",
+      "proseQuote": "Then one byte from the selected port is placed on the data bus and written to the CPU. The contents of the HL register pair are then placed on the address bus and the input byte is written to the corresponding location of memory.",
+      "figureQuote": "Figure 7 shows an I/O read or I/O write operation. During I/O operations, a single wait state is automatically inserted.",
+      "problem": "The description reads the port and then writes memory. An input cycle is four states, the automatic wait included, and a memory write is three, so the last two machine cycles are four and three. The breakdown prints them as three and four, which is the order OUTI on page 309 prints for an instruction that reads memory first and writes the port after.",
+      "reading": [
+        ["fetch", 4],
+        ["fetch", 5],
+        ["portRead", 4],
+        ["write", 3]
+      ],
+      "readingWhy": "The description and Figure 7 together. The totals agree either way, so only the grouping is in question.",
+      "verifiedOn": "2026-10-19, twice: the text layer of pages 298, 300, 302 and 304, which prints the same breakdown on all four, and the rendered image of page 298",
+      "kind": "timingTableVersusProse",
+      "heldBy": [
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_the_block_inputs_read_the_port_before_they_write_memory",
+        "conformance/hardware_bus_request.test.py::PrintedFactTest.test_and_let_go_of_the_bus_at_the_ends_their_description_gives"
       ]
     }
   ],

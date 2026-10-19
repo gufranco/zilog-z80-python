@@ -273,11 +273,7 @@ So the boundary is visible rather than implied:
 
 Absent rather than unknown, and absent on purpose:
 
-- **Bus request and bus acknowledge.** No second bus master to arbitrate with.
-- **The one thing left about the interrupt lines.** They are lines now:
-  `irq_line` is read at the final T state, which is where the manual says the
-  part reads it, and `nmi_line` interrupts on its transition. A request raised
-  and withdrawn between two T states is correctly not taken. What is still
-  absent is what the manual mentions in the same sentence: "The signal is not
-  accepted if ... the BUSREQ signal is active." There is no bus request line
-  here to be active, so that clause has nothing to model against.
+- **M1, RFSH and HALT as pins.** The bus log carries RD, WR, MREQ and IORQ.
+  An opcode fetch, a refresh address and the HALT state are all there as
+  cycle kinds, addresses and `halted`, but no column reports those three
+  levels.

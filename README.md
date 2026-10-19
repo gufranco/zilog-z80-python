@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,446** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,459** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -81,19 +81,21 @@ Everything below is exported from `z80`. Nothing else is public.
 
 ### Pins and state
 
-| Attribute         | Is                                                                                                                                                                                                                                                                                           |
-| :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `irq_line`        | The maskable request as a level, sampled at the final T state of each instruction                                                                                                                                                                                                            |
-| `nmi_line`        | The non-maskable request. The transition interrupts; holding it does not interrupt again                                                                                                                                                                                                     |
-| `wait_line`       | Read after T2 of every machine cycle. Each T state it stays set repeats T2                                                                                                                                                                                                                   |
-| `on_cycle`        | Called once per T state, at its end: after that state's bus activity and the work done before the next state                                                                                                                                                                                 |
-| `cycles`          | T states since the part was built, across resets                                                                                                                                                                                                                                             |
-| `steps`           | Instructions since the last reset                                                                                                                                                                                                                                                            |
-| `halted`          | Whether a `HALT` is executing; each `HALT` cycle costs 4 T states                                                                                                                                                                                                                            |
-| `registers`       | The `Registers` file below                                                                                                                                                                                                                                                                   |
-| `bus`             | The last instruction: `states`, its T state count; `cycles`, a list of `(state, kind)` per machine cycle; `log`, a list of `(address, value, pins)` per T state. The two lists fill only with `recording=True`. `kind` is `fetch`, `read`, `write`, `portRead`, `portWrite` or `acknowledge` |
-| `memory`, `ports` | What the part was built with                                                                                                                                                                                                                                                                 |
-| `model`           | The canonical model name                                                                                                                                                                                                                                                                     |
+| Attribute         | Is                                                                                                                                                                                                                                                                                                                                                                  |
+| :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `irq_line`        | The maskable request as a level, sampled at the final T state of each instruction                                                                                                                                                                                                                                                                                   |
+| `nmi_line`        | The non-maskable request. The transition interrupts; holding it does not interrupt again                                                                                                                                                                                                                                                                            |
+| `wait_line`       | Read after T2 of every machine cycle. Each T state it stays set repeats T2                                                                                                                                                                                                                                                                                          |
+| `busreq_line`     | The bus request. Read at the start of the last T state of each machine cycle and of each state the bus floats. While it is seen set, the part floats the bus for one more T state                                                                                                                                                                                   |
+| `busack`          | The bus acknowledge. True inside `on_cycle` for each T state the bus floats                                                                                                                                                                                                                                                                                         |
+| `on_cycle`        | Called once per T state, at its end: after that state's bus activity and the work done before the next state                                                                                                                                                                                                                                                        |
+| `cycles`          | T states since the part was built, across resets                                                                                                                                                                                                                                                                                                                    |
+| `steps`           | Instructions since the last reset                                                                                                                                                                                                                                                                                                                                   |
+| `halted`          | Whether a `HALT` is executing; each `HALT` cycle costs 4 T states                                                                                                                                                                                                                                                                                                   |
+| `registers`       | The `Registers` file below                                                                                                                                                                                                                                                                                                                                          |
+| `bus`             | The last instruction: `states`, its T state count; `cycles`, a list of `(state, kind)` per machine cycle; `log`, a list of `(address, value, pins)` per T state. The two lists fill only with `recording=True`. `kind` is `fetch`, `read`, `write`, `portRead`, `portWrite`, `acknowledge` or `busAvailable`. A state the bus floats in logs `(None, None, "----")` |
+| `memory`, `ports` | What the part was built with                                                                                                                                                                                                                                                                                                                                        |
+| `model`           | The canonical model name                                                                                                                                                                                                                                                                                                                                            |
 
 ```python
 from z80 import Cpu, Memory
@@ -118,6 +120,29 @@ print(cpu.step(), seen)
 ```
 
 `ld a,n` costs 7 T states. The wait line is still set when it is read after T2 of the opcode fetch, and again one state later, so T2 repeats twice and the instruction costs 9. `on_cycle` saw every one of them.
+
+```python
+from z80 import Cpu, Memory
+
+cpu = Cpu("z80", Memory(image=bytes([0x00, 0x00])), recording=True)
+cpu.reset()
+floated = []
+
+
+def each_state() -> None:
+    floated.append(cpu.busack)
+    cpu.busreq_line = len(floated) == 3
+
+
+cpu.on_cycle = each_state
+print(cpu.step(), floated, cpu.bus.log[-1])
+```
+
+```
+5 [False, False, False, False, True] (None, None, '----')
+```
+
+The request is set as the third state ends, so the part sees it in the fourth, the last of the fetch, and floats the bus for one state after it. `busack` reads true in that state, and its log entry carries no address and no data. A maskable request is not accepted at a boundary where the bus was given up, and a nonmaskable one waits until the bus comes back.
 
 ### Interrupts
 
@@ -472,7 +497,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 The corpus commit is pinned in [`conformance/suites.json`](conformance/suites.json), and a weekly job runs against upstream's head and opens a pull request or an issue. Each runner prints how many cases it checked, because a run that parsed nothing exits 0 just like one that checked everything.
 
-The manual is held separately. [`conformance/hardware.json`](conformance/hardware.json) carries every fact taken from a document with its sentence and page, and [`conformance/hardware.test.py`](conformance/hardware.test.py) and the `hardware_*.test.py` files beside it run the part against it, machine cycle by machine cycle, with no corpus on the machine. `python3 -m conformance.timing` runs all 217 per-instruction timing rows and compares each with the T states the part spends. The manual contradicts itself in five places: three timing rows, on pages 99, 260 and 269, whose M cycle count disagrees with their own T state breakdown, and two where the prose and a figure disagree. Every place where two sources disagree is in [`conformance/divergences.json`](conformance/divergences.json) with what would settle it.
+The manual is held separately. [`conformance/hardware.json`](conformance/hardware.json) carries every fact taken from a document with its sentence and page, and [`conformance/hardware.test.py`](conformance/hardware.test.py) and the `hardware_*.test.py` files beside it run the part against it, machine cycle by machine cycle, with no corpus on the machine. `python3 -m conformance.timing` runs all 217 per-instruction timing rows and compares each with the T states the part spends. The manual contradicts itself in six places: three timing rows, on pages 99, 260 and 269, whose M cycle count disagrees with their own T state breakdown, two where the prose and a figure disagree, and the block input rows from page 298, whose breakdown puts the memory write before the port read their own description orders first. Every place where two sources disagree is in [`conformance/divergences.json`](conformance/divergences.json) with what would settle it.
 
 [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) lists the 18 questions where fidelity is a claim rather than a measurement, each with the measurement that would close it. Bits 3 and 5 of the flag register and the internal `WZ` register appear nowhere in the 780 pages of Zilog's user manual and data book.
 

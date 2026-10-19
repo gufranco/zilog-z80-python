@@ -41,6 +41,8 @@ PORT_WRITE_CYCLE = "portWrite"
 
 ACKNOWLEDGE = "acknowledge"
 
+BUS_AVAILABLE = "busAvailable"
+
 EDGES: dict[str, tuple[int, tuple[tuple[str, float, float], ...]]] = {
     FETCH: (4, ((READ, 0.5, 2.0), (MEMORY, 0.5, 2.0), (MEMORY, 2.5, 3.5))),
     READ_CYCLE: (3, ((READ, 0.5, 2.5), (MEMORY, 0.5, 2.5))),
@@ -89,9 +91,12 @@ class Bus:
     __slots__ = (
         "address",
         "cycles",
+        "ending",
         "log",
+        "on_float",
         "on_state",
         "recording",
+        "requested",
         "shape",
         "states",
         "waiting",
@@ -101,17 +106,22 @@ class Bus:
         self,
         on_state: Callable[[], None],
         waiting: Callable[[], bool],
+        requested: Callable[[], bool],
+        on_float: Callable[[], None],
         recording: bool = False,
         shape: str = MANUAL,
     ) -> None:
         if shape not in SHAPES:
             raise UnknownShape(f"{shape} is not a pin shape; there are {', '.join(SHAPES)}")
         self.waiting = waiting
+        self.requested = requested
+        self.on_float = on_float
+        self.ending = False
 
         self.on_state = on_state
         self.recording = recording
         self.shape = shape
-        self.log: list[tuple[int, int | None, str]] = []
+        self.log: list[tuple[int | None, int | None, str]] = []
         self.cycles: list[tuple[int, str]] = []
         self.states = 0
         self.address = 0
@@ -124,6 +134,7 @@ class Bus:
         self.log.clear()
         self.cycles.clear()
         self.states = 0
+        self.ending = False
 
     def mark(self, address: int, value: int | None, pins: str) -> None:
         self.on_state()
@@ -139,6 +150,7 @@ class Bus:
         values: tuple[int | None, ...],
         recorded: tuple[str, ...],
     ) -> None:
+        self.end_cycle()
         if self.recording:
             self.cycles.append((self.states, cycle))
         pins = COLUMNS[cycle] if self.follows_the_manual else recorded
@@ -147,10 +159,35 @@ class Bus:
             if index == SAMPLE_WAIT_AFTER:
                 while self.waiting():
                     self.mark(address, None, held)
+        self.ending = True
 
     def idle(self, count: int = 1) -> None:
         for _ in range(count):
             self.mark(self.address, None, IDLE)
+
+    def internal(self, count: int) -> None:
+        self.end_cycle()
+        self.idle(count)
+        self.ending = True
+
+    def end_cycle(self) -> bool:
+        if not self.ending:
+            return False
+        self.ending = False
+        if not self.requested():
+            return False
+        if self.recording:
+            self.cycles.append((self.states, BUS_AVAILABLE))
+        self.float_state()
+        while self.requested():
+            self.float_state()
+        return True
+
+    def float_state(self) -> None:
+        self.on_float()
+        self.states += 1
+        if self.recording:
+            self.log.append((None, None, IDLE))
 
     def fetch(self, counter: int, refresh: int, value: int) -> None:
         self.spend(

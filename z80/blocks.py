@@ -33,7 +33,7 @@ def move(cpu: Cpu, step: int, repeating: bool) -> None:
     f |= undocumented_pair(carried)
 
     if repeating and cpu.registers.bc:
-        cpu.idle(5)
+        cpu.internal(5)
         cpu.registers.pc = cpu.registers.pc - 2
         f &= ~(flags.X | flags.Y)
         f |= repeat_undocumented(cpu.registers.pc)
@@ -43,7 +43,7 @@ def move(cpu: Cpu, step: int, repeating: bool) -> None:
 
 def compare(cpu: Cpu, step: int, repeating: bool) -> None:
     value = cpu.read8(cpu.registers.hl)
-    cpu.idle(5)
+    cpu.internal(5)
     result = (cpu.registers.a - value) & 0xFF
     half = ((cpu.registers.a & 0x0F) - (value & 0x0F)) < 0
     cpu.registers.hl = cpu.registers.hl + step
@@ -59,7 +59,7 @@ def compare(cpu: Cpu, step: int, repeating: bool) -> None:
     f |= undocumented_pair((result - 1) & 0xFF if half else result)
 
     if repeating and cpu.registers.bc and result:
-        cpu.idle(5)
+        cpu.internal(5)
         cpu.registers.pc = cpu.registers.pc - 2
         f &= ~(flags.X | flags.Y)
         f |= repeat_undocumented(cpu.registers.pc)
@@ -102,7 +102,7 @@ def port_flags(cpu: Cpu, value: int, carried: int, repeating: bool) -> int:
     f |= flags.parity(((carried & 0x07) ^ counter) & 0xFF)
 
     if repeating and counter:
-        cpu.idle(5)
+        cpu.internal(5)
         cpu.registers.pc = cpu.registers.pc - 2
         cpu.registers.wz = cpu.registers.pc + 1
         f &= ~(flags.X | flags.Y)

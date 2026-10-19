@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,446** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
+**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,459** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
 
 ```python
 from z80 import Cpu, Memory
@@ -81,19 +81,21 @@ python3 z80/doctor.py
 
 ### 引腳與狀態
 
-| 屬性              | 說明                                                                                                                                                                                                                                                                          |
-| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `irq_line`        | 可屏蔽請求，為電平信號，在每條指令的最後一個 T 狀態取樣                                                                                                                                                                                                                       |
-| `nmi_line`        | 不可屏蔽請求。觸發中斷的是轉變；保持不會再次中斷                                                                                                                                                                                                                              |
-| `wait_line`       | 在每個機器週期的 T2 之後讀取。每個保持設定的 T 狀態都會重複 T2                                                                                                                                                                                                                |
-| `on_cycle`        | 每個 T 狀態呼叫一次，在其結束時：在該狀態的匯流排活動以及下一個狀態之前的工作之後                                                                                                                                                                                             |
-| `cycles`          | 自晶片建立以來的 T 狀態數，跨越重設                                                                                                                                                                                                                                           |
-| `steps`           | 自上次重設以來的指令數                                                                                                                                                                                                                                                        |
-| `halted`          | 是否正在執行 `HALT`；每個 `HALT` 週期耗費 4 個 T 狀態                                                                                                                                                                                                                         |
-| `registers`       | 下文的 `Registers` 暫存器組                                                                                                                                                                                                                                                   |
-| `bus`             | 最後一條指令：`states`，其 T 狀態數；`cycles`，每個機器週期一個 `(state, kind)` 的列表；`log`，每個 T 狀態一個 `(address, value, pins)` 的列表。這兩個列表只在 `recording=True` 時填入。`kind` 是 `fetch`、`read`、`write`、`portRead`、`portWrite` 或 `acknowledge` 其中之一 |
-| `memory`、`ports` | 建立晶片時使用的物件                                                                                                                                                                                                                                                          |
-| `model`           | 正式型號名稱                                                                                                                                                                                                                                                                  |
+| 屬性              | 說明                                                                                                                                                                                                                                                                                                                                         |
+| :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `irq_line`        | 可屏蔽請求，為電平信號，在每條指令的最後一個 T 狀態取樣                                                                                                                                                                                                                                                                                      |
+| `nmi_line`        | 不可屏蔽請求。觸發中斷的是轉變；保持不會再次中斷                                                                                                                                                                                                                                                                                             |
+| `wait_line`       | 在每個機器週期的 T2 之後讀取。每個保持設定的 T 狀態都會重複 T2                                                                                                                                                                                                                                                                               |
+| `busreq_line`     | 匯流排請求。在每個機器週期最後一個 T 狀態開始時，以及匯流排浮空的每個狀態開始時讀取。只要讀到它設定，晶片就讓匯流排再浮空一個 T 狀態                                                                                                                                                                                                         |
+| `busack`          | 匯流排應答。在匯流排浮空的每個 T 狀態的 `on_cycle` 中為真                                                                                                                                                                                                                                                                                    |
+| `on_cycle`        | 每個 T 狀態呼叫一次，在其結束時：在該狀態的匯流排活動以及下一個狀態之前的工作之後                                                                                                                                                                                                                                                            |
+| `cycles`          | 自晶片建立以來的 T 狀態數，跨越重設                                                                                                                                                                                                                                                                                                          |
+| `steps`           | 自上次重設以來的指令數                                                                                                                                                                                                                                                                                                                       |
+| `halted`          | 是否正在執行 `HALT`；每個 `HALT` 週期耗費 4 個 T 狀態                                                                                                                                                                                                                                                                                        |
+| `registers`       | 下文的 `Registers` 暫存器組                                                                                                                                                                                                                                                                                                                  |
+| `bus`             | 最後一條指令：`states`，其 T 狀態數；`cycles`，每個機器週期一個 `(state, kind)` 的列表；`log`，每個 T 狀態一個 `(address, value, pins)` 的列表。這兩個列表只在 `recording=True` 時填入。`kind` 是 `fetch`、`read`、`write`、`portRead`、`portWrite`、`acknowledge` 或 `busAvailable` 其中之一。匯流排浮空的狀態記錄為 `(None, None, "----")` |
+| `memory`、`ports` | 建立晶片時使用的物件                                                                                                                                                                                                                                                                                                                         |
+| `model`           | 正式型號名稱                                                                                                                                                                                                                                                                                                                                 |
 
 ```python
 from z80 import Cpu, Memory
@@ -118,6 +120,29 @@ print(cpu.step(), seen)
 ```
 
 `ld a,n` 耗費 7 個 T 狀態。在操作碼擷取的 T2 之後讀取時，等待線仍然設定，一個狀態之後再讀取時也是如此，因此 T2 重複兩次，指令耗費 9 個 T 狀態。`on_cycle` 看到了每一個狀態。
+
+```python
+from z80 import Cpu, Memory
+
+cpu = Cpu("z80", Memory(image=bytes([0x00, 0x00])), recording=True)
+cpu.reset()
+floated = []
+
+
+def each_state() -> None:
+    floated.append(cpu.busack)
+    cpu.busreq_line = len(floated) == 3
+
+
+cpu.on_cycle = each_state
+print(cpu.step(), floated, cpu.bus.log[-1])
+```
+
+```
+5 [False, False, False, False, True] (None, None, '----')
+```
+
+請求在第三個狀態結束時設定，因此晶片在第四個狀態，即擷取的最後一個狀態，看到它，並在其後讓匯流排浮空一個狀態。`busack` 在該狀態中為真，其記錄項目既沒有位址也沒有資料。在交出匯流排的邊界上，可遮罩中斷請求不被接受，不可遮罩中斷則等到匯流排歸還之後。
 
 ### 中斷
 
@@ -472,7 +497,7 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 語料庫的提交固定在 [`conformance/suites.json`](conformance/suites.json)，每週有一個作業以上游的最新提交執行，並開啟拉取請求或問題。每個執行器都會印出它檢查了多少個案例，因為什麼都沒解析的執行，與檢查了全部內容的執行一樣以 0 結束。
 
-手冊單獨處理。[`conformance/hardware.json`](conformance/hardware.json) 載有取自文件的每項事實，連同其原句和頁碼，[`conformance/hardware.test.py`](conformance/hardware.test.py) 及其旁邊的 `hardware_*.test.py` 檔案在機器上沒有語料庫的情況下運行晶片，以它逐個檢查其機器週期。`python3 -m conformance.timing` 執行全部 217 行逐指令時序，並將每行與晶片耗費的 T 狀態比對。手冊有五處自相矛盾：三行時序，分別在第 99、260 和 269 頁，其 M 週期數與其自身的 T 狀態分解不符；另外兩處是正文與圖表不符。兩個來源出現分歧的每一處，都連同可解決它的方法列於 [`conformance/divergences.json`](conformance/divergences.json)。
+手冊單獨處理。[`conformance/hardware.json`](conformance/hardware.json) 載有取自文件的每項事實，連同其原句和頁碼，[`conformance/hardware.test.py`](conformance/hardware.test.py) 及其旁邊的 `hardware_*.test.py` 檔案在機器上沒有語料庫的情況下運行晶片，以它逐個檢查其機器週期。`python3 -m conformance.timing` 執行全部 217 行逐指令時序，並將每行與晶片耗費的 T 狀態比對。手冊有六處自相矛盾：三行時序，分別在第 99、260 和 269 頁，其 M 週期數與其自身的 T 狀態分解不符；兩處是正文與圖表不符；還有從第 298 頁起的區塊輸入各行，其分解把記憶體寫入放在埠讀取之前，而它們自己的描述順序正好相反。兩個來源出現分歧的每一處，都連同可解決它的方法列於 [`conformance/divergences.json`](conformance/divergences.json)。
 
 [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出 18 個問題，其中的保真度是一項聲稱而非測量，每個問題都附有可解決它的測量。旗標暫存器的第 3 和第 5 位元以及內部的 `WZ` 暫存器，在 Zilog 用戶手冊和數據手冊合共 780 頁中都沒有出現。
 

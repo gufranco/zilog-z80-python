@@ -259,7 +259,7 @@ class DivergenceTest(unittest.TestCase):
         # Arrange
         expected = {
             "wait-states-requested-by-a-device",
-            "bus-request-not-modelled",
+            "bus-request-and-acknowledge",
             "power-down-is-a-stopped-clock",
         }
 

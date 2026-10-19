@@ -37,6 +37,8 @@ class Cpu:
         "_inside",
         "_open",
         "bus",
+        "busack",
+        "busreq_line",
         "carry_rule",
         "cycles",
         "deferring_interrupt",
@@ -55,6 +57,7 @@ class Cpu:
         "ports",
         "registers",
         "responding",
+        "sampled_busreq",
         "sampled_irq",
         "steps",
         "wait_line",
@@ -83,6 +86,12 @@ class Cpu:
         self.registers = Registers(seed)
         self.wait_line = False
 
+        self.busreq_line = False
+
+        self.sampled_busreq = False
+
+        self.busack = False
+
         self.irq_line = False
 
         self.nmi_line = False
@@ -101,7 +110,14 @@ class Cpu:
 
         self._inside = False
 
-        self.bus = bus.Bus(self.spend, self.wants_a_wait, recording=recording, shape=shape)
+        self.bus = bus.Bus(
+            self.spend,
+            self.wants_a_wait,
+            self.wants_the_bus,
+            self.floating,
+            recording=recording,
+            shape=shape,
+        )
         self.steps = 0
         self.cycles = 0
         self.halted = False
@@ -118,6 +134,13 @@ class Cpu:
         self.sampled_irq = self.irq_line
         self.nmi_at_deadline = self.nmi_in_last_state
         self.nmi_in_last_state = self.nmi_line
+        self.sampled_busreq = self.busreq_line
+        self._open = True
+
+    def floating(self) -> None:
+        self.settle()
+        self.sampled_busreq = self.busreq_line
+        self.busack = True
         self._open = True
 
     def settle(self) -> None:
@@ -127,18 +150,22 @@ class Cpu:
         self.cycles += 1
         if self.on_cycle is not None:
             self.on_cycle()
+        self.busack = False
+
+    def wants_the_bus(self) -> bool:
+        return self.sampled_busreq
 
     def wants_a_wait(self) -> bool:
         self.settle()
         return self.wait_line
 
-    def sample_pins(self) -> bool:
+    def sample_pins(self, granted: bool) -> bool:
         edge = self.nmi_at_deadline and not self.nmi_seen
         self.nmi_seen = self.nmi_at_deadline
         if edge:
             self.nmi()
             return True
-        if self.sampled_irq:
+        if self.sampled_irq and not granted:
             return self.irq()
         return False
 
@@ -168,6 +195,10 @@ class Cpu:
 
     def idle(self, count: int = 1) -> None:
         self.bus.idle(count)
+
+    def internal(self, *lengths: int) -> None:
+        for length in lengths:
+            self.bus.internal(length)
 
     def port_read(self, address: int) -> int:
         address &= 0xFFFF
@@ -388,7 +419,7 @@ class Cpu:
                 self.execute(self.opcode_fetch(), None)
         finally:
             self._inside = False
-        self.sample_pins()
+        self.sample_pins(self.bus.end_cycle())
         self.settle()
         return self.bus.states
 
@@ -435,6 +466,7 @@ class Cpu:
             taken = self.respond_to_irq(vector)
         finally:
             self._inside = False
+        self.bus.end_cycle()
         self.settle()
         return taken
 
@@ -445,6 +477,7 @@ class Cpu:
             self.respond_to_nmi()
         finally:
             self._inside = False
+        self.bus.end_cycle()
         self.settle()
 
     def refuse_inside(self, line: str) -> None:
@@ -526,7 +559,7 @@ class Cpu:
     def operand(self, z: int, prefix: str | None) -> int:
         displacement = self.fetch_signed() if z == 6 and prefix is not None else 0
         if z == 6 and prefix is not None:
-            self.idle(5)
+            self.internal(5)
         return self.register_read(z, prefix, displacement)
 
     def execute_load(self, y: int, z: int, prefix: str | None) -> None:
@@ -536,7 +569,7 @@ class Cpu:
             return None
         displacement = self.fetch_signed() if (y == 6 or z == 6) and prefix is not None else 0
         if (y == 6 or z == 6) and prefix is not None:
-            self.idle(5)
+            self.internal(5)
         value = self.register_read(z, None if y == 6 else prefix, displacement)
         self.register_write(y, value, None if z == 6 else prefix, displacement)
         self.keep_flags()
@@ -596,7 +629,7 @@ class Cpu:
 
     def take_branch(self, offset: int, taken: bool) -> None:
         if taken:
-            self.idle(5)
+            self.internal(5)
             self.registers.pc = self.registers.pc + offset
             self.registers.wz = self.registers.pc
         self.keep_flags()
@@ -612,7 +645,7 @@ class Cpu:
             self.keep_flags()
             return None
         target = self.index_pair(prefix)
-        self.idle(7)
+        self.internal(4, 3)
         setattr(
             self.registers,
             target,
@@ -655,7 +688,7 @@ class Cpu:
     def group0_step(self, y: int, prefix: str | None, operation: Callable[[int], int]) -> None:
         displacement = self.fetch_signed() if y == 6 and prefix is not None else 0
         if y == 6 and prefix is not None:
-            self.idle(5)
+            self.internal(5)
         value = self.register_read(y, prefix, displacement)
         if y == 6:
             self.idle()
@@ -1009,7 +1042,7 @@ class Cpu:
         self.keep_flags()
 
     def extended_wide(self, p: int, q: int) -> None:
-        self.idle(7)
+        self.internal(4, 3)
         value = getattr(self.registers, PAIRS_SP[p])
         left = self.registers.hl
         carry = 1 if self.registers.f & flags.C else 0
@@ -1089,7 +1122,7 @@ class Cpu:
     def rotate_digit(self, left: bool) -> None:
         address = self.registers.hl
         held = self.read8(address)
-        self.idle(4)
+        self.internal(4)
         a = self.registers.a
         if left:
             self.write8(address, ((held << 4) | (a & 0x0F)) & 0xFF)
