@@ -210,8 +210,8 @@
       ]
     },
     {
-      "id": "wait-states-not-modelled",
-      "severity": "outOfScope",
+      "id": "wait-states-requested-by-a-device",
+      "severity": "low",
       "status": "closed",
       "topic": "Wait states requested by memory.",
       "documentSays": {
@@ -222,10 +222,11 @@
         "document": "userManual",
         "source": "Zilog UM008011-0816, manual page 7"
       },
-      "packageFollows": "neither",
-      "consequence": "Every machine cycle here is its minimum length. The automatic waits, the one in an I/O cycle and the two in an interrupt acknowledge, are modelled because the part inserts them itself; a wait a device asks for is not.",
-      "why": "A requested wait is a property of the board, not of the processor. There is no board here and no pin for a device to hold. This is the same distinction as a chip's rated clock against a particular oscillator: two different numbers.",
-      "wouldReopenIt": "A caller that supplies a memory whose accesses take time, at which point the sampling rule above says exactly what to do."
+      "packageFollows": "document",
+      "consequence": "wait_line is read after T2 of every machine cycle, and each T state it is seen set repeats that state, so a device holding it lengthens the cycle by as many states as it holds it. The automatic waits of an input or output cycle and of an acknowledge are spent whether or not the line is set.",
+      "why": "A caller holds the line from on_cycle, or between two ticks of a Clock, which is the device the earlier entry said was missing.",
+      "wouldReopenIt": "A capture showing that the part samples the line somewhere other than where the manual prints it.",
+      "howItWasClosed": "The line exists, is documented in the README with a worked example, and is sampled where the quoted sentence says."
     },
     {
       "id": "generator-head-disagrees-with-the-pinned-corpus",
@@ -299,8 +300,8 @@
       "wouldReopenIt": "A caller that can hold the line, at which point the sampling rule above says when the part lets go and the manual's figure says which signals float."
     },
     {
-      "id": "power-down-not-modelled",
-      "severity": "outOfScope",
+      "id": "power-down-is-a-stopped-clock",
+      "severity": "low",
       "status": "closed",
       "topic": "The power-down acknowledge and release cycles.",
       "documentSays": {
@@ -311,10 +312,11 @@
         "document": "userManual",
         "source": "Zilog UM008011-0816, manual page 15"
       },
-      "packageFollows": "neither",
-      "consequence": "There is no clock here to stop. A caller that stops stepping has produced the same observable result, which is that nothing changes.",
-      "why": "This is a statement about what the part does when its clock is taken away, and a model that is stepped rather than clocked has no way to take it away and nothing to report if it did. Modelling it would mean adding a state that is indistinguishable from not calling step.",
-      "wouldReopenIt": "A clocked rather than stepped interface, which would also be what a requested wait state needed."
+      "packageFollows": "document",
+      "consequence": "Clock(cpu) advances the part one T state per tick, so a host that stops ticking has stopped the clock, and the part waits inside that T state with every register and line as it was. That is the whole of what the sentence describes.",
+      "why": "The entry asked for a clocked interface. Clock is one, and the sentence names no state of the part beyond holding everything it held.",
+      "wouldReopenIt": "A document giving a stopped clock an effect beyond holding state, such as a limit on how long it may stay stopped.",
+      "howItWasClosed": "The interface the entry asked for exists. Figures 12 to 15 draw the clock stopped in T4 of the machine cycle after a halt, and an interrupt or a reset releasing the part once the clock runs again. A Clock paused there and ticked again does both, because the halted part keeps running M1 cycles until a request arrives. The standby current the figures are drawn for is a property of the supply, which nothing here models."
     },
     {
       "id": "wz-after-an-interrupt-response",
@@ -565,7 +567,7 @@
         "source": "not applicable"
       },
       "referenceDoes": {
-        "rung": 2,
+        "rung": 3,
         "claim": "A transistor level netlist of the die exists and is public. Read here on 2026-08-27 it is 6,781 transistors, plus 32 entries that are pull-ups rather than transistors, and 2,059 nets carrying a permanent pull-up. Running it answers the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.",
         "source": "https://github.com/trebonian/visual6502, chip-z80/transdefs.js, segdefs.js and nodenames.js"
       },

@@ -258,9 +258,9 @@ class DivergenceTest(unittest.TestCase):
     def test_every_timing_chapter_cycle_is_modelled_or_written_up(self) -> None:
         # Arrange
         expected = {
-            "wait-states-not-modelled",
+            "wait-states-requested-by-a-device",
             "bus-request-not-modelled",
-            "power-down-not-modelled",
+            "power-down-is-a-stopped-clock",
         }
 
         # Act

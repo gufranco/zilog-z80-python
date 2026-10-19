@@ -247,7 +247,7 @@ Source: Zilog UM008011-0816, manual page 12.
 
 **What it is.** A transistor level netlist of the die exists and is public. Read here on 2026-08-27 it is 6,781 transistors, plus 32 entries that are pull-ups rather than transistors, and 2,059 nets carrying a permanent pull-up. Running it answers the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.
 
-**What has changed for the entries above.** The entries above that say a logic capture would settle them can now be asked of the die instead, one at a time. None has been yet, so none of them has changed. What has changed is that asking is possible without a bench.
+**What has changed for the entries above.** One has been asked: the entry about WZ, by [`conformance/wz.py`](conformance/wz.py), and it carries what the netlist answered. The rest have not, so they have not changed. What has changed is that asking is possible without a bench.
 
 **What had to be measured.** Two things had to be established here rather than taken from anyone, and both were measured. Thirty-two entries in the transistor file carry a flag marking them pull-ups; loading them anyway leaves 36 propagations hitting the limiter over a 130 half cycle run and no register reaches a correct value, and skipping them leaves none. And the doubled net names hold the register set an instruction writes while the single-letter ones hold the shadow set, which is the opposite of what the names suggest; that was settled by executing LD r,n for each of A, B, C, D, E, H and L across all eight bit positions and recording which nets followed the loaded value.
 
@@ -274,7 +274,6 @@ So the boundary is visible rather than implied:
 Absent rather than unknown, and absent on purpose:
 
 - **Bus request and bus acknowledge.** No second bus master to arbitrate with.
-- **Power-down modes.** Nothing here has a power rail.
 - **The one thing left about the interrupt lines.** They are lines now:
   `irq_line` is read at the final T state, which is where the manual says the
   part reads it, and `nmi_line` interrupts on its transition. A request raised

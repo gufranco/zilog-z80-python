@@ -2126,10 +2126,10 @@
       "filePage": 21,
       "quote": "When the clock input to the CPU is stopped at either a High or Low level, the CPU stops its operation and maintains all registers and control signals.",
       "appliesToNote": "The section heads itself \"Only applies to CMOS Z80 CPU\", so it is the z84c00 alone among the parts here.",
-      "notModelled": "Nothing, and there is nothing to model. Power down is entered by a board stopping the clock, not by the part executing anything, and this model has no oscillator to stop: it advances when a caller drives it and stands still when nobody does. A caller who stops calling has already reproduced every effect the sentence describes, registers and control signals included.",
+      "notModelled": "Nothing beyond what Clock already is. Power down is entered by a board stopping the clock, not by the part executing anything. Clock(cpu) advances the part one T state per tick, so a host that stops ticking has stopped the clock, and the part waits inside that T state with its registers and control signals as they were, which is every effect the sentence describes.",
       "whyItIsRecordedAnyway": "It is documented behaviour of a part this package ships, and an absent entry reads as an unread page rather than as a decision. The data book also ties it to the HALT instruction in Figure 13, which is a different thing from the HALT state this record models above.",
       "appliesTo": ["z84c00"],
-      "unreachable": "The model has no oscillator and advances only when a caller drives it, so a stopped clock is the absence of a call and leaves no behaviour for a test to observe."
+      "unreachable": "A stopped clock is a Clock nobody ticks. Holding everything is the absence of any change, which leaves no behaviour for a test to observe beyond the part not moving."
     },
     "nonmaskableEdgeMustLandBeforeTheLastState": {
       "document": "familyDataBook",

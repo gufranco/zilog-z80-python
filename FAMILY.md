@@ -1158,7 +1158,7 @@ the recording was produced by translating an emulator's core, which its own
 readme states. The manual wins wherever the two overlap.
 
 **Nothing here rests on a measurement of real silicon.** That is the reason
-seventeen questions in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) are still open, and
+eighteen questions in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) are still open, and
 the reason the timing figures carry the reading that produced them rather than
 only the number.
 
