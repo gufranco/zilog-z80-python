@@ -54,6 +54,8 @@ Source: Zilog UM008011-0816, the INI page and the seven like it.
 
 **Why.** The corpus fixes these flags on every one of its cases and this core reproduces it, and the rule the research states independently gives the same answer on all eighty combinations of the counter, the port and the byte that were tried. Two lineages that never consulted each other agree, and the manual disagrees with both.
 
+**What the die says.** The same as the recording. For INI with a carrying sum and without one, IND, OUTI and OUTD, the netlist leaves the flag byte this package does in all five cases: the negate flag follows bit 7 of the byte, and the carry and half carry follow the sum. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
+
 **What would settle or reopen it.** A program on a real part: clear the carry, run one block input whose sum overflows, and read the flag back.
 
 ## Where a document disagrees with itself
@@ -70,6 +72,8 @@ Source: Zilog UM008011-0816, manual pages 6 and 13.
 
 **Why.** The manual says the line is sampled, which is what the model does, and says it is edge-triggered, which the model honours by taking a held line once. It never says the edge is latched, and the data book's minimum NMI pulse width on printed page 21 bounds how short a pulse the part is guaranteed to see without saying when it is seen. Latching every edge would be choosing the reading that sounds more like hardware, which is the thing this record exists to stop.
 
+**What the die says.** It latches the edge. A pulse one T state long, placed in the second machine cycle of `add hl,bc` and gone six states before the instruction ends, is taken: the next fetch is at 0066h. This package misses the same pulse. The answer is the netlist's, recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py), and it is not adopted as the part's: the member's ladder holds nothing in the package to the netlist, and the die is one photograph of one part.
+
 **What points toward a latch.** The data book's minimum NMI pulse width, parameter 37 on printed pages 21 and 23, is 80, 70, 60 and 60 ns for the four CMOS ratings and 80, 70 and 60 ns for the three NMOS ones, against clock cycle times of 250, 162, 125 and 100 ns and 250, 162 and 125 ns. Every minimum is shorter than one T state, and Figure 9 draws the parameter as the width of a low pulse. It does not settle the question, because no sentence makes that width a condition for recognition, and the paragraph above Figure 9 says "NMI is sampled at the same time as the maskable interrupt input INT".
 
 **What would settle or reopen it.** A logic capture of a real part given an NMI pulse that falls and rises again entirely before the last two states of an instruction, recording whether the next boundary restarts at 0066h.; The same capture with the pulse placed inside an instruction several machine cycles long, which separates a latch from a sample taken once per instruction.
@@ -83,6 +87,8 @@ Source: Zilog UM008011-0816, manual page 20.
 **What this project follows.** reference
 
 **Why.** The manual's sentence is sound advice to whoever builds the table and is not a description of what the silicon does with the byte. The only party to have tested it reports the opposite, and nothing in the corpus covers it because the corpus contains no interrupt cases.
+
+**What the die says.** All eight bits. Given 21h with I at 00h, the netlist reads the pointer from 0021h and 0022h, which is what this package does. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
 
 **What would settle or reopen it.** A program on a real part: point the table at an odd address, raise the line, supply an odd vector, and see where it lands.
 
@@ -100,6 +106,8 @@ Source: Zilog UM008011-0816, manual page 8.
 
 **Why.** The manual guarantees only seven bits, so the rest is not a figure it prints. The recording supplies a whole address and this core reproduces it. A model that put something else in the upper nine bits would disagree on every instruction and would have no document behind it either.
 
+**What the die says.** With I at 9Ch and R at F0h, the refresh half of the next fetch puts 9CF0h on all sixteen pins: I above the whole of R, bit 7 included, as this package does. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
+
 **What would settle or reopen it.** A logic capture reading all sixteen address lines during T3 of a fetch.
 
 ### Where within a long machine cycle the bus falls idle.
@@ -107,6 +115,8 @@ Source: Zilog UM008011-0816, manual page 8.
 **What this project follows.** reference
 
 **Why.** The two sources are answering different questions rather than contradicting each other. Recorded here so that a reader does not take the whole cycle claim as resting on the manual when half of it rests on the recording.
+
+**What the die says.** The same. Across all 1135 opcode forms the decoder accepts, `halt` aside, each run once from the die's power-up register state, every machine cycle the netlist runs starts, ends, accesses and addresses exactly as this package's does. One register state takes one side of each conditional instruction. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
 
 **What would settle or reopen it.** A logic capture of an instruction with more than one idle state, showing which machine cycle carries them.
 
@@ -161,6 +171,8 @@ Source: Zilog UM008011-0816, manual page 14.
 
 **Why.** The manual says outright that the halted part keeps performing M1 cycles, so emitting none was reporting a machine cycle the part performs as one it does not. It does not say which address those cycles carry: the note under Figure 11 says the halt instruction is repeated, which would put the previous address on the bus, and the counter is where a part that simply stopped advancing would fetch from.
 
+**What the die says.** The counter. With the halt instruction at 0001h, every M1 cycle the netlist runs while halted carries 0002h, which is the address this package fetches from. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
+
 **What would settle or reopen it.** A logic capture of a halted Z80, reading the address lines during any of its M1 cycles.; A recording that steps a machine which is already halted, which this corpus does not.
 
 ### The corpus generator has changed its mind about behaviour nobody documented.
@@ -168,6 +180,8 @@ Source: Zilog UM008011-0816, manual page 14.
 **What this project follows.** the pinned corpus
 
 **Why.** The pin exists so a run is reproducible. Following the head instead would be swapping one undocumented opinion for a newer one with nothing to prefer it by.
+
+**What the die says.** It splits them. On the seven placement opcodes, `ex (sp),hl` and its two indexed forms, `rrd`, `rld` and the two indexed stores of an immediate, the netlist runs the machine cycles of the pinned corpus, which this package reproduces. On `dd 37`, `dd 3f`, `fd 37` and `fd 3f` run after `cp 28h`, it leaves bits 5 and 3 clear, keeping the flags latch across the index prefix: that is the generator's head, and this package, following the pin, disagrees with the die on those four. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
 
 **What would settle or reopen it.** A real part, for any of the eleven. Nothing else can, because no document speaks to any of them.
 
@@ -181,6 +195,8 @@ Source: Zilog UM008011-0816, manual page 20.
 
 **Why.** Reading the cycle as a four state fetch plus the two added waits gives six, and six makes the printed mode 2 total eighteen against a printed nineteen. The reading that satisfies both printed figures is a five state M1 under the two waits.
 
+**What the die says.** Seven states: T1, T2, two automatic waits, T3, T4 and a fifth, so the seventh is the last state of the acknowledge cycle, after the refresh half. This package spends it there. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
+
 **What would settle or reopen it.** A logic capture of a real Z80 answering an interrupt, counting the states of the acknowledge cycle.
 
 ### What the internal address register holds once an interrupt has been taken.
@@ -188,6 +204,8 @@ Source: Zilog UM008011-0816, manual page 20.
 **What this project follows.** neither
 
 **Why.** Leaving it alone would be as much of a guess as setting it, and it would be a quieter one. Setting it the way the nearest documented instruction does at least makes the guess a consistent one, and this entry is what stops it reading as a finding.
+
+**What the die says.** The address the response jumps to: 0038h after a mode 1 or mode 0 restart, the address read from the table after mode 2, 0066h after a nonmaskable response. This package sets the same. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
 
 **What would settle or reopen it.** A recording that takes an interrupt and reports the register afterwards.; A die analysis, or Zilog documenting the internal register file.
 
@@ -221,6 +239,8 @@ Source: Zilog UM008011-0816, manual page 8.
 
 **Why.** A four character string per T state cannot express a waveform whose edges land between states, so any per-state model applies a rule the manual never states. Calling the recording wrong would be treating one such rule as a fact. Calling it right would be treating a documented simplification as a measurement. Both shapes are kept, named, and produced from the same edge table.
 
+**Why the die has not been asked.** The netlist resolves half clock cycles, but its clock net does not say which of its two halves is the rising edge the manual's figures are drawn against, and aligning it by the strobe edges would assume the answer.
+
 **What would settle or reopen it.** A logic capture of a real Z80, which would give the edges directly rather than through a drawing.; Nothing in the document settles it, because the question is about the model's resolution rather than about the part.
 
 ## Where the evidence exists but has not been run here
@@ -237,6 +257,8 @@ Source: Zilog UM008011-0816, manual page 12.
 
 **Why.** The generator does emit entries for the interrupt request and for reset, and the published corpus leaves both out. Neither would settle anything if it were published: each case is an ordinary instruction stepped from the given state, with the opcode at the program counter deciding the transcript, so the interrupt entry is not a recording of an acknowledge cycle at all.
 
+**What the die says.** The cycle this package models. The netlist's acknowledge machine cycle is seven T states with IORQ in place of MREQ, mode 1 and a mode 0 restart reach their destination thirteen states after it begins, mode 2 nineteen, and a nonmaskable response eleven, its first machine cycle five states. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
+
 **What would settle or reopen it.** A logic capture of a real Z80 answering an interrupt, which would give the pins and the length together.; A corpus that contains acknowledge cycles, which this one does not.
 
 ### The one source that could settle most of the entries above, now that it runs.
@@ -247,11 +269,11 @@ Source: Zilog UM008011-0816, manual page 12.
 
 **What it is.** A transistor level netlist of the die exists and is public. Read here on 2026-08-27 it is 6,781 transistors, plus 32 entries that are pull-ups rather than transistors, and 2,059 nets carrying a permanent pull-up. Running it answers the questions a document drawn at half clock resolution and a recording written one column per T state cannot: where a strobe actually falls, how many states an acknowledge takes, what the address pins carry during refresh, and where an internal state sits inside a machine cycle.
 
-**What has changed for the entries above.** One has been asked: the entry about WZ, by [`conformance/wz.py`](conformance/wz.py), and it carries what the netlist answered. The rest have not, so they have not changed. What has changed is that asking is possible without a bench.
+**What has changed for the entries above.** [`conformance/ask.py`](conformance/ask.py) asks it twelve questions and records each answer beside what this package does in [`conformance/die.json`](conformance/die.json). Every entry above with a die paragraph has been asked, and [`conformance/wz.py`](conformance/wz.py) asked the one about WZ. Of its twelve answers, the die parts from this package on two: the short nonmaskable pulse and the four prefixed carry instructions. The strobe edges have not been asked, for the reason in that entry. None of the entries is closed by it: an answer is the netlist's, not the part's.
 
 **What had to be measured.** Two things had to be established here rather than taken from anyone, and both were measured. Thirty-two entries in the transistor file carry a flag marking them pull-ups; loading them anyway leaves 36 propagations hitting the limiter over a 130 half cycle run and no register reaches a correct value, and skipping them leaves none. And the doubled net names hold the register set an instruction writes while the single-letter ones hold the shadow set, which is the opposite of what the names suggest; that was settled by executing LD r,n for each of A, B, C, D, E, H and L across all eight bit positions and recording which nets followed the loaded value.
 
-**What would settle or reopen it.** Taking one entry above at a time, asking the die, and recording the answer as the netlist's rather than as the part's.; A logic capture from a real part, which is still what would settle any of them outright, because it would agree or disagree with the extraction.
+**What would settle or reopen it.** Aligning the netlist's clock phase with the manual's CLK by something other than the strobe edges, after which the strobe question can be asked too.; A logic capture from a real part, which is still what would settle any of them outright, because it would agree or disagree with the extraction.
 
 ## What is not in question
 

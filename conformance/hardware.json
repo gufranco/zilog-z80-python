@@ -2087,7 +2087,7 @@
       "figureReading": "Read off the rendered page of Figure 8 on printed page 12: the request is sampled in the last T state of a machine cycle, BUSACK falls in the first Tx state that follows it and stays low through every Tx state, the request is sampled again in each Tx state, and the Tx state in which it is first seen released is the last one before T1 of the next machine cycle. Address, data, MREQ, RD, WR, IORQ and RFSH float for every Tx state.",
       "model": "busreq_line is read at the start of the last T state of each machine cycle and at the start of each floating state; while it was seen held the part spends floating states, logged with no address and no data, and busack reads true in each. A machine cycle ends where the manual's per-instruction breakdown ends it, so the internal states of an instruction are grouped the way its timing row groups them.",
       "breakdownNotFollowedOn": ["INI", "INIR", "IND", "INDR"],
-      "whyNotFollowedThere": "Those four rows print (4, 5, 3, 4) while the same pages say the port is read before memory is written and Figure 7 gives an input cycle four states. The divergence block-input-breakdown-order records it.",
+      "whyNotFollowedThere": "Those four rows print (4, 5, 3, 4) while the same pages say the port is read before memory is written and Figure 7 gives an input cycle four states. The divergence block-input-breakdown-order records it; the die runs them as (4, 5, 4, 3).",
       "appliesTo": ["upd780c", "z80", "z84c00"],
       "heldBy": [
         "conformance/hardware_bus_request.test.py::PrintedFactTest.test_a_request_seen_in_the_last_state_floats_the_bus_after_the_cycle",
@@ -2287,7 +2287,7 @@
         ["portRead", 4],
         ["write", 3]
       ],
-      "readingWhy": "The description and Figure 7 together. The totals agree either way, so only the grouping is in question.",
+      "readingWhy": "The description and Figure 7 together. The totals agree either way, so only the grouping is in question, and the die runs the instruction as fetch 4, fetch 5, input 4, write 3: conformance/die.json, question block-input-machine-cycles.",
       "verifiedOn": "2026-10-19, twice: the text layer of pages 298, 300, 302 and 304, which prints the same breakdown on all four, and the rendered image of page 298",
       "kind": "timingTableVersusProse",
       "heldBy": [

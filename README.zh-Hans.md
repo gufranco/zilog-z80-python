@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,459** 个测试，**100%** 语句和分支覆盖率，无依赖
+**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,487** 个测试，**100%** 语句和分支覆盖率，无依赖
 
 ```python
 from z80 import Cpu, Memory
@@ -297,21 +297,22 @@ this clock has been closed 3
 
 每个工具都从仓库根目录运行。一致性工具以模块方式运行。
 
-| 命令                                                                                                      | 作用                                                                                                                     | 退出码                                                     |
-| :-------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
-| `python3 z80/doctor.py`                                                                                   | 报告本机、各芯片和语料库                                                                                                 | 0 所有检查通过，1 有检查未通过                             |
-| `python3 -m conformance.fetch [directory] [--latest]`                                                     | 将语料库按其固定的提交克隆到 `directory`，使用 `--latest` 时按上游最新提交克隆，默认目录为 `~/.cache/conformance-suites` | 0 已获取，1 上游不可达或某个 git 步骤失败                  |
-| `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]`                         | 在每个用例之后比对寄存器和内存                                                                                           | 0 无失败，1 有失败或未找到用例，2 参数错误                 |
-| `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 比对每个 T 状态的地址、数据和引脚。形态默认为 `recording`                                                                | 0 无失败，1 有失败或未找到用例，2 参数错误                 |
-| `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]`                             | 用生成该语料库的生成器重建它。需要 `node`                                                                                | 0 已写入，生成器失败时为生成器自身的退出码，1 参数错误     |
-| `python3 -m conformance.timing`                                                                           | 运行记录中的每一行逐指令时序，并比对 T 状态数                                                                            | 0 每一行都一致，1 有一行不一致                             |
-| `python3 -m conformance.quotes`                                                                           | 在存有文档的机器上，在所引用的文档中查找每一句引文                                                                       | 0 每句引文都找到，1 有一句未找到                           |
-| `python3 -m conformance.documents [--check] [--only SUBSTRING]`                                           | 下载有地址的文档，并校验每个摘要。`--check` 只做校验                                                                     | 0 每份都校验通过，1 有一份被拒绝或参数错误                 |
-| `python3 -m conformance.netlist [--half-cycles N]`                                                        | 从复位开始运行晶体管网表 `N` 个半周期，默认 130                                                                          | 0 每个节点都已稳定，1 有节点未稳定或缺少数据文件           |
-| `python3 -m conformance.wz [output]`                                                                      | 读取网表在 `WZ` 中留下的内容，并写入 `output`，默认为 [`conformance/wz.json`](conformance/wz.json)                       | 0 已写入，1 缺少网表或探针未校准                           |
-| `python3 -m conformance.speed [--instructions N] [--repeats N]`                                           | 在 64 KB 镜像上为 `run_for(N)` 计时，默认 200,000 个 T 状态、运行 7 次                                                   | 0 达到或超过每秒 400,000 个 T 状态，1 低于该值，2 参数错误 |
-| `python3 -m conformance.links`                                                                            | 请求本文件中的每个地址                                                                                                   | 0 每个地址仍然存在，1 有地址返回状态 `404` 或 `410`        |
-| `python3 -m conformance.package <wheel>`                                                                  | 检查构建好的 wheel 是否包含每个模块且不含测试                                                                            | 0 正常，1 有问题或文件不存在，2 未提供参数                 |
+| 命令                                                                                                      | 作用                                                                                                                                                                           | 退出码                                                     |
+| :-------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
+| `python3 z80/doctor.py`                                                                                   | 报告本机、各芯片和语料库                                                                                                                                                       | 0 所有检查通过，1 有检查未通过                             |
+| `python3 -m conformance.fetch [directory] [--latest]`                                                     | 将语料库按其固定的提交克隆到 `directory`，使用 `--latest` 时按上游最新提交克隆，默认目录为 `~/.cache/conformance-suites`                                                       | 0 已获取，1 上游不可达或某个 git 步骤失败                  |
+| `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]`                         | 在每个用例之后比对寄存器和内存                                                                                                                                                 | 0 无失败，1 有失败或未找到用例，2 参数错误                 |
+| `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 比对每个 T 状态的地址、数据和引脚。形态默认为 `recording`                                                                                                                      | 0 无失败，1 有失败或未找到用例，2 参数错误                 |
+| `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]`                             | 用生成该语料库的生成器重建它。需要 `node`                                                                                                                                      | 0 已写入，生成器失败时为生成器自身的退出码，1 参数错误     |
+| `python3 -m conformance.timing`                                                                           | 运行记录中的每一行逐指令时序，并比对 T 状态数                                                                                                                                  | 0 每一行都一致，1 有一行不一致                             |
+| `python3 -m conformance.quotes`                                                                           | 在存有文档的机器上，在所引用的文档中查找每一句引文                                                                                                                             | 0 每句引文都找到，1 有一句未找到                           |
+| `python3 -m conformance.documents [--check] [--only SUBSTRING]`                                           | 下载有地址的文档，并校验每个摘要。`--check` 只做校验                                                                                                                           | 0 每份都校验通过，1 有一份被拒绝或参数错误                 |
+| `python3 -m conformance.netlist [--half-cycles N]`                                                        | 从复位开始运行晶体管网表 `N` 个半周期，默认 130                                                                                                                                | 0 每个节点都已稳定，1 有节点未稳定或缺少数据文件           |
+| `python3 -m conformance.wz [output]`                                                                      | 读取网表在 `WZ` 中留下的内容，并写入 `output`，默认为 [`conformance/wz.json`](conformance/wz.json)                                                                             | 0 已写入，1 缺少网表或探针未校准                           |
+| `python3 -m conformance.ask [output] [--sweep]`                                                           | 把 `ask.py` 中的每个问题交给网表，并把每个回答与本包的回答并列写入 `output`，默认为 [`conformance/die.json`](conformance/die.json)。`--sweep` 还会比对每种操作码形式的机器周期 | 0 已写入，1 缺少网表，2 参数错误                           |
+| `python3 -m conformance.speed [--instructions N] [--repeats N]`                                           | 在 64 KB 镜像上为 `run_for(N)` 计时，默认 200,000 个 T 状态、运行 7 次                                                                                                         | 0 达到或超过每秒 400,000 个 T 状态，1 低于该值，2 参数错误 |
+| `python3 -m conformance.links`                                                                            | 请求本文件中的每个地址                                                                                                                                                         | 0 每个地址仍然存在，1 有地址返回状态 `404` 或 `410`        |
+| `python3 -m conformance.package <wheel>`                                                                  | 检查构建好的 wheel 是否包含每个模块且不含测试                                                                                                                                  | 0 正常，1 有问题或文件不存在，2 未提供参数                 |
 
 ## 以真实速度运行
 
@@ -514,6 +515,8 @@ python3 -m conformance.netlist
 晶体管文件把 32 个条目标记为上拉，只有把它们作为上拉加载时，网络才会稳定。字母重复的网络名称保存指令写入的寄存器组，单字母的网络名称保存影子寄存器组。对每个寄存器和每个位位置执行 `LD r,n` 可以证明这一点。
 
 包中没有任何内容以网表为准。它的可信度低于制造商的文档，也低于真实芯片的录制数据，因为网表是一种提取结果，而提取可能出错。
+
+`python3 -m conformance.ask` 把 [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 中说实物捕获可以解决的十二个问题交给网表，并把每个回答与本包的行为并列记录在 [`conformance/die.json`](conformance/die.json) 中。加上 `--sweep` 时，它还会从同一个寄存器状态出发，比对除 `halt` 之外每种操作码形式的机器周期。在十二个回答中，晶粒与本包有两处不同：它会锁存短暂的不可屏蔽中断脉冲，以及四条带前缀的进位指令。
 
 ## 参与开发
 

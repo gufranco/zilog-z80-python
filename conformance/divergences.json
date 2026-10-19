@@ -51,7 +51,7 @@
     {
       "id": "recording-refresh-on-address-pins",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "What the address pins hold during the second half of an opcode fetch.",
       "documentSays": {
         "rung": 1,
@@ -70,12 +70,17 @@
       "packageFollows": "reference",
       "consequence": "The address on the last two states of every fetch is the vector register above the refresh counter as it stood before the fetch advanced it. Both pin shapes put it there, because the question is what is on the pins rather than how a waveform becomes a column.",
       "why": "The manual guarantees only seven bits, so the rest is not a figure it prints. The recording supplies a whole address and this core reproduces it. A model that put something else in the upper nine bits would disagree on every instruction and would have no document behind it either.",
-      "wouldSettleIt": ["A logic capture reading all sixteen address lines during T3 of a fetch."]
+      "wouldSettleIt": ["A logic capture reading all sixteen address lines during T3 of a fetch."],
+      "dieSays": {
+        "rung": 3,
+        "claim": "With I loaded with 9Ch and R with F0h, the refresh half of the next fetch puts 9CF0h on all sixteen address pins: the vector register above the whole refresh counter, bit 7 included. That is what the recording and this package put there. Question refresh-address.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "internal-cycle-placement",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "Where within a long machine cycle the bus falls idle.",
       "documentSays": {
         "rung": 1,
@@ -92,7 +97,12 @@
       "why": "The two sources are answering different questions rather than contradicting each other. Recorded here so that a reader does not take the whole cycle claim as resting on the manual when half of it rests on the recording.",
       "wouldSettleIt": [
         "A logic capture of an instruction with more than one idle state, showing which machine cycle carries them."
-      ]
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "Across all 1135 opcode forms the decoder accepts, halt aside, each run once from the die's power-up register state, every machine cycle the die runs starts, ends, accesses and addresses exactly as this package's does, so every internal state sits in the machine cycle the recording puts it in. One register state takes one side of each conditional instruction. The sweep in conformance/die.json.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "undocumented-flag-bits",
@@ -170,7 +180,7 @@
     {
       "id": "interrupt-acknowledge-unchecked",
       "severity": "unchecked",
-      "status": "open",
+      "status": "narrowed",
       "topic": "The interrupt acknowledge cycle, which is modelled and which nothing verifies.",
       "documentSays": {
         "rung": 1,
@@ -186,12 +196,17 @@
       "wouldSettleIt": [
         "A logic capture of a real Z80 answering an interrupt, which would give the pins and the length together.",
         "A corpus that contains acknowledge cycles, which this one does not."
-      ]
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "In mode 1 the die's acknowledge machine cycle is seven T states with IORQ in place of MREQ, and the fetch at 0038h starts thirteen states after it began. Mode 0 with a restart is the same, mode 2 reaches its destination after nineteen, and a nonmaskable response after eleven, its first machine cycle five states long. Every figure matches this package. Questions mode-one-response, mode-zero-response, mode-two-response and nonmaskable-response.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "halt-fetch-address-unstated",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "Which address a halted part puts on the bus.",
       "documentSays": {
         "rung": 1,
@@ -207,7 +222,12 @@
       "wouldSettleIt": [
         "A logic capture of a halted Z80, reading the address lines during any of its M1 cycles.",
         "A recording that steps a machine which is already halted, which this corpus does not."
-      ]
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "With the halt instruction at 0001h, every M1 cycle the die runs while halted carries 0002h, the counter past the halt instruction, which is the address this package fetches from. The reading of the note under Figure 11 that would repeat the halt instruction's own address is not what the die does. Question halt-fetch-address.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "wait-states-requested-by-a-device",
@@ -231,7 +251,7 @@
     {
       "id": "generator-head-disagrees-with-the-pinned-corpus",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "The corpus generator has changed its mind about behaviour nobody documented.",
       "documentSays": {
         "rung": 1,
@@ -259,12 +279,17 @@
         "A real part, for any of the eleven. Nothing else can, because no document speaks to any of them."
       ],
       "measuredOn": "2026-08-21",
-      "alsoSeenIn": "The same seven placement disagreements, and only those seven, are what a manual shape comparison against a regenerated full strobe corpus reports: 7000 failures across 1610000 cases, which is every case of those seven opcodes and no case of any other."
+      "alsoSeenIn": "The same seven placement disagreements, and only those seven, are what a manual shape comparison against a regenerated full strobe corpus reports: 7000 failures across 1610000 cases, which is every case of those seven opcodes and no case of any other.",
+      "dieSays": {
+        "rung": 3,
+        "claim": "On the seven placement opcodes, e3, dd e3, fd e3, ed 67, ed 6f, dd 36 and fd 36, the die runs the machine cycles of the pinned corpus: the exchange writes the high byte first, the rotate writes in its fifth machine cycle, and the indexed store puts its internal states where the pinned corpus does. On the four flag opcodes, dd 37, dd 3f, fd 37 and fd 3f run after cp 28h, the die leaves bits 5 and 3 clear, which keeps the flags latch across the index prefix. That is the generator's head, not the pinned corpus, and not this package. Questions placement and prefixed-carry-flags.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "acknowledge-internal-state-placement",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "Where the seventh T state of an interrupt acknowledge falls.",
       "documentSays": {
         "rung": 1,
@@ -279,7 +304,12 @@
       "why": "Reading the cycle as a four state fetch plus the two added waits gives six, and six makes the printed mode 2 total eighteen against a printed nineteen. The reading that satisfies both printed figures is a five state M1 under the two waits.",
       "wouldSettleIt": [
         "A logic capture of a real Z80 answering an interrupt, counting the states of the acknowledge cycle."
-      ]
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "The die's acknowledge M1 runs T1, T2, two automatic waits, T3, T4 and a fifth state: seven in all, the seventh after the refresh half. This package spends it there, as the last state of the same machine cycle. Question mode-zero-response.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "bus-request-and-acknowledge",
@@ -298,7 +328,12 @@
       "consequence": "busreq_line is read at the start of the last T state of every machine cycle and of every floating state. While it is seen set the part floats the bus one T state at a time, logged with no address and no data, and busack reads true inside on_cycle for each of those states. A maskable request is not accepted at a boundary where the bus was given up, and a nonmaskable edge is answered once the bus comes back. facts.busRequest in hardware.json holds the sentences and the tests.",
       "why": "Figure 8 and the two sentences beside it print every edge this needs, and the Clock gives a caller a T state at which to hold the line.",
       "wouldReopenIt": "A capture of a real part placing the floating states anywhere other than the ends of the machine cycles the timing table prints.",
-      "howItWasClosed": "Modelled, and held to the manual's sentences and to the end of every machine cycle the timing table prints."
+      "howItWasClosed": "Modelled, held to the manual's sentences and to the end of every machine cycle the timing table prints, and compared with the die.",
+      "dieSays": {
+        "rung": 3,
+        "claim": "With BUSRQ held for one T state and for three, starting at each of the eleven states of add hl,bc, the die floats the bus in exactly the T states this package does in all twenty two runs: a request seen in the last state of a machine cycle floats it from the next state, and one gone before that state is not seen. Question bus-request.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "power-down-is-a-stopped-clock",
@@ -322,7 +357,7 @@
     {
       "id": "wz-after-an-interrupt-response",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "What the internal address register holds once an interrupt has been taken.",
       "documentSays": {
         "rung": 1,
@@ -340,7 +375,12 @@
       "wouldSettleIt": [
         "A recording that takes an interrupt and reports the register afterwards.",
         "A die analysis, or Zilog documenting the internal register file."
-      ]
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "After a mode 1 or mode 0 restart the die's reg_w and reg_z hold 0038h, after mode 2 the address read from the table, 5040h, and after a nonmaskable response 0066h. Each is the address the response jumps to, which is what this package sets. Questions mode-one-response, mode-zero-response, mode-two-response and nonmaskable-response.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "mode-zero-response-of-more-than-one-byte",
@@ -447,7 +487,7 @@
     {
       "id": "nonmaskable-short-pulse-unstated",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "Whether a non-maskable pulse that ends before the part samples it is taken.",
       "documentSays": {
         "rung": 1,
@@ -490,12 +530,18 @@
       "wouldSettleIt": [
         "A logic capture of a real part given an NMI pulse that falls and rises again entirely before the last two states of an instruction, recording whether the next boundary restarts at 0066h.",
         "The same capture with the pulse placed inside an instruction several machine cycles long, which separates a latch from a sample taken once per instruction."
-      ]
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "A pulse one T state long, placed in the second machine cycle of add hl,bc and gone six states before the instruction ends, is taken by the die: the next fetch after the instruction is at 0066h. This package misses the same pulse, because it reads the level at the deadline state. The die latches the edge. Question nonmaskable-short-pulse.",
+        "source": "conformance/die.json"
+      },
+      "whyTheDieDoesNotDecideIt": "The member's ladder holds nothing in the package to the netlist, and the manual's sampling sentence is a printed statement the die's answer would override. The die is one photograph of one part; a capture of a real part decides between the two readings."
     },
     {
       "id": "mode-two-vector-low-bit",
       "severity": "contradiction",
-      "status": "open",
+      "status": "narrowed",
       "topic": "Whether the lowest bit of the byte a device supplies reaches the pointer.",
       "documentSays": {
         "rung": 1,
@@ -516,7 +562,12 @@
       "why": "The manual's sentence is sound advice to whoever builds the table and is not a description of what the silicon does with the byte. The only party to have tested it reports the opposite, and nothing in the corpus covers it because the corpus contains no interrupt cases.",
       "wouldSettleIt": [
         "A program on a real part: point the table at an odd address, raise the line, supply an odd vector, and see where it lands."
-      ]
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "Given 21h with I at 00h, the die reads the pointer from 0021h and 0022h. All eight bits reach it, as this package and Young say, against the manual's sentence. Question mode-two-response.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "mode-zero-prefix-fetches-an-ordinary-cycle",
@@ -573,10 +624,10 @@
         "source": "https://github.com/trebonian/visual6502, chip-z80/transdefs.js, segdefs.js and nodenames.js"
       },
       "packageFollows": "neither",
-      "consequence": "The entries above that say a logic capture would settle them can be asked of the die instead, one at a time. One has been: internal-register-wz now carries what the netlist answers for nine instructions, in conformance/wz.json. The rest have not, so they have not changed.",
+      "consequence": "conformance/ask.py asks the die twelve questions and writes the answers to conformance/die.json, each beside what this package does. The entries that carry a dieSays block are the ones asked: the refresh address, the halted fetch address, the acknowledge cycle and the four responses, the register WZ after them, the mode 2 pointer, a short nonmaskable pulse, the block transfer flags, the eleven opcodes the generator's head changed, the bus request cycle and the block input machine cycles. The strobe edges are not asked, because the netlist's clock net does not say which of its halves is the manual's rising edge.",
       "why": "conformance/netlist.py runs it. Its resolver follows chipsim.js and wires.js from the same project, which are MIT licensed, and the notice they ask for is in THIRD-PARTY-NOTICES.md. Driven from reset with a program that loads three registers and increments one, it fetches from 0x0000, executes, comes to rest on every edge, and lands on register values that only executing that program produces.",
       "wouldSettleIt": [
-        "Taking the remaining entries one at a time and recording each answer as the netlist's rather than as the part's, the way conformance/wz.py does.",
+        "Aligning the netlist's clock phase with the manual's CLK by something other than the strobe edges themselves, after which the strobe question can be asked too.",
         "A logic capture from a real part, which is still what would settle any of them about a Z80 somebody owns."
       ],
       "measuredOn": "2026-08-27",
@@ -585,7 +636,7 @@
     {
       "id": "block-transfer-flags-the-manual-gets-wrong",
       "severity": "contradiction",
-      "status": "open",
+      "status": "narrowed",
       "topic": "What the eight block input and output instructions do to the negate and carry flags.",
       "documentSays": {
         "rung": 1,
@@ -607,7 +658,12 @@
       "howItWasFound": "By reading the Condition Bits Affected block of all 131 instruction pages and checking every absolute they state against the model. Of a hundred and twenty six such statements, a hundred and twenty four hold; these eight instructions carry sixteen of the two that do not.",
       "wouldSettleIt": [
         "A program on a real part: clear the carry, run one block input whose sum overflows, and read the flag back."
-      ]
+      ],
+      "dieSays": {
+        "rung": 3,
+        "claim": "For INI with a carrying sum and without one, IND, OUTI and OUTD, the die leaves the same flag byte this package does in all five cases: the negate flag follows bit 7 of the byte, and the carry and half carry follow the sum, against the manual. Question block-transfer-flags.",
+        "source": "conformance/die.json"
+      }
     },
     {
       "id": "instruction-timing-transcription-is-mislabelled-and-short",
@@ -645,6 +701,11 @@
       "consequence": "The four run as fetch 4, fetch 5, input 4 and write 3. The totals are the printed ones, and a bus request is granted at the ends of those machine cycles rather than at the ends the breakdown prints.",
       "why": "The description and Figure 7 agree with each other and the breakdown disagrees with both. The breakdown is the order OUTI prints, for the instruction that reads memory first.",
       "howItWasFound": "By holding a bus request at the end of every machine cycle of every documented row and comparing where the part let go with the breakdown. These four rows were the only ones that parted.",
+      "dieSays": {
+        "rung": 3,
+        "claim": "The die runs INI as fetch 4, fetch 5, input 4, write 3. Question block-input-machine-cycles.",
+        "source": "conformance/die.json"
+      },
       "wouldReopenIt": "A Zilog erratum, or a later revision of the manual printing a different breakdown."
     }
   ]

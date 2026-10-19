@@ -203,6 +203,8 @@ z80/
 conformance/
   bench.py       a part built with a program loaded, for the tests that run one
   synthetic_netlist.py  a made-up netlist written to a folder, for the netlist tests
+  die.py         the netlist run as a bench, and this package's machine cycles beside it
+  ask.py         the questions put to the die, answered into die.json
   suites.json    which corpus, at which commit
   fetch.py       getting it
   singlestep.py  running it, state by state
