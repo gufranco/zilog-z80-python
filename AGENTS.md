@@ -131,21 +131,21 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 ## Conventions that are not negotiable
 
-| Thing | Rule |
-|:------|:-----|
-| Language | Python only |
-| Comments | None in source, and a docstring counts as one |
-| Test layout | `<module>.test.py` beside the module it covers, split by subject into files named after what they hold once one passes 500 lines |
-| Test reach | Only what `z80` exports and what the README documents on what those return. No test imports an inner module or touches a private name; [`conformance/bench.py`](conformance/bench.py) builds a part with a program loaded |
-| Test shape | Arrange, act, assert, each opened by its bare marker |
-| Coverage | 100% statements and branches, enforced |
-| Types | `mypy` at strict, plus every optional error class |
-| Commits | Conventional Commits, subject under 50 characters |
-| Corpus | Fetched and pinned by commit, never vendored |
-| Documents | Read, quoted and pinned by digest. Never committed: none is redistributable |
-| Undefined state | Nothing starts cleared and nothing can be asked to. There is no fill parameter and there will not be one |
-| Fidelity | Where the part and convenience disagree, the part wins. A behaviour that exists only to make a test easier is a defect |
-| Public API | This and the 65xx package present the same surface. See [FAMILY.md](FAMILY.md) |
+| Thing           | Rule                                                                                                                                                                                                                      |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Language        | Python only                                                                                                                                                                                                               |
+| Comments        | None in source, and a docstring counts as one                                                                                                                                                                             |
+| Test layout     | `<module>.test.py` beside the module it covers, split by subject into files named after what they hold once one passes 500 lines                                                                                          |
+| Test reach      | Only what `z80` exports and what the README documents on what those return. No test imports an inner module or touches a private name; [`conformance/bench.py`](conformance/bench.py) builds a part with a program loaded |
+| Test shape      | Arrange, act, assert, each opened by its bare marker                                                                                                                                                                      |
+| Coverage        | 100% statements and branches, enforced                                                                                                                                                                                    |
+| Types           | `mypy` at strict, plus every optional error class                                                                                                                                                                         |
+| Commits         | Conventional Commits, subject under 50 characters                                                                                                                                                                         |
+| Corpus          | Fetched and pinned by commit, never vendored                                                                                                                                                                              |
+| Documents       | Read, quoted and pinned by digest. Never committed: none is redistributable                                                                                                                                               |
+| Undefined state | Nothing starts cleared and nothing can be asked to. There is no fill parameter and there will not be one                                                                                                                  |
+| Fidelity        | Where the part and convenience disagree, the part wins. A behaviour that exists only to make a test easier is a defect                                                                                                    |
+| Public API      | This and the 65xx package present the same surface. See [FAMILY.md](FAMILY.md)                                                                                                                                            |
 
 The linter's ignores in [`pyproject.toml`](pyproject.toml) carry no comments, so
 their reasons live here, beside those of the coverage exclusions:
@@ -176,6 +176,18 @@ their reasons live here, beside those of the coverage exclusions:
   `^def accounts_for_a_reset\(` in the coverage exclusions: this member is not a
   part, so the family tests that build a `Chip` and account for its reset are
   skipped here and their bodies never run.
+
+The formatter's ignores in [`.prettierignore`](.prettierignore) carry no
+comments either, so their reasons live here:
+
+- `pnpm-lock.yaml` and `package-lock.json`: the package manager writes them, in
+  its own layout, on every install.
+- `node_modules/`, `.venv/`, `venv/`, `build/`, `dist/` and `*.egg-info/`:
+  installed or built, never written by hand.
+- `.coverage`, `coverage.json`, `htmlcov/` and the tool caches: the output of a
+  run, never committed.
+- `docs/`, `specs/`, `.work/` and `.claude/`: local working material, never
+  committed.
 
 ## Layout
 
@@ -234,7 +246,7 @@ being made in one of them and forgotten in the others, because a test in this
 repository cannot see the others, so the check is a command rather than a suite:
 
 ```sh
-shared() { sed '/^\*Everything above this line/q' "$1"; }
+shared() { sed '/^_Everything above this line/q' "$1"; }
 
 grep -o 'github\.com/[^/]*/\([a-z0-9-]*\))' FAMILY.md | sed 's|.*/||; s|)||' | sort -u |
 while read -r member; do

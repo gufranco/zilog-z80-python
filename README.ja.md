@@ -28,10 +28,10 @@ b=42 pc=0004 [7, 4, 4] True 20
 
 ## インストール
 
-| 要件 | バージョン |
-|:--|:--|
-| Python | 3.12以降 |
-| git | 任意、クローン用 |
+| 要件   | バージョン       |
+| :----- | :--------------- |
+| Python | 3.12以降         |
+| git    | 任意、クローン用 |
 
 ```bash
 git clone https://github.com/gufranco/zilog-z80-python.git
@@ -57,43 +57,43 @@ python3 z80/doctor.py
 
 `Cpu(model, memory=None, fill=None, ports=None, seed=UNSET_SEED, recording=False, shape="manual")`はパーツを1つ構築します。電源は入っていますが、リセットはされていません。
 
-| 引数 | 意味 |
-|:--|:--|
-| `model` | 必須です。モデル名または別名で、大文字小文字と区切り文字は無視されます。省略すると`UnknownModelError`が送出され、すべてのモデルが列挙されます |
-| `memory` | `read8(address)`と`write8(address, value)`を持つ任意のオブジェクトです。パーツは渡されたものをそのまま保持します。省略すると、パーツは`SparseMemory`を構築します |
-| `fill` | `memory`を省略したときだけ使われます。全体がそのバイトで埋まった64 KBの`Memory`を構築します |
-| `ports` | `read(address)`と`write(address, value)`を持つ任意のオブジェクトです。省略すると、入力はモデルのフローティング出力を読み、出力はどこにも届きません |
-| `seed` | 電源投入時のレジスタのスクランブルのシードです |
-| `recording` | `True`にすると、Tステートごとのログを`cpu.bus.log`に保持します |
-| `shape` | `"manual"`または`"recording"`で、各制御ピンを読むエッジです。それ以外を指定すると`UnknownShape`が送出されます |
+| 引数        | 意味                                                                                                                                                             |
+| :---------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`     | 必須です。モデル名または別名で、大文字小文字と区切り文字は無視されます。省略すると`UnknownModelError`が送出され、すべてのモデルが列挙されます                    |
+| `memory`    | `read8(address)`と`write8(address, value)`を持つ任意のオブジェクトです。パーツは渡されたものをそのまま保持します。省略すると、パーツは`SparseMemory`を構築します |
+| `fill`      | `memory`を省略したときだけ使われます。全体がそのバイトで埋まった64 KBの`Memory`を構築します                                                                      |
+| `ports`     | `read(address)`と`write(address, value)`を持つ任意のオブジェクトです。省略すると、入力はモデルのフローティング出力を読み、出力はどこにも届きません               |
+| `seed`      | 電源投入時のレジスタのスクランブルのシードです                                                                                                                   |
+| `recording` | `True`にすると、Tステートごとのログを`cpu.bus.log`に保持します                                                                                                   |
+| `shape`     | `"manual"`または`"recording"`で、各制御ピンを読むエッジです。それ以外を指定すると`UnknownShape`が送出されます                                                    |
 
 ### 実行
 
-| 呼び出し | 動作 | 戻り値 |
-|:--|:--|:--|
-| `reset()` | RESETを駆動します。Zilogがピンを保持する最小時間として示す3Tステートと、解除後にパーツが費やす2Tステートです。`pc`、`i`、`r`、`im`を0にし、両方の割り込みフリップフロップと`steps`をクリアし、その他のレジスタはそのまま残します | `Cpu` |
-| `step()` | 1命令を実行します。ホルト中は`HALT`サイクルを1つ実行します | かかったTステート数 |
-| `run_for(cycles)` | 少なくとも`cycles`Tステートが経過するまで、命令単位で実行します | 費やしたTステート数。`cycles`を超えることがあります |
-| `run_until(check, limit=None)` | `check(cpu)`がfalseの間ステップ実行します。`limit`命令を実行すると`RunLimit`を送出します | `Cpu` |
-| `held()` | `HALT`を実行中かどうか | `bool` |
-| `irq(vector=0xFF)` | その時点でマスク可能割り込みを要求します。`vector`はデバイスが供給するバイト、または読み出しごとに1バイトを返すcallableです。後者は、デバイスがモード0でより長い命令を供給する方法です | 受け付けられれば`True` |
-| `nmi()` | その時点でマスク不可能割り込みを受け付け、`$0066`から再開します | `None` |
+| 呼び出し                       | 動作                                                                                                                                                                                                                             | 戻り値                                              |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------- |
+| `reset()`                      | RESETを駆動します。Zilogがピンを保持する最小時間として示す3Tステートと、解除後にパーツが費やす2Tステートです。`pc`、`i`、`r`、`im`を0にし、両方の割り込みフリップフロップと`steps`をクリアし、その他のレジスタはそのまま残します | `Cpu`                                               |
+| `step()`                       | 1命令を実行します。ホルト中は`HALT`サイクルを1つ実行します                                                                                                                                                                       | かかったTステート数                                 |
+| `run_for(cycles)`              | 少なくとも`cycles`Tステートが経過するまで、命令単位で実行します                                                                                                                                                                  | 費やしたTステート数。`cycles`を超えることがあります |
+| `run_until(check, limit=None)` | `check(cpu)`がfalseの間ステップ実行します。`limit`命令を実行すると`RunLimit`を送出します                                                                                                                                         | `Cpu`                                               |
+| `held()`                       | `HALT`を実行中かどうか                                                                                                                                                                                                           | `bool`                                              |
+| `irq(vector=0xFF)`             | その時点でマスク可能割り込みを要求します。`vector`はデバイスが供給するバイト、または読み出しごとに1バイトを返すcallableです。後者は、デバイスがモード0でより長い命令を供給する方法です                                           | 受け付けられれば`True`                              |
+| `nmi()`                        | その時点でマスク不可能割り込みを受け付け、`$0066`から再開します                                                                                                                                                                  | `None`                                              |
 
 ### ピンと状態
 
-| 属性 | 内容 |
-|:--|:--|
-| `irq_line` | レベルとしてのマスク可能割り込み要求です。各命令の最後のTステートでサンプリングされます |
-| `nmi_line` | マスク不可能割り込み要求です。遷移で割り込みます。保持し続けても再び割り込むことはありません |
-| `wait_line` | すべてのマシンサイクルのT2の後に読まれます。セットされたままのTステートごとにT2が繰り返されます |
-| `on_cycle` | Tステートごとに1回、その終わりに呼ばれます。そのステートのバス動作と、次のステートまでに行う処理の後です |
-| `cycles` | パーツの構築以降のTステート数で、リセットをまたいで数えます |
-| `steps` | 最後のリセット以降の命令数です |
-| `halted` | `HALT`を実行中かどうかです。`HALT`サイクルはそれぞれ4Tステートかかります |
-| `registers` | 後述の`Registers`ファイルです |
-| `bus` | 最後の命令です。`states`はそのTステート数、`cycles`はマシンサイクルごとの`(state, kind)`のリスト、`log`はTステートごとの`(address, value, pins)`のリストです。2つのリストは`recording=True`のときだけ埋まります。`kind`は`fetch`、`read`、`write`、`portRead`、`portWrite`、`acknowledge`のいずれかです |
-| `memory`、`ports` | パーツの構築に使われたものです |
-| `model` | 正規のモデル名です |
+| 属性              | 内容                                                                                                                                                                                                                                                                                                    |
+| :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `irq_line`        | レベルとしてのマスク可能割り込み要求です。各命令の最後のTステートでサンプリングされます                                                                                                                                                                                                                 |
+| `nmi_line`        | マスク不可能割り込み要求です。遷移で割り込みます。保持し続けても再び割り込むことはありません                                                                                                                                                                                                            |
+| `wait_line`       | すべてのマシンサイクルのT2の後に読まれます。セットされたままのTステートごとにT2が繰り返されます                                                                                                                                                                                                         |
+| `on_cycle`        | Tステートごとに1回、その終わりに呼ばれます。そのステートのバス動作と、次のステートまでに行う処理の後です                                                                                                                                                                                                |
+| `cycles`          | パーツの構築以降のTステート数で、リセットをまたいで数えます                                                                                                                                                                                                                                             |
+| `steps`           | 最後のリセット以降の命令数です                                                                                                                                                                                                                                                                          |
+| `halted`          | `HALT`を実行中かどうかです。`HALT`サイクルはそれぞれ4Tステートかかります                                                                                                                                                                                                                                |
+| `registers`       | 後述の`Registers`ファイルです                                                                                                                                                                                                                                                                           |
+| `bus`             | 最後の命令です。`states`はそのTステート数、`cycles`はマシンサイクルごとの`(state, kind)`のリスト、`log`はTステートごとの`(address, value, pins)`のリストです。2つのリストは`recording=True`のときだけ埋まります。`kind`は`fetch`、`read`、`write`、`portRead`、`portWrite`、`acknowledge`のいずれかです |
+| `memory`、`ports` | パーツの構築に使われたものです                                                                                                                                                                                                                                                                          |
+| `model`           | 正規のモデル名です                                                                                                                                                                                                                                                                                      |
 
 ```python
 from z80 import Cpu, Memory
@@ -153,12 +153,12 @@ gave up after 3 instructions at $003B
 
 ### メモリとポート
 
-| 名前 | 内容 |
-|:--|:--|
-| `SparseMemory(seed=UNSET_SEED)` | 書き込まれたものだけを保存する64 KBです。書き込まれていないバイトは、`seed`とアドレスから導かれる値として読めます |
-| `Memory(size=0x10000, image=None, seed=UNSET_SEED, fill=None)` | フラットな`bytearray`です。`fill`がなければ`seed`からスクランブルされます。`image`はアドレス0からコピーされます |
-| `Ports(seed=UNSET_SEED)` | I/O空間です。読み書きは`(address, value, "r" or "w")`として`log`に記録されます。書き込まれていないポートは、`seed`から導かれる値として読めます |
-| `UNSET_SEED` | `0x5A5A5A5A`です。シードが与えられないときにすべてのスクランブルが使うシードです |
+| 名前                                                           | 内容                                                                                                                                           |
+| :------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SparseMemory(seed=UNSET_SEED)`                                | 書き込まれたものだけを保存する64 KBです。書き込まれていないバイトは、`seed`とアドレスから導かれる値として読めます                              |
+| `Memory(size=0x10000, image=None, seed=UNSET_SEED, fill=None)` | フラットな`bytearray`です。`fill`がなければ`seed`からスクランブルされます。`image`はアドレス0からコピーされます                                |
+| `Ports(seed=UNSET_SEED)`                                       | I/O空間です。読み書きは`(address, value, "r" or "w")`として`log`に記録されます。書き込まれていないポートは、`seed`から導かれる値として読めます |
+| `UNSET_SEED`                                                   | `0x5A5A5A5A`です。シードが与えられないときにすべてのスクランブルが使うシードです                                                               |
 
 どのバスでもアドレスは16ビットです。ポートアドレスは、パーツが駆動するとおり、上位バイトにアキュムレータまたは`B`を持ちます。
 
@@ -223,18 +223,18 @@ pc=0000 hl=724C hl_=1234 im=0 iff1=False
 
 ### モデルとエラー
 
-| 名前 | 内容 |
-|:--|:--|
-| `MODELS` | 3つの`Model`レコードで、正規名をキーとします |
-| `Model` | `name`、`aliases`、`summary`、`floating_output`、`carry_rule`、`interrupt_clears_parity`、`verified`、そして`build(memory, **options)`です |
-| `UnknownModelError` | モデルが指定されていない場合や、どのモデルにも該当しない名前の場合に`Cpu`が送出します。メッセージには3つのモデルが列挙されます |
-| `UnknownShape` | `manual`または`recording`以外の`shape`に対して`Cpu`が送出します |
-| `UnknownCarryRule` | `zilog`または`nec`以外のキャリールールに対して`Model`が送出します |
-| `RunLimit` | `limit`命令を実行してもチェックが成立しなかったときに`run_until`が送出します |
-| `Truncated` | 命令の途中でバイト列が終わったときに`decode`が送出します |
-| `ClockClosed` | クロックが閉じられた後に`Clock.tick()`が送出します |
+| 名前                | 内容                                                                                                                                                                          |
+| :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MODELS`            | 3つの`Model`レコードで、正規名をキーとします                                                                                                                                  |
+| `Model`             | `name`、`aliases`、`summary`、`floating_output`、`carry_rule`、`interrupt_clears_parity`、`verified`、そして`build(memory, **options)`です                                    |
+| `UnknownModelError` | モデルが指定されていない場合や、どのモデルにも該当しない名前の場合に`Cpu`が送出します。メッセージには3つのモデルが列挙されます                                                |
+| `UnknownShape`      | `manual`または`recording`以外の`shape`に対して`Cpu`が送出します                                                                                                               |
+| `UnknownCarryRule`  | `zilog`または`nec`以外のキャリールールに対して`Model`が送出します                                                                                                             |
+| `RunLimit`          | `limit`命令を実行してもチェックが成立しなかったときに`run_until`が送出します                                                                                                  |
+| `Truncated`         | 命令の途中でバイト列が終わったときに`decode`が送出します                                                                                                                      |
+| `ClockClosed`       | クロックが閉じられた後に`Clock.tick()`が送出します                                                                                                                            |
 | `InsideInstruction` | 命令や割り込み応答の途中で一時停止している`Clock`の外から`irq()`または`nmi()`を呼ぶと送出されます。命令の境界までティックするか、`irq_line`または`nmi_line`を設定してください |
-| `__version__` | インストールされているバージョンです |
+| `__version__`       | インストールされているバージョンです                                                                                                                                          |
 
 ```python
 import z80
@@ -272,21 +272,21 @@ this clock has been closed 3
 
 どのツールもリポジトリのルートから実行します。適合性ツールはモジュールとして実行します。
 
-| コマンド | 動作 | 終了コード |
-|:--|:--|:--|
-| `python3 z80/doctor.py` | マシン、パーツ、コーパスを報告します | 0はすべてのチェックに合格、1は不合格あり |
-| `python3 -m conformance.fetch [directory] [--latest]` | コーパスを固定されたコミットで、`--latest`の場合はupstreamのheadで、`directory`にクローンします。デフォルトは`~/.cache/conformance-suites`です | 0は取得済み、1はupstreamに到達できないかgitのステップが失敗 |
-| `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]` | 各ケースの後のレジスタとメモリを比較します | 0は失敗なし、1は失敗ありまたはケースが見つからない、2は引数が不正 |
-| `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 各Tステートのアドレス、データ、ピンを比較します。shapeのデフォルトは`recording`です | 0は失敗なし、1は失敗ありまたはケースが見つからない、2は引数が不正 |
-| `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]` | コーパスを生成したジェネレータからコーパスを再構築します。`node`が必要です | 0は書き込み済み、失敗時はジェネレータ自身のコード、1は引数が不正 |
-| `python3 -m conformance.timing` | 記録にある命令ごとのタイミング行をすべて実行し、Tステート数を比較します | 0はすべての行が一致、1は不一致あり |
-| `python3 -m conformance.quotes` | 文書を保持しているマシン上で、引用されたすべての文を引用元の文書の中から探します | 0はすべての引用が見つかった、1は見つからないものあり |
-| `python3 -m conformance.documents [--check] [--only SUBSTRING]` | アドレスを持つ文書をダウンロードし、すべてのダイジェストを検証します。`--check`は検証だけを行います | 0はすべて検証済み、1は拒否されたものがあるか引数が不正 |
-| `python3 -m conformance.netlist [--half-cycles N]` | トランジスタネットリストをリセットから`N`ハーフサイクル実行します。デフォルトは130です | 0はすべてのノードが安定、1は安定しないノードがあるかデータファイルがない |
-| `python3 -m conformance.wz [output]` | ネットリストが`WZ`に残すものを読み、`output`に書き込みます。デフォルトは[`conformance/wz.json`](conformance/wz.json)です | 0は書き込み済み、1はネットリストがないかプローブが未較正 |
-| `python3 -m conformance.speed [--instructions N] [--repeats N]` | 64 KBのイメージで`run_for(N)`の時間を計測します。デフォルトは200,000Tステートを7回です | 0は毎秒400,000Tステート以上、1は未満、2は引数が不正 |
-| `python3 -m conformance.links` | このファイル内のすべてのアドレスにリクエストします | 0はすべてのアドレスがまだ存在、1はステータス`404`または`410`を返すものあり |
-| `python3 -m conformance.package <wheel>` | ビルドされたwheelがすべてのモジュールを含み、テストを含まないことを確認します | 0は問題なし、1は不備ありまたはファイルが存在しない、2は引数なし |
+| コマンド                                                                                                  | 動作                                                                                                                                           | 終了コード                                                                 |
+| :-------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------- |
+| `python3 z80/doctor.py`                                                                                   | マシン、パーツ、コーパスを報告します                                                                                                           | 0はすべてのチェックに合格、1は不合格あり                                   |
+| `python3 -m conformance.fetch [directory] [--latest]`                                                     | コーパスを固定されたコミットで、`--latest`の場合はupstreamのheadで、`directory`にクローンします。デフォルトは`~/.cache/conformance-suites`です | 0は取得済み、1はupstreamに到達できないかgitのステップが失敗                |
+| `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]`                         | 各ケースの後のレジスタとメモリを比較します                                                                                                     | 0は失敗なし、1は失敗ありまたはケースが見つからない、2は引数が不正          |
+| `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 各Tステートのアドレス、データ、ピンを比較します。shapeのデフォルトは`recording`です                                                            | 0は失敗なし、1は失敗ありまたはケースが見つからない、2は引数が不正          |
+| `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]`                             | コーパスを生成したジェネレータからコーパスを再構築します。`node`が必要です                                                                     | 0は書き込み済み、失敗時はジェネレータ自身のコード、1は引数が不正           |
+| `python3 -m conformance.timing`                                                                           | 記録にある命令ごとのタイミング行をすべて実行し、Tステート数を比較します                                                                        | 0はすべての行が一致、1は不一致あり                                         |
+| `python3 -m conformance.quotes`                                                                           | 文書を保持しているマシン上で、引用されたすべての文を引用元の文書の中から探します                                                               | 0はすべての引用が見つかった、1は見つからないものあり                       |
+| `python3 -m conformance.documents [--check] [--only SUBSTRING]`                                           | アドレスを持つ文書をダウンロードし、すべてのダイジェストを検証します。`--check`は検証だけを行います                                            | 0はすべて検証済み、1は拒否されたものがあるか引数が不正                     |
+| `python3 -m conformance.netlist [--half-cycles N]`                                                        | トランジスタネットリストをリセットから`N`ハーフサイクル実行します。デフォルトは130です                                                         | 0はすべてのノードが安定、1は安定しないノードがあるかデータファイルがない   |
+| `python3 -m conformance.wz [output]`                                                                      | ネットリストが`WZ`に残すものを読み、`output`に書き込みます。デフォルトは[`conformance/wz.json`](conformance/wz.json)です                       | 0は書き込み済み、1はネットリストがないかプローブが未較正                   |
+| `python3 -m conformance.speed [--instructions N] [--repeats N]`                                           | 64 KBのイメージで`run_for(N)`の時間を計測します。デフォルトは200,000Tステートを7回です                                                         | 0は毎秒400,000Tステート以上、1は未満、2は引数が不正                        |
+| `python3 -m conformance.links`                                                                            | このファイル内のすべてのアドレスにリクエストします                                                                                             | 0はすべてのアドレスがまだ存在、1はステータス`404`または`410`を返すものあり |
+| `python3 -m conformance.package <wheel>`                                                                  | ビルドされたwheelがすべてのモジュールを含み、テストを含まないことを確認します                                                                  | 0は問題なし、1は不備ありまたはファイルが存在しない、2は引数なし            |
 
 ## 実際の速度で動かす
 
@@ -340,12 +340,12 @@ True
 
 `$0001`のバイトはオペコードフェッチの最初のTステートの後に変更され、フェッチに続くオペランド読み出しが新しい値を取り込みました。
 
-| 呼び出し | 動作 |
-|:--|:--|
-| `tick()` | 1Tステート進め、クロックのカウントを返します |
-| `run_for(cycles)` | `tick()`を`cycles`回呼び、カウントを返します |
-| `close()` | パーツを止め、`on_cycle`を元に戻します。`with`ブロックを抜けると呼ばれます |
-| `cycles`、`closed` | tickのカウントと、クロックが閉じられているかどうかです |
+| 呼び出し           | 動作                                                                       |
+| :----------------- | :------------------------------------------------------------------------- |
+| `tick()`           | 1Tステート進め、クロックのカウントを返します                               |
+| `run_for(cycles)`  | `tick()`を`cycles`回呼び、カウントを返します                               |
+| `close()`          | パーツを止め、`on_cycle`を元に戻します。`with`ブロックを抜けると呼ばれます |
+| `cycles`、`closed` | tickのカウントと、クロックが閉じられているかどうかです                     |
 
 クロックをイテレートすると、閉じられるまでtickします。パーツの内部で送出された例外は`tick()`から再送出され、クロックは閉じられます。
 
@@ -357,21 +357,21 @@ Pythonは命令のコールスタックを中断できないため、パーツ�
 
 命令セットは3つとも同じです。異なる動作は3つあります。
 
-| 構築方法 | 単独の`OUT (C)`が送る値 | `SCF`と`CCF`の後の非公開フラグビット | `LD A,I`または`LD A,R`の後の割り込みがパリティをクリアするか | この3列の測定 |
-|:--|:--|:--|:--|:--|
-| `Cpu("z80")` | `$00` | アキュムレータとラッチ | はい、Zilogが記載しています | はい、コーパスで測定 |
-| `Cpu("z84c00")` | `$FF` | アキュムレータとラッチ | いいえ、Zilogが修正しました | いいえ、Zilog自身の文 |
-| `Cpu("upd780c")` | `$00` | アキュムレータのみ | 記載なし | いいえ、独立した研究 |
+| 構築方法         | 単独の`OUT (C)`が送る値 | `SCF`と`CCF`の後の非公開フラグビット | `LD A,I`または`LD A,R`の後の割り込みがパリティをクリアするか | この3列の測定         |
+| :--------------- | :---------------------- | :----------------------------------- | :----------------------------------------------------------- | :-------------------- |
+| `Cpu("z80")`     | `$00`                   | アキュムレータとラッチ               | はい、Zilogが記載しています                                  | はい、コーパスで測定  |
+| `Cpu("z84c00")`  | `$FF`                   | アキュムレータとラッチ               | いいえ、Zilogが修正しました                                  | いいえ、Zilog自身の文 |
+| `Cpu("upd780c")` | `$00`                   | アキュムレータのみ                   | 記載なし                                                     | いいえ、独立した研究  |
 
 コーパスが記録しているのはNMOS Z80だけです。他の2つがZ80と共有する部分はすべて、Z80を通じて測定されています。それらを別のパーツにしている3つの列は測定されておらず、両方とも`Model.verified`は`False`です。
 
 各モデルは、メーカーが販売したときの型番で指定できます。大文字小文字、`-`、`_`は無視されるので、`Cpu("Z84C00-10")`は`z84c00`を構築します。
 
-| 構築方法 | 別名 |
-|:--|:--|
-| `Cpu("z80")` | `z8400`, `nmosz80`, `z0840004psc`, `z0840006psc`, `z0840008psc`, `mostekmk3880`, `mk3880`, `mk3880n`, `sharplh0080`, `lh0080`, `lh0080a`, `u880`, `ud880d`, `kr1858vm1`, `t34vm1`, `mme`, `goldstargms z80`, `thesysz80` |
-| `Cpu("upd780c")` | `necupd780c`, `d780c`, `d780c1`, `d780c2`, `upd780`, `upd780c1`, `upd780c2` |
-| `Cpu("z84c00")` | `cmosz80`, `z80c`, `z8400c`, `z84c0006`, `z84c0008`, `z84c0010`, `z84c0020`, `toshibatmpz84c00`, `tmpz84c00`, `t84c00`, `kr1858vm3` |
+| 構築方法         | 別名                                                                                                                                                                                                                     |
+| :--------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Cpu("z80")`     | `z8400`, `nmosz80`, `z0840004psc`, `z0840006psc`, `z0840008psc`, `mostekmk3880`, `mk3880`, `mk3880n`, `sharplh0080`, `lh0080`, `lh0080a`, `u880`, `ud880d`, `kr1858vm1`, `t34vm1`, `mme`, `goldstargms z80`, `thesysz80` |
+| `Cpu("upd780c")` | `necupd780c`, `d780c`, `d780c1`, `d780c2`, `upd780`, `upd780c1`, `upd780c2`                                                                                                                                              |
+| `Cpu("z84c00")`  | `cmosz80`, `z80c`, `z8400c`, `z84c0006`, `z84c0008`, `z84c0010`, `z84c0020`, `toshibatmpz84c00`, `tmpz84c00`, `t84c00`, `kr1858vm3`                                                                                      |
 
 ```python
 import z80
@@ -492,13 +492,13 @@ python3 -m conformance.netlist
 
 ## 開発に参加する
 
-| 必要なもの | 場所 |
-|:--|:--|
-| すべてのゲートと実行順序 | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| コーディングエージェント向けの同じ内容 | [AGENTS.md](AGENTS.md) |
-| このリポジトリがファミリーの他のリポジトリと共有する標準 | [FAMILY.md](FAMILY.md) |
-| バグ報告 | [GitHub Issues](https://github.com/gufranco/zilog-z80-python/issues) |
-| セキュリティ報告 | [SECURITY.md](SECURITY.md) |
+| 必要なもの                                               | 場所                                                                 |
+| :------------------------------------------------------- | :------------------------------------------------------------------- |
+| すべてのゲートと実行順序                                 | [CONTRIBUTING.md](CONTRIBUTING.md)                                   |
+| コーディングエージェント向けの同じ内容                   | [AGENTS.md](AGENTS.md)                                               |
+| このリポジトリがファミリーの他のリポジトリと共有する標準 | [FAMILY.md](FAMILY.md)                                               |
+| バグ報告                                                 | [GitHub Issues](https://github.com/gufranco/zilog-z80-python/issues) |
+| セキュリティ報告                                         | [SECURITY.md](SECURITY.md)                                           |
 
 ```bash
 uvx ruff@0.16.3 format --check .
@@ -520,28 +520,28 @@ python3 -m conformance.speed
 
 以下のメーカー文書はすべて著作権で保護されており、再配布できません。個々の文は、引用元のページとともに[`conformance/hardware.json`](conformance/hardware.json)に引用されています。
 
-| 文書 | 日付 | ページ数 | SHA-256 | 再配布 |
-|:---------|:-----|------:|:--------|:----------------|
-| [Zilog, *Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf) | 2016-08 | 332 | `e3c83da5a5d8e372…` | 不可 |
-| Zilog, *Z80 Family Data Book*, 00-2490-01 | 1989-01 | 448 | `844681b63ffc45bd…` | 不可 |
-| Zilog, *Z84C00 Product Specification*, PS017801-0602 | 日付なし | 36 | `06198d3c22a79a3f…` | 不可 |
-| NEC, *µPD780C*データシート | 日付なし | 24 | `2036fa845533feee…` | 不可 |
+| 文書                                                                                     | 日付     | ページ数 | SHA-256             | 再配布 |
+| :--------------------------------------------------------------------------------------- | :------- | -------: | :------------------ | :----- |
+| [Zilog, _Z80 CPU User Manual_, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf) | 2016-08  |      332 | `e3c83da5a5d8e372…` | 不可   |
+| Zilog, _Z80 Family Data Book_, 00-2490-01                                                | 1989-01  |      448 | `844681b63ffc45bd…` | 不可   |
+| Zilog, _Z84C00 Product Specification_, PS017801-0602                                     | 日付なし |       36 | `06198d3c22a79a3f…` | 不可   |
+| NEC, *µPD780C*データシート                                                               | 日付なし |       24 | `2036fa845533feee…` | 不可   |
 
 独立した研究は、互いに参照し合っていない2つの系統が一致する場合にだけ使い、メーカーが示した数値の出典としては決して使いません。
 
-| 文書 | 著者 | ページ数 | SHA-256 | ライセンス |
-|:---------|:-------|------:|:--------|:--------|
-| [*The Undocumented Z80 Documented*, v0.91](https://archive.org/details/the-undocumented-z80-documented) | Sean Young, 2005-09-18 | 52 | `6413048f39c2e735…` | GFDL 1.1以降 |
-| [*Z80 CCF SCF Outcome Stability*](https://github.com/redcode/Z80/wiki/Z80-CCF-SCF-Outcome-Stability) | Sainz de Baranda y Goñi, Brewer, Helcmanovsky | 4 | `be87311012f9edaf…` | GFDL 1.3 |
-| *Undocumented Z80 Flags*, rev 1.0 | David Banks, 2018-08-21 | 3 | `33766df5494e2fdf…` | 記載なし |
-| *MEMPTR, esoteric register of the ZiLOG Z80 CPU* | Boo-boo、Vladimir Kladov訳 | テキスト | `f9e8e87cdd205e15…` | 記載なし |
-| [redcode/Z80 wiki: Interrupts](https://github.com/redcode/Z80/wiki/Interrupts)と[MEMPTR](https://github.com/redcode/Z80/wiki/MEMPTR) | Sainz de Baranda y Goñiほか貢献者 | Web | n/a | GFDL 1.3 |
+| 文書                                                                                                                                 | 著者                                          | ページ数 | SHA-256             | ライセンス   |
+| :----------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------- | -------: | :------------------ | :----------- |
+| [_The Undocumented Z80 Documented_, v0.91](https://archive.org/details/the-undocumented-z80-documented)                              | Sean Young, 2005-09-18                        |       52 | `6413048f39c2e735…` | GFDL 1.1以降 |
+| [_Z80 CCF SCF Outcome Stability_](https://github.com/redcode/Z80/wiki/Z80-CCF-SCF-Outcome-Stability)                                 | Sainz de Baranda y Goñi, Brewer, Helcmanovsky |        4 | `be87311012f9edaf…` | GFDL 1.3     |
+| _Undocumented Z80 Flags_, rev 1.0                                                                                                    | David Banks, 2018-08-21                       |        3 | `33766df5494e2fdf…` | 記載なし     |
+| _MEMPTR, esoteric register of the ZiLOG Z80 CPU_                                                                                     | Boo-boo、Vladimir Kladov訳                    | テキスト | `f9e8e87cdd205e15…` | 記載なし     |
+| [redcode/Z80 wiki: Interrupts](https://github.com/redcode/Z80/wiki/Interrupts)と[MEMPTR](https://github.com/redcode/Z80/wiki/MEMPTR) | Sainz de Baranda y Goñiほか貢献者             |      Web | n/a                 | GFDL 1.3     |
 
-| 情報源 | 用途 |
-|:-------|:---------|
+| 情報源                                                            | 用途                                                                                                          |
+| :---------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
 | [SingleStepTests/z80](https://github.com/SingleStepTests/z80.git) | 固定されたコーパス、1,604,000件です。コミットは[`conformance/suites.json`](conformance/suites.json)にあります |
-| [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git) | コーパスを生成したジェネレータです。ダウンロードするだけでなく再構築できるようにするためです |
-| [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer) | その動作が[`conformance/divergences.json`](conformance/divergences.json)に記録されているネットリストです |
+| [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git)         | コーパスを生成したジェネレータです。ダウンロードするだけでなく再構築できるようにするためです                  |
+| [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer)       | その動作が[`conformance/divergences.json`](conformance/divergences.json)に記録されているネットリストです      |
 
 [`conformance/documents.json`](conformance/documents.json)は、各文書の完全なダイジェストとバイト数を保持しています。[`conformance/documents.py`](conformance/documents.py)は、gitが無視する`docs/`にダウンロードし、ダイジェストが一致しないファイルを拒否します。
 

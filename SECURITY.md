@@ -10,12 +10,12 @@ about what a malformed input can make the code do.
 
 ## What is in scope
 
-| Class | Example |
-|-------|---------|
-| Supply chain | A dependency or a pinned action that has been compromised |
+| Class           | Example                                                                             |
+| --------------- | ----------------------------------------------------------------------------------- |
+| Supply chain    | A dependency or a pinned action that has been compromised                           |
 | Malformed input | A crafted suite file that makes a runner allocate without bound or loop without end |
-| Path handling | An input that causes a write outside the directory the caller named |
-| Pin handling | Anything that makes a fetch resolve to something other than the pinned commit |
+| Path handling   | An input that causes a write outside the directory the caller named                 |
+| Pin handling    | Anything that makes a fetch resolve to something other than the pinned commit       |
 
 ## What is not
 

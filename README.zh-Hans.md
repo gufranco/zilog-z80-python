@@ -28,10 +28,10 @@ b=42 pc=0004 [7, 4, 4] True 20
 
 ## 安装
 
-| 要求 | 版本 |
-|:--|:--|
-| Python | 3.12 或更高 |
-| git | 任意，用于克隆 |
+| 要求   | 版本           |
+| :----- | :------------- |
+| Python | 3.12 或更高    |
+| git    | 任意，用于克隆 |
 
 ```bash
 git clone https://github.com/gufranco/zilog-z80-python.git
@@ -57,43 +57,43 @@ python3 z80/doctor.py
 
 `Cpu(model, memory=None, fill=None, ports=None, seed=UNSET_SEED, recording=False, shape="manual")` 构建一个芯片，已上电但未复位。
 
-| 参数 | 含义 |
-|:--|:--|
-| `model` | 必填。型号名称或别名，忽略大小写和分隔符。省略时抛出 `UnknownModelError`，其中列出所有型号 |
-| `memory` | 任何具有 `read8(address)` 和 `write8(address, value)` 的对象。芯片保留传入的那个对象。省略时，芯片构建一个 `SparseMemory` |
-| `fill` | 仅在省略 `memory` 时使用：构建一个每处都是该字节的 64 KB `Memory` |
-| `ports` | 任何具有 `read(address)` 和 `write(address, value)` 的对象。省略时，输入读取型号的浮空输出，输出不去往任何地方 |
-| `seed` | 为寄存器的上电乱序提供种子 |
-| `recording` | 为 `True` 时，在 `cpu.bus.log` 中保留逐 T 状态日志 |
-| `shape` | `"manual"` 或 `"recording"`，即读取每个控制引脚所依据的边沿。其他值抛出 `UnknownShape` |
+| 参数        | 含义                                                                                                                      |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------ |
+| `model`     | 必填。型号名称或别名，忽略大小写和分隔符。省略时抛出 `UnknownModelError`，其中列出所有型号                                |
+| `memory`    | 任何具有 `read8(address)` 和 `write8(address, value)` 的对象。芯片保留传入的那个对象。省略时，芯片构建一个 `SparseMemory` |
+| `fill`      | 仅在省略 `memory` 时使用：构建一个每处都是该字节的 64 KB `Memory`                                                         |
+| `ports`     | 任何具有 `read(address)` 和 `write(address, value)` 的对象。省略时，输入读取型号的浮空输出，输出不去往任何地方            |
+| `seed`      | 为寄存器的上电乱序提供种子                                                                                                |
+| `recording` | 为 `True` 时，在 `cpu.bus.log` 中保留逐 T 状态日志                                                                        |
+| `shape`     | `"manual"` 或 `"recording"`，即读取每个控制引脚所依据的边沿。其他值抛出 `UnknownShape`                                    |
 
 ### 运行
 
-| 调用 | 作用 | 返回 |
-|:--|:--|:--|
-| `reset()` | 驱动 RESET：先是 Zilog 规定的引脚最少保持的 3 个 T 状态，再是芯片在释放后耗费的 2 个。将 `pc`、`i`、`r` 和 `im` 置 0，清除两个中断触发器和 `steps`，其他寄存器保持原样 | 该 `Cpu` |
-| `step()` | 执行一条指令；处于暂停状态时执行一个 `HALT` 周期 | 耗费的 T 状态数 |
-| `run_for(cycles)` | 执行完整的指令，直到至少经过 `cycles` 个 T 状态 | 耗费的 T 状态数，可能超过 `cycles` |
-| `run_until(check, limit=None)` | 在 `check(cpu)` 为假时持续单步执行。执行 `limit` 条指令后抛出 `RunLimit` | 该 `Cpu` |
-| `held()` | 是否正在执行 `HALT` | `bool` |
-| `irq(vector=0xFF)` | 立即发出可屏蔽中断。`vector` 是设备提供的字节，或者是每次读取返回一个字节的可调用对象，设备在模式 0 下正是这样提供更长的指令 | 被接受时为 `True` |
-| `nmi()` | 立即响应不可屏蔽中断，并从 `$0066` 重新开始 | `None` |
+| 调用                           | 作用                                                                                                                                                                   | 返回                               |
+| :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------- |
+| `reset()`                      | 驱动 RESET：先是 Zilog 规定的引脚最少保持的 3 个 T 状态，再是芯片在释放后耗费的 2 个。将 `pc`、`i`、`r` 和 `im` 置 0，清除两个中断触发器和 `steps`，其他寄存器保持原样 | 该 `Cpu`                           |
+| `step()`                       | 执行一条指令；处于暂停状态时执行一个 `HALT` 周期                                                                                                                       | 耗费的 T 状态数                    |
+| `run_for(cycles)`              | 执行完整的指令，直到至少经过 `cycles` 个 T 状态                                                                                                                        | 耗费的 T 状态数，可能超过 `cycles` |
+| `run_until(check, limit=None)` | 在 `check(cpu)` 为假时持续单步执行。执行 `limit` 条指令后抛出 `RunLimit`                                                                                               | 该 `Cpu`                           |
+| `held()`                       | 是否正在执行 `HALT`                                                                                                                                                    | `bool`                             |
+| `irq(vector=0xFF)`             | 立即发出可屏蔽中断。`vector` 是设备提供的字节，或者是每次读取返回一个字节的可调用对象，设备在模式 0 下正是这样提供更长的指令                                           | 被接受时为 `True`                  |
+| `nmi()`                        | 立即响应不可屏蔽中断，并从 `$0066` 重新开始                                                                                                                            | `None`                             |
 
 ### 引脚与状态
 
-| 属性 | 含义 |
-|:--|:--|
-| `irq_line` | 以电平表示的可屏蔽请求，在每条指令的最后一个 T 状态采样 |
-| `nmi_line` | 不可屏蔽请求。跳变会触发中断；保持不变不会再次中断 |
-| `wait_line` | 在每个机器周期的 T2 之后读取。它每保持置位一个 T 状态，T2 就重复一次 |
-| `on_cycle` | 每个 T 状态调用一次，在其结束时：在该状态的总线活动以及下一个状态之前的工作之后 |
-| `cycles` | 自芯片构建以来的 T 状态数，跨越复位累计 |
-| `steps` | 自上次复位以来的指令数 |
-| `halted` | 是否正在执行 `HALT`；每个 `HALT` 周期耗费 4 个 T 状态 |
-| `registers` | 下文的 `Registers` 寄存器组 |
-| `bus` | 上一条指令：`states`，其 T 状态数；`cycles`，每个机器周期一个 `(state, kind)` 的列表；`log`，每个 T 状态一个 `(address, value, pins)` 的列表。这两个列表仅在 `recording=True` 时填充。`kind` 是 `fetch`、`read`、`write`、`portRead`、`portWrite` 或 `acknowledge` 之一 |
-| `memory`、`ports` | 构建芯片时传入的对象 |
-| `model` | 规范型号名称 |
+| 属性              | 含义                                                                                                                                                                                                                                                                    |
+| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `irq_line`        | 以电平表示的可屏蔽请求，在每条指令的最后一个 T 状态采样                                                                                                                                                                                                                 |
+| `nmi_line`        | 不可屏蔽请求。跳变会触发中断；保持不变不会再次中断                                                                                                                                                                                                                      |
+| `wait_line`       | 在每个机器周期的 T2 之后读取。它每保持置位一个 T 状态，T2 就重复一次                                                                                                                                                                                                    |
+| `on_cycle`        | 每个 T 状态调用一次，在其结束时：在该状态的总线活动以及下一个状态之前的工作之后                                                                                                                                                                                         |
+| `cycles`          | 自芯片构建以来的 T 状态数，跨越复位累计                                                                                                                                                                                                                                 |
+| `steps`           | 自上次复位以来的指令数                                                                                                                                                                                                                                                  |
+| `halted`          | 是否正在执行 `HALT`；每个 `HALT` 周期耗费 4 个 T 状态                                                                                                                                                                                                                   |
+| `registers`       | 下文的 `Registers` 寄存器组                                                                                                                                                                                                                                             |
+| `bus`             | 上一条指令：`states`，其 T 状态数；`cycles`，每个机器周期一个 `(state, kind)` 的列表；`log`，每个 T 状态一个 `(address, value, pins)` 的列表。这两个列表仅在 `recording=True` 时填充。`kind` 是 `fetch`、`read`、`write`、`portRead`、`portWrite` 或 `acknowledge` 之一 |
+| `memory`、`ports` | 构建芯片时传入的对象                                                                                                                                                                                                                                                    |
+| `model`           | 规范型号名称                                                                                                                                                                                                                                                            |
 
 ```python
 from z80 import Cpu, Memory
@@ -153,12 +153,12 @@ gave up after 3 instructions at $003B
 
 ### 内存与端口
 
-| 名称 | 含义 |
-|:--|:--|
-| `SparseMemory(seed=UNSET_SEED)` | 只存储写入内容的 64 KB 空间。未写入的字节读出由 `seed` 和地址推导出的值 |
-| `Memory(size=0x10000, image=None, seed=UNSET_SEED, fill=None)` | 平坦的 `bytearray`。没有 `fill` 时，由 `seed` 乱序填充。`image` 从地址 0 开始复制进来 |
-| `Ports(seed=UNSET_SEED)` | I/O 空间。读写以 `(address, value, "r" or "w")` 的形式记入 `log`。未写入的端口读出由 `seed` 推导出的值 |
-| `UNSET_SEED` | `0x5A5A5A5A`，未给出种子时所有乱序使用的种子 |
+| 名称                                                           | 含义                                                                                                   |
+| :------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
+| `SparseMemory(seed=UNSET_SEED)`                                | 只存储写入内容的 64 KB 空间。未写入的字节读出由 `seed` 和地址推导出的值                                |
+| `Memory(size=0x10000, image=None, seed=UNSET_SEED, fill=None)` | 平坦的 `bytearray`。没有 `fill` 时，由 `seed` 乱序填充。`image` 从地址 0 开始复制进来                  |
+| `Ports(seed=UNSET_SEED)`                                       | I/O 空间。读写以 `(address, value, "r" or "w")` 的形式记入 `log`。未写入的端口读出由 `seed` 推导出的值 |
+| `UNSET_SEED`                                                   | `0x5A5A5A5A`，未给出种子时所有乱序使用的种子                                                           |
 
 每条总线上的地址都是 16 位。端口地址的高字节携带累加器或 `B`，与芯片实际驱动的一致。
 
@@ -223,18 +223,18 @@ pc=0000 hl=724C hl_=1234 im=0 iff1=False
 
 ### 型号与错误
 
-| 名称 | 含义 |
-|:--|:--|
-| `MODELS` | 三条 `Model` 记录，以规范名称为键 |
-| `Model` | `name`、`aliases`、`summary`、`floating_output`、`carry_rule`、`interrupt_clears_parity`、`verified`，以及 `build(memory, **options)` |
-| `UnknownModelError` | 型号缺失，或名称不对应任何型号时，由 `Cpu` 抛出。消息中列出这三种型号 |
-| `UnknownShape` | `shape` 不是 `manual` 或 `recording` 时，由 `Cpu` 抛出 |
-| `UnknownCarryRule` | 进位规则不是 `zilog` 或 `nec` 时，由 `Model` 抛出 |
-| `RunLimit` | 经过 `limit` 条指令而检查条件始终不成立时，由 `run_until` 抛出 |
-| `Truncated` | 字节在指令中途结束时，由 `decode` 抛出 |
-| `ClockClosed` | 时钟关闭后，由 `Clock.tick()` 抛出 |
-| `InsideInstruction` | 在 `Clock` 暂停于一条指令或中断响应的中途时从外部调用 `irq()` 或 `nmi()` 时抛出。应 tick 到指令边界，或设置 `irq_line` 或 `nmi_line` |
-| `__version__` | 已安装的版本 |
+| 名称                | 含义                                                                                                                                  |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------ |
+| `MODELS`            | 三条 `Model` 记录，以规范名称为键                                                                                                     |
+| `Model`             | `name`、`aliases`、`summary`、`floating_output`、`carry_rule`、`interrupt_clears_parity`、`verified`，以及 `build(memory, **options)` |
+| `UnknownModelError` | 型号缺失，或名称不对应任何型号时，由 `Cpu` 抛出。消息中列出这三种型号                                                                 |
+| `UnknownShape`      | `shape` 不是 `manual` 或 `recording` 时，由 `Cpu` 抛出                                                                                |
+| `UnknownCarryRule`  | 进位规则不是 `zilog` 或 `nec` 时，由 `Model` 抛出                                                                                     |
+| `RunLimit`          | 经过 `limit` 条指令而检查条件始终不成立时，由 `run_until` 抛出                                                                        |
+| `Truncated`         | 字节在指令中途结束时，由 `decode` 抛出                                                                                                |
+| `ClockClosed`       | 时钟关闭后，由 `Clock.tick()` 抛出                                                                                                    |
+| `InsideInstruction` | 在 `Clock` 暂停于一条指令或中断响应的中途时从外部调用 `irq()` 或 `nmi()` 时抛出。应 tick 到指令边界，或设置 `irq_line` 或 `nmi_line`  |
+| `__version__`       | 已安装的版本                                                                                                                          |
 
 ```python
 import z80
@@ -272,21 +272,21 @@ this clock has been closed 3
 
 每个工具都从仓库根目录运行。一致性工具以模块方式运行。
 
-| 命令 | 作用 | 退出码 |
-|:--|:--|:--|
-| `python3 z80/doctor.py` | 报告本机、各芯片和语料库 | 0 所有检查通过，1 有检查未通过 |
-| `python3 -m conformance.fetch [directory] [--latest]` | 将语料库按其固定的提交克隆到 `directory`，使用 `--latest` 时按上游最新提交克隆，默认目录为 `~/.cache/conformance-suites` | 0 已获取，1 上游不可达或某个 git 步骤失败 |
-| `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]` | 在每个用例之后比对寄存器和内存 | 0 无失败，1 有失败或未找到用例，2 参数错误 |
-| `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 比对每个 T 状态的地址、数据和引脚。形态默认为 `recording` | 0 无失败，1 有失败或未找到用例，2 参数错误 |
-| `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]` | 用生成该语料库的生成器重建它。需要 `node` | 0 已写入，生成器失败时为生成器自身的退出码，1 参数错误 |
-| `python3 -m conformance.timing` | 运行记录中的每一行逐指令时序，并比对 T 状态数 | 0 每一行都一致，1 有一行不一致 |
-| `python3 -m conformance.quotes` | 在存有文档的机器上，在所引用的文档中查找每一句引文 | 0 每句引文都找到，1 有一句未找到 |
-| `python3 -m conformance.documents [--check] [--only SUBSTRING]` | 下载有地址的文档，并校验每个摘要。`--check` 只做校验 | 0 每份都校验通过，1 有一份被拒绝或参数错误 |
-| `python3 -m conformance.netlist [--half-cycles N]` | 从复位开始运行晶体管网表 `N` 个半周期，默认 130 | 0 每个节点都已稳定，1 有节点未稳定或缺少数据文件 |
-| `python3 -m conformance.wz [output]` | 读取网表在 `WZ` 中留下的内容，并写入 `output`，默认为 [`conformance/wz.json`](conformance/wz.json) | 0 已写入，1 缺少网表或探针未校准 |
-| `python3 -m conformance.speed [--instructions N] [--repeats N]` | 在 64 KB 镜像上为 `run_for(N)` 计时，默认 200,000 个 T 状态、运行 7 次 | 0 达到或超过每秒 400,000 个 T 状态，1 低于该值，2 参数错误 |
-| `python3 -m conformance.links` | 请求本文件中的每个地址 | 0 每个地址仍然存在，1 有地址返回状态 `404` 或 `410` |
-| `python3 -m conformance.package <wheel>` | 检查构建好的 wheel 是否包含每个模块且不含测试 | 0 正常，1 有问题或文件不存在，2 未提供参数 |
+| 命令                                                                                                      | 作用                                                                                                                     | 退出码                                                     |
+| :-------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
+| `python3 z80/doctor.py`                                                                                   | 报告本机、各芯片和语料库                                                                                                 | 0 所有检查通过，1 有检查未通过                             |
+| `python3 -m conformance.fetch [directory] [--latest]`                                                     | 将语料库按其固定的提交克隆到 `directory`，使用 `--latest` 时按上游最新提交克隆，默认目录为 `~/.cache/conformance-suites` | 0 已获取，1 上游不可达或某个 git 步骤失败                  |
+| `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]`                         | 在每个用例之后比对寄存器和内存                                                                                           | 0 无失败，1 有失败或未找到用例，2 参数错误                 |
+| `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 比对每个 T 状态的地址、数据和引脚。形态默认为 `recording`                                                                | 0 无失败，1 有失败或未找到用例，2 参数错误                 |
+| `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]`                             | 用生成该语料库的生成器重建它。需要 `node`                                                                                | 0 已写入，生成器失败时为生成器自身的退出码，1 参数错误     |
+| `python3 -m conformance.timing`                                                                           | 运行记录中的每一行逐指令时序，并比对 T 状态数                                                                            | 0 每一行都一致，1 有一行不一致                             |
+| `python3 -m conformance.quotes`                                                                           | 在存有文档的机器上，在所引用的文档中查找每一句引文                                                                       | 0 每句引文都找到，1 有一句未找到                           |
+| `python3 -m conformance.documents [--check] [--only SUBSTRING]`                                           | 下载有地址的文档，并校验每个摘要。`--check` 只做校验                                                                     | 0 每份都校验通过，1 有一份被拒绝或参数错误                 |
+| `python3 -m conformance.netlist [--half-cycles N]`                                                        | 从复位开始运行晶体管网表 `N` 个半周期，默认 130                                                                          | 0 每个节点都已稳定，1 有节点未稳定或缺少数据文件           |
+| `python3 -m conformance.wz [output]`                                                                      | 读取网表在 `WZ` 中留下的内容，并写入 `output`，默认为 [`conformance/wz.json`](conformance/wz.json)                       | 0 已写入，1 缺少网表或探针未校准                           |
+| `python3 -m conformance.speed [--instructions N] [--repeats N]`                                           | 在 64 KB 镜像上为 `run_for(N)` 计时，默认 200,000 个 T 状态、运行 7 次                                                   | 0 达到或超过每秒 400,000 个 T 状态，1 低于该值，2 参数错误 |
+| `python3 -m conformance.links`                                                                            | 请求本文件中的每个地址                                                                                                   | 0 每个地址仍然存在，1 有地址返回状态 `404` 或 `410`        |
+| `python3 -m conformance.package <wheel>`                                                                  | 检查构建好的 wheel 是否包含每个模块且不含测试                                                                            | 0 正常，1 有问题或文件不存在，2 未提供参数                 |
 
 ## 以真实速度运行
 
@@ -340,12 +340,12 @@ True
 
 `$0001` 处的字节在操作码取指的第一个 T 状态之后被改变，紧随取指的操作数读取取到了新值。
 
-| 调用 | 作用 |
-|:--|:--|
-| `tick()` | 前进一个 T 状态，并返回时钟的计数 |
-| `run_for(cycles)` | 调用 `tick()` 共 `cycles` 次，并返回计数 |
-| `close()` | 停止芯片，并交还 `on_cycle`。离开 `with` 块时会调用它 |
-| `cycles`、`closed` | 节拍计数，以及时钟是否已关闭 |
+| 调用               | 作用                                                  |
+| :----------------- | :---------------------------------------------------- |
+| `tick()`           | 前进一个 T 状态，并返回时钟的计数                     |
+| `run_for(cycles)`  | 调用 `tick()` 共 `cycles` 次，并返回计数              |
+| `close()`          | 停止芯片，并交还 `on_cycle`。离开 `with` 块时会调用它 |
+| `cycles`、`closed` | 节拍计数，以及时钟是否已关闭                          |
 
 对时钟进行迭代会不断推进它，直到它被关闭。芯片内部抛出的异常会从 `tick()` 再次抛出，并且时钟会关闭。
 
@@ -357,21 +357,21 @@ True
 
 三者的指令集相同。有三处行为不同。
 
-| 构建方式 | 单独的 `OUT (C)` 发送 | `SCF` 和 `CCF` 之后的未公开标志位 | `LD A,I` 或 `LD A,R` 之后的中断会清除奇偶校验位 | 这三列是否经过测量 |
-|:--|:--|:--|:--|:--|
-| `Cpu("z80")` | `$00` | 累加器和锁存器 | 是，Zilog 有文档说明 | 是，由语料库测量 |
-| `Cpu("z84c00")` | `$FF` | 累加器和锁存器 | 否，Zilog 已修复 | 否，依据 Zilog 自己的说法 |
-| `Cpu("upd780c")` | `$00` | 仅累加器 | 未说明 | 否，依据独立研究 |
+| 构建方式         | 单独的 `OUT (C)` 发送 | `SCF` 和 `CCF` 之后的未公开标志位 | `LD A,I` 或 `LD A,R` 之后的中断会清除奇偶校验位 | 这三列是否经过测量        |
+| :--------------- | :-------------------- | :-------------------------------- | :---------------------------------------------- | :------------------------ |
+| `Cpu("z80")`     | `$00`                 | 累加器和锁存器                    | 是，Zilog 有文档说明                            | 是，由语料库测量          |
+| `Cpu("z84c00")`  | `$FF`                 | 累加器和锁存器                    | 否，Zilog 已修复                                | 否，依据 Zilog 自己的说法 |
+| `Cpu("upd780c")` | `$00`                 | 仅累加器                          | 未说明                                          | 否，依据独立研究          |
 
 语料库只记录了 NMOS Z80。另外两种与它共有的一切，都通过它来测量。使它们成为不同芯片的那三列没有经过测量，两者的 `Model.verified` 均为 `False`。
 
 每个型号都接受其制造商销售时使用的型号编号。大小写、`-` 和 `_` 会被忽略，因此 `Cpu("Z84C00-10")` 构建的是 `z84c00`。
 
-| 构建方式 | 同样接受的名称 |
-|:--|:--|
-| `Cpu("z80")` | `z8400`, `nmosz80`, `z0840004psc`, `z0840006psc`, `z0840008psc`, `mostekmk3880`, `mk3880`, `mk3880n`, `sharplh0080`, `lh0080`, `lh0080a`, `u880`, `ud880d`, `kr1858vm1`, `t34vm1`, `mme`, `goldstargms z80`, `thesysz80` |
-| `Cpu("upd780c")` | `necupd780c`, `d780c`, `d780c1`, `d780c2`, `upd780`, `upd780c1`, `upd780c2` |
-| `Cpu("z84c00")` | `cmosz80`, `z80c`, `z8400c`, `z84c0006`, `z84c0008`, `z84c0010`, `z84c0020`, `toshibatmpz84c00`, `tmpz84c00`, `t84c00`, `kr1858vm3` |
+| 构建方式         | 同样接受的名称                                                                                                                                                                                                           |
+| :--------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Cpu("z80")`     | `z8400`, `nmosz80`, `z0840004psc`, `z0840006psc`, `z0840008psc`, `mostekmk3880`, `mk3880`, `mk3880n`, `sharplh0080`, `lh0080`, `lh0080a`, `u880`, `ud880d`, `kr1858vm1`, `t34vm1`, `mme`, `goldstargms z80`, `thesysz80` |
+| `Cpu("upd780c")` | `necupd780c`, `d780c`, `d780c1`, `d780c2`, `upd780`, `upd780c1`, `upd780c2`                                                                                                                                              |
+| `Cpu("z84c00")`  | `cmosz80`, `z80c`, `z8400c`, `z84c0006`, `z84c0008`, `z84c0010`, `z84c0020`, `toshibatmpz84c00`, `tmpz84c00`, `t84c00`, `kr1858vm3`                                                                                      |
 
 ```python
 import z80
@@ -492,13 +492,13 @@ python3 -m conformance.netlist
 
 ## 参与开发
 
-| 需求 | 位置 |
-|:--|:--|
-| 每个门禁检查及其运行顺序 | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| 面向编程智能体的相同内容 | [AGENTS.md](AGENTS.md) |
-| 本仓库与本系列其他仓库共享的标准 | [FAMILY.md](FAMILY.md) |
-| 缺陷报告 | [GitHub Issues](https://github.com/gufranco/zilog-z80-python/issues) |
-| 安全报告 | [SECURITY.md](SECURITY.md) |
+| 需求                             | 位置                                                                 |
+| :------------------------------- | :------------------------------------------------------------------- |
+| 每个门禁检查及其运行顺序         | [CONTRIBUTING.md](CONTRIBUTING.md)                                   |
+| 面向编程智能体的相同内容         | [AGENTS.md](AGENTS.md)                                               |
+| 本仓库与本系列其他仓库共享的标准 | [FAMILY.md](FAMILY.md)                                               |
+| 缺陷报告                         | [GitHub Issues](https://github.com/gufranco/zilog-z80-python/issues) |
+| 安全报告                         | [SECURITY.md](SECURITY.md)                                           |
 
 ```bash
 uvx ruff@0.16.3 format --check .
@@ -520,28 +520,28 @@ python3 -m conformance.speed
 
 下列所有制造商文档均受版权保护，不可再分发。个别句子连同其出处页码引用在 [`conformance/hardware.json`](conformance/hardware.json) 中。
 
-| 文档 | 日期 | 页数 | SHA-256 | 可再分发 |
-|:---------|:-----|------:|:--------|:----------------|
-| [Zilog，*Z80 CPU User Manual*，UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf) | 2016-08 | 332 | `e3c83da5a5d8e372…` | 否 |
-| Zilog，*Z80 Family Data Book*，00-2490-01 | 1989-01 | 448 | `844681b63ffc45bd…` | 否 |
-| Zilog，*Z84C00 Product Specification*，PS017801-0602 | 无日期 | 36 | `06198d3c22a79a3f…` | 否 |
-| NEC，*µPD780C* 数据表 | 无日期 | 24 | `2036fa845533feee…` | 否 |
+| 文档                                                                                     | 日期    | 页数 | SHA-256             | 可再分发 |
+| :--------------------------------------------------------------------------------------- | :------ | ---: | :------------------ | :------- |
+| [Zilog，_Z80 CPU User Manual_，UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf) | 2016-08 |  332 | `e3c83da5a5d8e372…` | 否       |
+| Zilog，_Z80 Family Data Book_，00-2490-01                                                | 1989-01 |  448 | `844681b63ffc45bd…` | 否       |
+| Zilog，_Z84C00 Product Specification_，PS017801-0602                                     | 无日期  |   36 | `06198d3c22a79a3f…` | 否       |
+| NEC，_µPD780C_ 数据表                                                                    | 无日期  |   24 | `2036fa845533feee…` | 否       |
 
 只有当两条从未互相参考的研究脉络结论一致时，才采用独立研究，并且从不将其作为制造商已给出数值的引用来源。
 
-| 文档 | 作者 | 页数 | SHA-256 | 许可证 |
-|:---------|:-------|------:|:--------|:--------|
-| [*The Undocumented Z80 Documented*，v0.91](https://archive.org/details/the-undocumented-z80-documented) | Sean Young，2005-09-18 | 52 | `6413048f39c2e735…` | GFDL 1.1 或更高版本 |
-| [*Z80 CCF SCF Outcome Stability*](https://github.com/redcode/Z80/wiki/Z80-CCF-SCF-Outcome-Stability) | Sainz de Baranda y Goñi、Brewer、Helcmanovsky | 4 | `be87311012f9edaf…` | GFDL 1.3 |
-| *Undocumented Z80 Flags*，rev 1.0 | David Banks，2018-08-21 | 3 | `33766df5494e2fdf…` | 未说明 |
-| *MEMPTR, esoteric register of the ZiLOG Z80 CPU* | Boo-boo，Vladimir Kladov 译 | 文本 | `f9e8e87cdd205e15…` | 未说明 |
-| [redcode/Z80 wiki: Interrupts](https://github.com/redcode/Z80/wiki/Interrupts) 和 [MEMPTR](https://github.com/redcode/Z80/wiki/MEMPTR) | Sainz de Baranda y Goñi 及其他贡献者 | 网页 | n/a | GFDL 1.3 |
+| 文档                                                                                                                                   | 作者                                          | 页数 | SHA-256             | 许可证              |
+| :------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------- | ---: | :------------------ | :------------------ |
+| [_The Undocumented Z80 Documented_，v0.91](https://archive.org/details/the-undocumented-z80-documented)                                | Sean Young，2005-09-18                        |   52 | `6413048f39c2e735…` | GFDL 1.1 或更高版本 |
+| [_Z80 CCF SCF Outcome Stability_](https://github.com/redcode/Z80/wiki/Z80-CCF-SCF-Outcome-Stability)                                   | Sainz de Baranda y Goñi、Brewer、Helcmanovsky |    4 | `be87311012f9edaf…` | GFDL 1.3            |
+| _Undocumented Z80 Flags_，rev 1.0                                                                                                      | David Banks，2018-08-21                       |    3 | `33766df5494e2fdf…` | 未说明              |
+| _MEMPTR, esoteric register of the ZiLOG Z80 CPU_                                                                                       | Boo-boo，Vladimir Kladov 译                   | 文本 | `f9e8e87cdd205e15…` | 未说明              |
+| [redcode/Z80 wiki: Interrupts](https://github.com/redcode/Z80/wiki/Interrupts) 和 [MEMPTR](https://github.com/redcode/Z80/wiki/MEMPTR) | Sainz de Baranda y Goñi 及其他贡献者          | 网页 | n/a                 | GFDL 1.3            |
 
-| 来源 | 用途 |
-|:-------|:---------|
+| 来源                                                              | 用途                                                                                               |
+| :---------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
 | [SingleStepTests/z80](https://github.com/SingleStepTests/z80.git) | 固定的语料库，1,604,000 个用例。提交记录在 [`conformance/suites.json`](conformance/suites.json) 中 |
-| [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git) | 生成该语料库的生成器，因此语料库可以重建，而不只是下载 |
-| [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer) | 其行为记录在 [`conformance/divergences.json`](conformance/divergences.json) 中的网表 |
+| [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git)         | 生成该语料库的生成器，因此语料库可以重建，而不只是下载                                             |
+| [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer)       | 其行为记录在 [`conformance/divergences.json`](conformance/divergences.json) 中的网表               |
 
 [`conformance/documents.json`](conformance/documents.json) 记录了每份文档的完整摘要和字节数。[`conformance/documents.py`](conformance/documents.py) 把文档下载到 git 忽略的 `docs/` 中，并拒绝摘要不符的任何文件。
 
