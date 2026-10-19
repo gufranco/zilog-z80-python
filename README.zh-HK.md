@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,487** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
+**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,504** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
 
 ```python
 from z80 import Cpu, Memory
@@ -310,6 +310,7 @@ this clock has been closed 3
 | `python3 -m conformance.netlist [--half-cycles N]`                                                        | 從重設開始執行電晶體網表 `N` 個半週期，預設為 130                                                                                                                                | 0 每個節點都已穩定，1 有節點未穩定或缺少數據檔案           |
 | `python3 -m conformance.wz [output]`                                                                      | 讀取網表留在 `WZ` 中的內容，並寫入 `output`，預設為 [`conformance/wz.json`](conformance/wz.json)                                                                                 | 0 已寫入，1 缺少網表或探針未校準                           |
 | `python3 -m conformance.ask [output] [--sweep]`                                                           | 把 `ask.py` 中的每個問題交給網表，並把每個回答與本套件的回答並列寫入 `output`，預設為 [`conformance/die.json`](conformance/die.json)。`--sweep` 亦會比對每種操作碼形式的機器週期 | 0 已寫入，1 缺少網表，2 參數錯誤                           |
+| `python3 -m conformance.z80test <tape>`                                                                   | 執行你持有的 z80test 套件中的一卷磁帶，並列印它所報告的內容。[`conformance/z80test.json`](conformance/z80test.json) 未固定其摘要的磁帶會被拒絕                                   | 0 所有測試通過，1 有測試未通過或磁帶被拒絕，2 未指定磁帶   |
 | `python3 -m conformance.speed [--instructions N] [--repeats N]`                                           | 在 64 KB 映像檔上為 `run_for(N)` 計時，預設為 200,000 個 T 狀態，執行 7 次                                                                                                       | 0 達到或高於每秒 400,000 個 T 狀態，1 低於此值，2 參數錯誤 |
 | `python3 -m conformance.links`                                                                            | 請求本檔案中的每個地址                                                                                                                                                           | 0 每個地址仍然存在，1 有地址傳回狀態 `404` 或 `410`        |
 | `python3 -m conformance.package <wheel>`                                                                  | 檢查已建置的 wheel 包含每個模組且不含任何測試                                                                                                                                    | 0 無問題，1 有問題或檔案不存在，2 沒有參數                 |
@@ -500,7 +501,9 @@ python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
 
 手冊單獨處理。[`conformance/hardware.json`](conformance/hardware.json) 載有取自文件的每項事實，連同其原句和頁碼，[`conformance/hardware.test.py`](conformance/hardware.test.py) 及其旁邊的 `hardware_*.test.py` 檔案在機器上沒有語料庫的情況下運行晶片，以它逐個檢查其機器週期。`python3 -m conformance.timing` 執行全部 217 行逐指令時序，並將每行與晶片耗費的 T 狀態比對。手冊有六處自相矛盾：三行時序，分別在第 99、260 和 269 頁，其 M 週期數與其自身的 T 狀態分解不符；兩處是正文與圖表不符；還有從第 298 頁起的區塊輸入各行，其分解把記憶體寫入放在埠讀取之前，而它們自己的描述順序正好相反。兩個來源出現分歧的每一處，都連同可解決它的方法列於 [`conformance/divergences.json`](conformance/divergences.json)。
 
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出 18 個問題，其中的保真度是一項聲稱而非測量，每個問題都附有可解決它的測量。旗標暫存器的第 3 和第 5 位元以及內部的 `WZ` 暫存器，在 Zilog 用戶手冊和數據手冊合共 780 頁中都沒有出現。
+z80test 套件以真實矽片檢驗晶片：它的每個程式都把一條指令留下的暫存器和旗標的 CRC，與在一顆真實的 Zilog Z80 上記錄的值比對。機器上有它的發佈包時，`python3 -m conformance.z80test <tape>` 會執行一卷磁帶。full、documented、MEMPTR 和 CCF 四卷磁帶各自通過全部 156 個測試，另有 4 個只在 NEC 和 ST 晶片上執行的測試被略過。每卷磁帶大約需要二十分鐘。
+
+[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出 17 個問題，其中的保真度是一項聲稱而非測量，每個問題都附有可解決它的測量。旗標暫存器的第 3 和第 5 位元以及內部的 `WZ` 暫存器，在 Zilog 用戶手冊和數據手冊合共 780 頁中都沒有出現。
 
 ### 向晶粒求證
 
@@ -569,6 +572,7 @@ python3 -m conformance.speed
 | :---------------------------------------------------------------- | :---------------------------------------------------------------------------------------------- |
 | [SingleStepTests/z80](https://github.com/SingleStepTests/z80.git) | 固定的語料庫，1,604,000 個案例。提交記錄在 [`conformance/suites.json`](conformance/suites.json) |
 | [raddad772/jsmoo](https://github.com/raddad772/jsmoo.git)         | 產生該語料庫的產生器，使語料庫可以重建，而不只是下載                                            |
+| [raxoft/z80test](https://github.com/raxoft/z80test)               | 在真實晶片上量度的套件。提交和磁帶摘要見 [`conformance/z80test.json`](conformance/z80test.json) |
 | [gdevic/Z80Explorer](https://github.com/gdevic/Z80Explorer)       | 其行為記錄於 [`conformance/divergences.json`](conformance/divergences.json) 的網表              |
 
 [`conformance/documents.json`](conformance/documents.json) 載有每份文件的完整摘要值和位元組數。[`conformance/documents.py`](conformance/documents.py) 下載到 git 忽略的 `docs/`，並拒絕任何摘要值不符的檔案。

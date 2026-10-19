@@ -67,7 +67,7 @@ class RecordTest(unittest.TestCase):
         live = [one for one in held if one["status"] in LIVE]
 
         # Assert
-        self.assertEqual(len(live), 18)
+        self.assertEqual(len(live), 17)
 
     def test_and_the_closed_ones_are_kept_rather_than_deleted(self) -> None:
         # Arrange
@@ -77,7 +77,7 @@ class RecordTest(unittest.TestCase):
         closed = [one for one in held if one["status"] == "closed"]
 
         # Assert
-        self.assertEqual(len(closed), 8)
+        self.assertEqual(len(closed), 9)
 
     def test_every_severity_the_record_uses_has_a_place_in_the_document(self) -> None:
         severities = {one["severity"] for one in opened()}

@@ -51,8 +51,11 @@ catches it, so both live in `settle()`. Keep it that way.
    every fact taken from one is in
    [`conformance/hardware.json`](conformance/hardware.json) with the sentence it
    came from and the page it was on.
-2. **The part itself.** A measurement on real silicon. Nothing here rests on one,
-   which is why [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) is as long as it is.
+2. **The part itself.** A measurement on real silicon. One reaches this package:
+   the z80test suite's CRCs, recorded off a real Zilog Z80, pinned in
+   [`conformance/z80test.json`](conformance/z80test.json) and run by
+   [`conformance/z80test.py`](conformance/z80test.py). Nothing else here rests on
+   one, which is why [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) is as long as it is.
 3. **A recording from an independent implementation.** The SingleStepTests
    corpus, pinned by commit in
    [`conformance/suites.json`](conformance/suites.json), and the independent
@@ -82,7 +85,7 @@ to the manual's own figures by
 from the Condition Bits Affected block of all 131 instruction pages and fuzzed.
 124 hold; the two that do not are recorded.
 
-**Not settled: 18 things**, each in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)
+**Not settled: 17 things**, each in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)
 with what would close it. Most are behaviour Zilog documented for programmers
 rather than for people rebuilding the part. Do not close one by argument.
 
@@ -127,6 +130,13 @@ The conformance run needs the corpus, which is fetched rather than vendored:
 python3 -m conformance.fetch ~/.cache/conformance-suites
 python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
 python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
+```
+
+The suite measured on a real part is held rather than fetched. With the z80test
+release on the machine, each of its tapes runs for about twenty minutes:
+
+```bash
+python3 -m conformance.z80test <folder>/z80full.tap
 ```
 
 ## Conventions that are not negotiable
@@ -205,6 +215,7 @@ conformance/
   synthetic_netlist.py  a made-up netlist written to a folder, for the netlist tests
   die.py         the netlist run as a bench, and this package's machine cycles beside it
   ask.py         the questions put to the die, answered into die.json
+  z80test.py     runs a z80test tape you hold, refusing any the record does not pin
   suites.json    which corpus, at which commit
   fetch.py       getting it
   singlestep.py  running it, state by state

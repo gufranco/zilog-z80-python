@@ -44,20 +44,6 @@ A manufacturer printed one thing and every recorded case shows another. These ar
 
 **What would settle or reopen it.** Nothing settles it, which is the point of the entry. What would narrow it is a survey of how many parts on how many boards are stable, which the test program named in that document exists to collect.
 
-### What the eight block input and output instructions do to the negate and carry flags.
-
-**The document says.** S is unknown. Z is set if B - 1 = 0; otherwise it is reset. H is unknown. P/V is unknown. N is set. C is not affected.
-
-Source: Zilog UM008011-0816, the INI page and the seven like it.
-
-**What this project follows.** reference
-
-**Why.** The corpus fixes these flags on every one of its cases and this core reproduces it, and the rule the research states independently gives the same answer on all eighty combinations of the counter, the port and the byte that were tried. Two lineages that never consulted each other agree, and the manual disagrees with both.
-
-**What the die says.** The same as the recording. For INI with a carrying sum and without one, IND, OUTI and OUTD, the netlist leaves the flag byte this package does in all five cases: the negate flag follows bit 7 of the byte, and the carry and half carry follow the sum. Recorded in [`conformance/die.json`](conformance/die.json), written by [`conformance/ask.py`](conformance/ask.py).
-
-**What would settle or reopen it.** A program on a real part: clear the carry, run one block input whose sum overflows, and read the flag back.
-
 ## Where a document disagrees with itself
 
 One publication saying two things. The reading this project follows is argued in each entry, but only silicon closes it.
@@ -150,10 +136,21 @@ through the address and then the address plus one before the byte goes to zero,
 so the die clears it rather than never loading it, and `ld (nn),hl` keeps it, so
 it is not the harness releasing a bus.
 
+**What a real part says.** The recording, on the case the die disputes.
+`z80memptr` from the z80test suite, whose CRCs were recorded on a real Zilog Z80,
+reads two bits of the register through `bit n,(hl)` after every instruction it
+tests, and passes all 156 tests here. A copy of this package that clears the high
+byte the way the die does fails exactly `ld (bc),a` and `ld (de),a`, `ld (nn),a`
+and `out (n),a`. `z80ccf` reads Q through `scf` and `ccf` after every instruction
+it tests and passes all 156 too. Pinned in
+[`conformance/z80test.json`](conformance/z80test.json) and run by
+[`conformance/z80test.py`](conformance/z80test.py). Its author says the vectors
+were not designed to stress the register, which is why this narrows the entry
+rather than closing it.
+
 **What would settle or reopen it.** Zilog documenting the internal register file.
-A logic capture of a real part running `ld (nn),a`, which is the case where the
-die and the recording disagree: the die is one photograph and the recording is
-one author's measurement, so neither settles the other.
+A suite or capture that stresses WZ and Q on a real part beyond the z80test
+vectors.
 
 ### The opcodes the manual does not list.
 
@@ -279,6 +276,10 @@ Source: Zilog UM008011-0816, manual page 12.
 
 So the boundary is visible rather than implied:
 
+- **Everything the z80test suite measures.** Its full, documented, MEMPTR and
+  CCF programs, whose CRCs were recorded on a real Zilog Z80, pass all 156 of
+  their tests each. That is how the block input and output flags left this file:
+  the part sets them the way the recording does, not the way the manual prints.
 - **What every opcode does to registers, flags and memory.** Held to the recorded
   corpus across all 1,604,000 cases with no failures, undocumented opcodes and
   undocumented flag bits included.

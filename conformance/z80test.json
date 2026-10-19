@@ -1,0 +1,33 @@
+{
+  "note": "A published test suite whose expected values were measured on a real part, pinned so a run is reproducible. conformance/z80test.py runs a tape you hold against this package and refuses any tape whose digest is not listed here.",
+  "rung": 2,
+  "whyRungTwo": "Each program compares a CRC of the registers and flags an instruction leaves, over thousands of operand combinations, with a CRC its author recorded on a real Zilog Z80. The expected values are a measurement of silicon carried in a program, not an implementation's opinion. It is still one part on one board, and a CRC says that something differs without saying what.",
+  "referenceDoes": {
+    "rung": 2,
+    "quote": "Each of the included programs performs an exhaustive computation using each of the tested Z80 instructions, compares the results with values obtained from a real 48K Spectrum with Zilog Z80 CPU, and reports any deviations detected.",
+    "source": "readme.txt at the commit below"
+  },
+  "repository": "https://github.com/raxoft/z80test",
+  "commit": "c490c0ca94f1021509f8bd656b413861bd7cfb41",
+  "release": "https://github.com/raxoft/z80test/releases/download/v1.2a/z80test-1.2a.zip",
+  "releaseSha256": "7df0443d703e6b3114ea04b4cdef3e13b91421c62e37185c1036d06864cacbaf",
+  "licence": "MIT, Copyright (c) 2012-2023 Patrik Rak",
+  "obtaining": "Download the release, unzip it, and pass a tape to python3 -m conformance.z80test. Nothing from it is carried here.",
+  "host": "The suite calls two routines of the machine it was written for and reads one port. The runner answers them the way that machine does: a return at 0010h that receives each printed character in A, a return at 1601h, BFh from an even port and FFh from an odd one. The suite checks the even port itself before its input tests and fails them if it reads anything else.",
+  "taps": {
+    "z80ccf.tap": "a35b3b269b58371015cf033f28a08ad1ac92cce6dd27b428caf67b7f9ce8f5b7",
+    "z80doc.tap": "4b06ce9fd517fd5f5a86d4ff2ef05a3f0ab7ed20eb075b87b0623d42fbd3e4bd",
+    "z80docflags.tap": "cf64a8d66f248bc054c5255f3a51ba50a511b166b29054b7192ca91e306a528d",
+    "z80flags.tap": "4dbe34a28ed564ac782b538736e1a1c57c562876165a3294bd93af25ea3df653",
+    "z80full.tap": "cdfebeff306e5c0756ecb3295a1aebb8e71c336b2de35ecc3c0397146d73813c",
+    "z80memptr.tap": "444582ddfa4d05711b6235e743ddf68295231e97ba92cc838c5d09a106c9a10f"
+  },
+  "measured": {
+    "z80full.tap": "156 run, 0 failed, 4 skipped: the SCF and CCF variants for NEC and ST parts, which the suite runs only when told it is on one",
+    "z80doc.tap": "156 run, 0 failed, 4 skipped as above",
+    "z80memptr.tap": "156 run, 0 failed, 4 skipped as above",
+    "z80ccf.tap": "156 run, 0 failed, 4 skipped as above"
+  },
+  "measuredOn": "2026-10-19",
+  "seenToFail": "Run against a copy of this package that leaves the high byte of WZ at zero after ld (bc),a, ld (de),a, ld (nn),a and out (n),a, which is what the die netlist does, z80memptr fails exactly those three tests: LD ([BC,DE]),A, LD (NN),A and OUT (N),A. Run against a copy whose block input and output instructions set the negate flag and leave the carry as the manual prints, z80full fails exactly its ten block input and output tests and no other."
+}
