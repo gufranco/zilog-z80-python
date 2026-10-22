@@ -185,6 +185,20 @@ class RecordTest(unittest.TestCase):
         # Assert
         self.assertLessEqual(reported, set(held["taps"]))
 
+    def test_every_tape_run_on_this_package_failed_none_of_its_tests(self) -> None:
+        # Arrange
+        measured = z80test.identity()["measured"]
+
+        # Act
+        failed = [
+            name
+            for name in ("z80full", "z80doc", "z80flags", "z80docflags", "z80memptr", "z80ccf")
+            if not measured[f"{name}.tap"].startswith("156 run, 0 failed")
+        ]
+
+        # Assert
+        self.assertEqual(failed, [])
+
 
 class MainTest(unittest.TestCase):
     def test_a_tape_that_passes_every_test_exits_zero(self) -> None:

@@ -99,6 +99,12 @@ def a_running_part() -> Part:
 
 TESTED_DIRECTORIES = ("z80", "conformance")
 
+LONG_FILES: dict[str, str] = {
+    "z80/core.py": "one Cpu class whose instruction handlers share the register file, the bus,"
+    " the Q latch and the interrupt latches inside one instruction, every T state passing"
+    " through its one spend()",
+}
+
 MACHINES = {
     "zilog-z80-python": (
         "ZX Spectrum",

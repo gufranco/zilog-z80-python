@@ -98,6 +98,52 @@ what the corpus carries. The default is `manual`; the corpus runner asks for
 `recording`. This is a modelling choice, not a fact about silicon, and it is
 recorded as one.
 
+## Test cartridges
+
+[`conformance/testroms.json`](conformance/testroms.json) lists every published
+exerciser that runs on this part, by SHA-256, as FAMILY.md's fifth requirement
+asks. Every one is `run`.
+
+- **ZEXALL 0.12, both builds**, from the Master EverDrive set's
+  `5 Tools & Service Test Carts.zip` under `~/sms-artifacts/`.
+  [`conformance/exercisers.py`](conformance/exercisers.py) loads the image into
+  a memory whose image part is read-only, as a cartridge's is, and runs it
+  whole, one image a process, until it jumps to itself. `ld (hl),nn` with HL at
+  `0339h` writes into the image, and a writable image changed the last test's
+  CRC. The tests have to run in the program's own order in one memory: the
+  three `(ix+1)` load tests read `C06Fh`, the byte before the memory operand,
+  and `cpd<r>` reads `C081h`, and only earlier tests write those, so a test run
+  on its own reports a CRC mismatch the part did not cause. The SDSC build prints
+  through the debug port `FDh`, which the runner captures. The SVPD build prints
+  through a video chip, so the runner takes each character as its print routine
+  at `2526h` is entered, and answers port `7Eh` with `C0h`, the line that
+  routine waits for. Every test reports its CRC as `OK` in both. Every test
+  record carries flag mask `D7h`, which masks out flag bits 5 and 3, so these
+  builds check the documented flags only, as ZEXDOC does; the undocumented bits
+  are held by the z80test tapes and the corpus.
+- **The CPU type check of sverx's Test Suite 0.32**, the routine at `1832h`.
+  [`conformance/cputype.py`](conformance/cputype.py) calls it on each part with
+  a video memory that loops writes back, as the program expects: it executes
+  `out (c),0`, reads the byte back, and returns `L` as 1 when the part drove
+  `FFh`. The NMOS parts answer 0 and the Z84C00 answers 1.
+- **The six z80test tapes**, through
+  [`conformance/z80test.py`](conformance/z80test.py) as above. Each ran 156
+  tests with none failed.
+
+ZEXDOC is not on this machine and is not listed.
+
+```bash
+python3 -m conformance.exercisers --jobs 2 [--write] <zip, folder or image ...>
+python3 -m conformance.cputype [--write] <zip, folder or image ...>
+```
+
+With no argument each reads the folders and zips named in `TEST_CARTRIDGES`.
+With none present each says so and exits 2, and CI turns that into a notice. A full
+ZEXALL run is several hours of processor time per build.
+[`conformance/exercisers.test.py`](conformance/exercisers.test.py) and
+[`conformance/cputype.test.py`](conformance/cputype.test.py) replay the recorded
+verdicts with no image present.
+
 ## Why `core.py` is one file
 
 `z80/core.py` runs past 500 lines and is kept whole under the exception for a
@@ -216,6 +262,9 @@ conformance/
   die.py         the netlist run as a bench, and this package's machine cycles beside it
   ask.py         the questions put to the die, answered into die.json
   z80test.py     runs a z80test tape you hold, refusing any the record does not pin
+  exercisers.py  runs an exerciser image you hold, one test a process, reading its debug port
+  cputype.py     calls the Test Suite's CPU type routine on each part
+  testroms.json  every exerciser, by digest, and what each reported
   suites.json    which corpus, at which commit
   fetch.py       getting it
   singlestep.py  running it, state by state

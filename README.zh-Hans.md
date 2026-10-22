@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,504** 个测试，**100%** 语句和分支覆盖率，无依赖
+**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,572** 个测试，**100%** 语句和分支覆盖率，无依赖
 
 ```python
 from z80 import Cpu, Memory

@@ -26,7 +26,9 @@
     "z80full.tap": "156 run, 0 failed, 4 skipped: the SCF and CCF variants for NEC and ST parts, which the suite runs only when told it is on one",
     "z80doc.tap": "156 run, 0 failed, 4 skipped as above",
     "z80memptr.tap": "156 run, 0 failed, 4 skipped as above",
-    "z80ccf.tap": "156 run, 0 failed, 4 skipped as above"
+    "z80ccf.tap": "156 run, 0 failed, 4 skipped as above",
+    "z80flags.tap": "156 run, 0 failed, 4 skipped as above",
+    "z80docflags.tap": "156 run, 0 failed, 4 skipped as above"
   },
   "measuredOn": "2026-10-19",
   "seenToFail": "Run against a copy of this package that leaves the high byte of WZ at zero after ld (bc),a, ld (de),a, ld (nn),a and out (n),a, which is what the die netlist does, z80memptr fails exactly those three tests: LD ([BC,DE]),A, LD (NN),A and OUT (N),A. Run against a copy whose block input and output instructions set the negate flag and leave the carry as the manual prints, z80full fails exactly its ten block input and output tests and no other."

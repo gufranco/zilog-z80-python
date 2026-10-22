@@ -150,6 +150,28 @@ jobs:
       - name: Coverage must be total
         run: python -m coverage report
 
+      - name: Run every exerciser image present, exit 2 meaning none is
+        run: |
+          status=0
+          python -m conformance.exercisers || status="$?"
+          other=0
+          python -m conformance.cputype || other="$?"
+          if [ "${status}" -eq 2 ] && [ "${other}" -ne 2 ]; then
+            status="${other}"
+          elif [ "${status}" -eq 0 ] && [ "${other}" -eq 1 ]; then
+            status="${other}"
+          fi
+          if [ "${status}" -eq 2 ]; then
+            notice="No exerciser image is present on a hosted runner,"
+            notice="${notice} so this run was skipped rather than passed."
+            notice="${notice} The recorded verdicts are still held by their tests."
+            notice="${notice} Run it locally, or point TEST_CARTRIDGES at a folder or zip you own."
+            echo "::notice title=Test cartridges::${notice}"
+            exit 0
+          fi
+          exit "${status}"
+        shell: bash
+
       - name: Every timing the manual prints, against a run of the instruction
         run: python -m conformance.timing
 

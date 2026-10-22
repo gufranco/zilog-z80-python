@@ -57,6 +57,25 @@ that list is a working note somebody left there; it binds nothing and it is not
 expected to match. Membership is a decision, not something a repository acquires
 by holding a copy.
 
+### Members planned and not yet built
+
+None of these exists yet. Each is a member the family needs and has not built,
+named here so that a test cartridge waiting on it can say so under `needs`. None
+is in the table above, none is linked, and none binds anything until it joins
+the way the next section describes.
+
+| Planned member       | What it would model                                                                                                          | What waits on it                                                                        |
+| :------------------- | :--------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| snes-ppu             | The picture processing pair: video memory, sprite attribute memory, palette memory, the Mode 7 multiply and the timing flags | Most of what the burn-in, aging, NTF and control deck test programs check               |
+| snes-cpu-io          | The 5A22's own input and output: the multiply and divide units, the H/V timer, the counter latch and the blank flags         | The multiply, divide, timer and latch checks in the same programs                       |
+| snes-wram            | Work memory and its $2180 port                                                                                               | The work memory checks in the same programs                                             |
+| snes-sa1             | The SA-1 coprocessor                                                                                                         | The SA-1 speed test                                                                     |
+| snes-joypad          | The controller ports and the automatic read                                                                                  | The controller checks and the controller test cassette                                  |
+| sega-vdp-python      | The Master System video chip, holding only what Sega changed or added to the TMS9918A and the SN76489                        | The Mode 4, line counter, colour memory and sprite checks in the Master System test set |
+| sms-mapper-python    | The Master System cartridge mapper                                                                                           | The paging checks                                                                       |
+| sega-sms-python      | The Master System as a machine                                                                                               | The region, media enable and FM detection checks                                        |
+| yamaha-ym2413-python | The FM sound unit                                                                                                            | The FM tool                                                                             |
+
 ## How a repository joins
 
 Copy this file in unchanged, follow it, and add the repository to the table
@@ -95,8 +114,10 @@ one session at a time. Every one is checkable, and the family tests,
       is an invented pin.
 - [ ] It is cycle accurate, built unknown until `reset()`, held by a test to
       every fact the manufacturer printed, and tested end to end through its
-      public interface over every file, per "Four requirements every member
-      meets". A gap in any of the four is named in `OPEN-QUESTIONS.md`.
+      public interface over every file, per "Five requirements every member meets". A gap in any of the five is named in `OPEN-QUESTIONS.md`.
+- [ ] A `conformance/testroms.json` naming every test cartridge that exercises
+      it, each one run, read, or waiting on a named member, and no tracked
+      source over 500 lines unless `LONG_FILES` says why.
 - [ ] A part publishes its catalogue even when it holds one model: `MODELS`,
       `Model` and `UnknownModelError`. There is no default model and nothing that
       hands back a description of a part instead of a part. A name no model goes
@@ -408,7 +429,7 @@ rediscovered:
   by doing the work a second time, and until it is, every result built on it is
   suspect.
 
-## Four requirements every member meets
+## Five requirements every member meets
 
 Each follows from fidelity. They are written down because each one has been
 argued away at least once. A member that falls short of one names the gap in its
@@ -461,6 +482,34 @@ statements and branches over every Python file the repository tracks, with
 can reach is a line to delete. `conformance/family_end_to_end.test.py` fails on
 a test that imports an inner module or touches a private name, and each member
 names its tool modules in `TOOL_MODULES` in `conformance/family_member.py`.
+
+**Validated by the test cartridges written for the machine, wherever one
+exists.** Consoles shipped with factory and service test cartridges, burn-in
+and aging programs among them, and the community has written more: instruction
+exercisers such as ZEXALL, and suites such as the 240p Test Suite, the SMS Test
+Suite and Shay Green's audio tests. A test cartridge reports a verdict the
+hardware itself produced, so it holds a model to behaviour no document printed.
+Where one exists that exercises what a member models, the member is tested with
+it; this is not optional. A cartridge that tests the whole console tests each
+component through that component's own interface: a stimulus written, a response
+read, a comparison against a constant taken on real hardware. The member that
+models the component extracts that test, its stimulus and its expected
+constants, from the image the user holds, and runs it on itself. Every such
+cartridge is listed in `conformance/testroms.json`, pinned by SHA-256 like any
+artifact and never committed. Each entry carries an `id` and one outcome.
+`run`: the member runs the cartridge, or the part of it that tests this
+component, records the verdict the cartridge reports, and a test replays that
+verdict with no image present. `read`: a format or board member reads the
+cartridge as a file and a test holds what it read. `hosted`: the component that
+cartridge tests is modelled by a member that does not exist yet, and `needs`
+names that member, from the planned list or newly added to it. `hosted` is never
+a way to skip a test this member could run. A cartridge that reports a failure
+is a defect, fixed like a printed fact the model disagrees with, and never
+excused. A member that nothing exercises keeps an empty list and says why under
+`none`. `conformance/family_test_roms.test.py` fails on a member with no record,
+on an entry with no outcome or no SHA-256, on a `run` or `read` entry whose
+tests do not exist or never read its `id`, and on a `hosted` entry with nothing
+under `needs`.
 
 ## The authority ladder
 
@@ -863,6 +912,9 @@ on trust.
 | `conformance/family_documents.test.py`     | Links that resolve, the files this table names, and the agents file                                                                                         |
 | `conformance/family_carried.test.py`       | Nothing carried that is somebody else's, and no machine named that this part outlived                                                                       |
 | `conformance/family_writing.test.py`       | The readme's sections, no comment or docstring, tests named as sentences, and strict checkers                                                               |
+| `conformance/testroms.json`                | Every test cartridge that exercises what this member models, and whether it runs, is read, or waits on a member                                             |
+| `conformance/family_test_roms.test.py`     | The test cartridges recorded, each run, read or waiting on a named member                                                                                   |
+| `conformance/family_sizes.test.py`         | No tracked source over 500 lines unless `LONG_FILES` in `family_member.py` says why                                                                         |
 | `conformance/family_translations.test.py`  | The four readmes, kept in step with the English                                                                                                             |
 | `CITATION.cff`                             | How to cite the work, stamped with the released version by the same script that stamps the package                                                          |
 | `SECURITY.md`                              | Where to report a security problem, and what counts as one here                                                                                             |
@@ -999,6 +1051,7 @@ delete.
 | Corpora                | Fetched and pinned by commit, never vendored                                                                                                                                                                                                                      |
 | Documents              | Read and pinned by digest, never committed: none is redistributable                                                                                                                                                                                               |
 | ROMs and dumps         | Never committed, in any form, for any reason                                                                                                                                                                                                                      |
+| File size              | No tracked source over 500 lines. A file that has to be longer, a single calculation engine sharing its state, names itself in `LONG_FILES` in `conformance/family_member.py` with the reason, and the check reads that list                                      |
 
 ## Replacing a part that computes
 
