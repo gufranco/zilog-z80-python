@@ -19,6 +19,8 @@ RECORD = Path(__file__).resolve().parent / "testroms.json"
 
 PLACES = "TEST_CARTRIDGES"
 
+KEPT = Path(__file__).resolve().parent.parent / "external" / "Master EverDrive"
+
 DATA_PORT = 0xFD
 
 NO_DEVICE = 0xFF
@@ -187,11 +189,11 @@ def options(argv: Sequence[str]) -> tuple[int, bool, list[Path]] | None:
     return jobs, write, places
 
 
-def places_from(given: list[Path]) -> list[Path]:
+def places_from(given: list[Path], kept: Path) -> list[Path]:
     if given:
         return given
     named = os.environ.get(PLACES, "")
-    return [Path(one) for one in named.split(os.pathsep) if one]
+    return [Path(one) for one in named.split(os.pathsep) if one] or [kept]
 
 
 def judged(one: dict[str, Any], lines: list[str]) -> bool:
@@ -202,7 +204,7 @@ def judged(one: dict[str, Any], lines: list[str]) -> bool:
     return passed and lines == one.get("verdict")
 
 
-def main(argv: Sequence[str], where: Path | str | None = None) -> int:
+def main(argv: Sequence[str], where: Path | str | None = None, kept: Path = KEPT) -> int:
     parsed = options(argv)
     if parsed is None:
         print(USAGE)
@@ -210,7 +212,7 @@ def main(argv: Sequence[str], where: Path | str | None = None) -> int:
     jobs, write, given = parsed
     held = record(where)
     wanted = runnable(held)
-    found = images(places_from(given), {one["sha256"] for one in wanted})
+    found = images(places_from(given, kept), {one["sha256"] for one in wanted})
     if not found:
         print(f"SKIPPED none of the {len(wanted)} pinned images is on this machine")
         return NOTHING_TO_RUN

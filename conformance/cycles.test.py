@@ -14,7 +14,7 @@ MANUAL = "manual"
 
 RECORDING = "recording"
 
-SUITE = Path.home() / ".cache" / "conformance-suites" / "z80" / "v1"
+SUITE = Path(__file__).resolve().parent.parent / "external" / "conformance-suites" / "z80" / "v1"
 
 HAS_SUITE = SUITE.is_dir()
 

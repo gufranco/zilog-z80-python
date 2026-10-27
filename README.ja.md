@@ -8,7 +8,7 @@ Zilog Z80、NEC µPD780C、Zilog Z84C00をPythonで実装したものです。1�
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3**種類のパーツ、**1,604,000**件の適合性ケースと**22,005,372**Tステートを比較して失敗は**0**件、テスト**1,572**件、ステートメントとブランチのカバレッジ**100%**、依存関係なし
+**3**種類のパーツ、**1,604,000**件の適合性ケースと**22,005,372**Tステートを比較して失敗は**0**件、テスト**1,624**件、ステートメントとブランチのカバレッジ**100%**、依存関係なし
 
 ```python
 from z80 import Cpu, Memory
@@ -300,7 +300,7 @@ this clock has been closed 3
 | コマンド                                                                                                  | 動作                                                                                                                                                                                                                                      | 終了コード                                                                          |
 | :-------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
 | `python3 z80/doctor.py`                                                                                   | マシン、パーツ、コーパスを報告します                                                                                                                                                                                                      | 0はすべてのチェックに合格、1は不合格あり                                            |
-| `python3 -m conformance.fetch [directory] [--latest]`                                                     | コーパスを固定されたコミットで、`--latest`の場合はupstreamのheadで、`directory`にクローンします。デフォルトは`~/.cache/conformance-suites`です                                                                                            | 0は取得済み、1はupstreamに到達できないかgitのステップが失敗                         |
+| `python3 -m conformance.fetch [directory] [--latest]`                                                     | コーパスを固定されたコミットで、`--latest`の場合はupstreamのheadで、`directory`にクローンします。デフォルトは`external/conformance-suites`です                                                                                            | 0は取得済み、1はupstreamに到達できないかgitのステップが失敗                         |
 | `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]`                         | 各ケースの後のレジスタとメモリを比較します                                                                                                                                                                                                | 0は失敗なし、1は失敗ありまたはケースが見つからない、2は引数が不正                   |
 | `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 各Tステートのアドレス、データ、ピンを比較します。shapeのデフォルトは`recording`です                                                                                                                                                       | 0は失敗なし、1は失敗ありまたはケースが見つからない、2は引数が不正                   |
 | `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]`                             | コーパスを生成したジェネレータからコーパスを再構築します。`node`が必要です                                                                                                                                                                | 0は書き込み済み、失敗時はジェネレータ自身のコード、1は引数が不正                    |
@@ -487,9 +487,9 @@ True
 すべての命令はSingleStepTestsコーパスに照らして実行されます。このコーパスは、各レジスタとメモリの各バイトの前後の状態を記述しています。結果は**1,604,000件、失敗0件**です。2つ目のランナーは、パーツがバスに出したものを、Tステートごとにアドレス、データ、ピンで比較します。結果は**22,005,372Tステート、失敗0件**です。
 
 ```bash
-python3 -m conformance.fetch ~/.cache/conformance-suites
-python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
-python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.fetch external/conformance-suites
+python3 -m conformance.singlestep external/conformance-suites/z80/v1
+python3 -m conformance.cycles external/conformance-suites/z80/v1
 ```
 
 ```

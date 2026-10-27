@@ -4,7 +4,7 @@
       "id": "zexall-sdsc",
       "title": "ZEXALL 0.12 by Maxim and Eric R. Quinn, after Frank Cringle, the build that prints through the SDSC debug port",
       "sha256": "b83412eb9115eda7ce97ff5e46d4b3273258980bbe6b9c83c7cae7433d1c319b",
-      "source": "~/sms-artifacts/htgdb/Master EverDrive/5 Tools & Service Test Carts.zip, member ZEXALL Z-80 Instruction Excerciser (PD) v0.12SDSC Maxim, Eric Quinn.sms",
+      "source": "external/Master EverDrive/5 Tools & Service Test Carts.zip, member ZEXALL Z-80 Instruction Excerciser (PD) v0.12SDSC Maxim, Eric Quinn.sms",
       "exercises": "67 instruction groups, each over thousands of operand combinations, compared by CRC with values recorded on a real Zilog Z80, undocumented flags included",
       "outcome": "run",
       "heldBy": [
@@ -87,7 +87,7 @@
       "id": "zexall-svpd",
       "title": "ZEXALL 0.12 by Maxim and Eric R. Quinn, the build that prints through the video chip",
       "sha256": "35193d879b8e17ee2793a67a54f9952c5564e81a7d5bdb6150f20de3045f9e59",
-      "source": "~/sms-artifacts/htgdb/Master EverDrive/5 Tools & Service Test Carts.zip, member ZEXALL Z-80 Instruction Excerciser (PD) v0.12SVPD Maxim, Eric Quinn.sms",
+      "source": "external/Master EverDrive/5 Tools & Service Test Carts.zip, member ZEXALL Z-80 Instruction Excerciser (PD) v0.12SVPD Maxim, Eric Quinn.sms",
       "exercises": "the same 67 instruction groups as the SDSC build, each CRC compared with flag mask D7h",
       "outcome": "run",
       "heldBy": [
@@ -174,7 +174,7 @@
       "id": "test-suite-cpu-type",
       "title": "Test Suite 0.32 by sverx, its CPU type check",
       "sha256": "18c08b24df7339efe8339cd16a9a1bd863cfeac393cc9dde988b8dd35d395a41",
-      "source": "~/sms-artifacts/htgdb/Master EverDrive/5 Tools & Service Test Carts.zip, member SMS Test Suite (PD) v0.32 sverx.sms; source at github.com/sverx/SMSTestSuite d55228d43474b57372461cd20ddf527965f1b906",
+      "source": "external/Master EverDrive/5 Tools & Service Test Carts.zip, member SMS Test Suite (PD) v0.32 sverx.sms; source at github.com/sverx/SMSTestSuite d55228d43474b57372461cd20ddf527965f1b906",
       "exercises": "out (c),0, which drives 00h on an NMOS part and FFh on a CMOS one; the routine at 1832h writes it to video memory, reads it back and returns L = 1 for CMOS",
       "outcome": "run",
       "heldBy": [

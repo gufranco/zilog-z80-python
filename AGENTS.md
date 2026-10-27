@@ -105,7 +105,7 @@ exerciser that runs on this part, by SHA-256, as FAMILY.md's fifth requirement
 asks. Every one is `run`.
 
 - **ZEXALL 0.12, both builds**, from the Master EverDrive set's
-  `5 Tools & Service Test Carts.zip` under `~/sms-artifacts/`.
+  `5 Tools & Service Test Carts.zip`, kept at `external/Master EverDrive/`.
   [`conformance/exercisers.py`](conformance/exercisers.py) loads the image into
   a memory whose image part is read-only, as a cartridge's is, and runs it
   whole, one image a process, until it jumps to itself. `ld (hl),nn` with HL at
@@ -137,7 +137,8 @@ python3 -m conformance.exercisers --jobs 2 [--write] <zip, folder or image ...>
 python3 -m conformance.cputype [--write] <zip, folder or image ...>
 ```
 
-With no argument each reads the folders and zips named in `TEST_CARTRIDGES`.
+With no argument each reads the folders and zips named in `TEST_CARTRIDGES`,
+and with that unset, `external/Master EverDrive/`.
 With none present each says so and exits 2, and CI turns that into a notice. A full
 ZEXALL run is several hours of processor time per build.
 [`conformance/exercisers.test.py`](conformance/exercisers.test.py) and
@@ -153,6 +154,33 @@ latch and interrupt latches inside one instruction, and every T state passes
 through its one `spend()`. Splitting the handlers into mixins or modules would
 spread that shared state across files without narrowing any interface, since
 each handler would still reach into the same `Cpu`.
+
+## Files kept in `external/`
+
+Everything this member reads and may not ship sits in `external/`, which git
+ignores and Dropbox is told to leave alone, per FAMILY.md's "Where the files a
+member reads are kept". [`artifacts.manifest.json`](artifacts.manifest.json)
+names all 8 by size, CRC32, MD5, SHA-1 and SHA-256:
+
+- `external/Master EverDrive/5 Tools & Service Test Carts.zip`, from the
+  Master EverDrive pack of 2022-05-04, for both ZEXALL builds and the SMS Test
+  Suite's CPU type routine.
+- `external/z80test/`, the six tapes of z80test 1.2a, extracted from the
+  release whose SHA-256 [`conformance/z80test.json`](conformance/z80test.json)
+  pins.
+- `external/conformance-suites/z80`, the SingleStepTests corpus, a git
+  checkout at the commit [`conformance/suites.json`](conformance/suites.json)
+  pins, fetched by `python3 -m conformance.fetch`. The manifest records it as a
+  checkout, and a test holds its commit to the suite definition.
+
+```bash
+python3 -m conformance.external
+python3 -m conformance.external --describe external/<file>
+```
+
+The first says which are here, verified, missing or wrong. The second prints
+the manifest entry for a file being added, which gets its entry in the same
+change.
 
 ## Every gate, in the order to run them
 
@@ -173,16 +201,16 @@ done
 The conformance run needs the corpus, which is fetched rather than vendored:
 
 ```bash
-python3 -m conformance.fetch ~/.cache/conformance-suites
-python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
-python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.fetch external/conformance-suites
+python3 -m conformance.singlestep external/conformance-suites/z80/v1
+python3 -m conformance.cycles external/conformance-suites/z80/v1
 ```
 
 The suite measured on a real part is held rather than fetched. With the z80test
-release on the machine, each of its tapes runs for about twenty minutes:
+tapes in `external/z80test/`, each of its tapes runs for about twenty minutes:
 
 ```bash
-python3 -m conformance.z80test <folder>/z80full.tap
+python3 -m conformance.z80test external/z80test/z80full.tap
 ```
 
 ## Conventions that are not negotiable
@@ -274,6 +302,9 @@ conformance/
   independent.json  what the research outside Zilog establishes
   divergences.json  where sources part, with a status and a severity
   links.py       the weekly check that every cited address still answers
+  external.py       which files in external/ are here, verified, missing or wrong
+external/           the test cartridges, the z80test tapes and the SingleStepTests checkout, never committed
+artifacts.manifest.json  every file in external/, by size and every digest
 ```
 
 ## Things that will bite you

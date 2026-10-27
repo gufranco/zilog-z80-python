@@ -437,13 +437,30 @@ class MainTest(unittest.TestCase):
         # Assert
         self.assertEqual(code, 0)
 
-    def test_with_no_image_anywhere_it_exits_two(self) -> None:
+    def test_with_nothing_named_it_reads_what_external_holds(self) -> None:
         # Arrange
+        folder = Path(tempfile.mkdtemp())
+        image = an_exerciser(PASSING)
+        record = a_record(folder, image, verdict=["one....OK"])
+        held_in(folder, image)
         environment = {k: v for k, v in os.environ.items() if k != exercisers.PLACES}
 
         # Act
         with mock.patch.dict(os.environ, environment, clear=True):
-            code = exercisers.main([])
+            code = exercisers.main([], record, kept=folder)
+
+        # Assert
+        self.assertEqual(code, 0)
+
+    def test_with_no_image_anywhere_it_exits_two(self) -> None:
+        # Arrange
+        environment = {k: v for k, v in os.environ.items() if k != exercisers.PLACES}
+
+        nothing = Path(tempfile.mkdtemp()) / "external"
+
+        # Act
+        with mock.patch.dict(os.environ, environment, clear=True):
+            code = exercisers.main([], kept=nothing)
 
         # Assert
         self.assertEqual(code, exercisers.NOTHING_TO_RUN)

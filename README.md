@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,572** tests, **100%** statement and branch coverage, no dependencies
+**3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,624** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from z80 import Cpu, Memory
@@ -300,7 +300,7 @@ Every tool runs from the repository root. The conformance tools run as modules.
 | Command                                                                                                   | Does                                                                                                                                                                                                                                | Exit codes                                                                  |
 | :-------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
 | `python3 z80/doctor.py`                                                                                   | Reports the machine, the parts and the corpus                                                                                                                                                                                       | 0 every check passed, 1 one did not                                         |
-| `python3 -m conformance.fetch [directory] [--latest]`                                                     | Clones the corpus at its pinned commit, or at upstream's head with `--latest`, into `directory`, by default `~/.cache/conformance-suites`                                                                                           | 0 fetched, 1 upstream unreachable or a git step failed                      |
+| `python3 -m conformance.fetch [directory] [--latest]`                                                     | Clones the corpus at its pinned commit, or at upstream's head with `--latest`, into `directory`, by default `external/conformance-suites`                                                                                           | 0 fetched, 1 upstream unreachable or a git step failed                      |
 | `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]`                         | Compares registers and memory after every case                                                                                                                                                                                      | 0 no failure, 1 a failure or no cases found, 2 bad arguments                |
 | `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | Compares every T state's address, data and pins. The shape defaults to `recording`                                                                                                                                                  | 0 no failure, 1 a failure or no cases found, 2 bad arguments                |
 | `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]`                             | Rebuilds the corpus from the generator that produced it. Needs `node`                                                                                                                                                               | 0 written, the generator's own code if it failed, 1 bad arguments           |
@@ -487,9 +487,9 @@ The byte is derived from the seed and the address, so it is the same on every ru
 Every instruction is run against the SingleStepTests corpus, which states each register and each byte of memory before and after: **1,604,000 cases, 0 failures**. A second runner compares what the part put on the bus, T state by T state, address, data and pins: **22,005,372 T states, 0 failures**.
 
 ```bash
-python3 -m conformance.fetch ~/.cache/conformance-suites
-python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
-python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.fetch external/conformance-suites
+python3 -m conformance.singlestep external/conformance-suites/z80/v1
+python3 -m conformance.cycles external/conformance-suites/z80/v1
 ```
 
 ```

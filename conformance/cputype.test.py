@@ -178,9 +178,11 @@ class MainTest(unittest.TestCase):
         # Arrange
         environment = {k: v for k, v in os.environ.items() if k != exercisers.PLACES}
 
+        nothing = Path(tempfile.mkdtemp()) / "external"
+
         # Act
         with mock.patch.dict(os.environ, environment, clear=True):
-            code = cputype.main([])
+            code = cputype.main([], kept=nothing)
 
         # Assert
         self.assertEqual(code, cputype.NOTHING_TO_RUN)

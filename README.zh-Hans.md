@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,572** 个测试，**100%** 语句和分支覆盖率，无依赖
+**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,624** 个测试，**100%** 语句和分支覆盖率，无依赖
 
 ```python
 from z80 import Cpu, Memory
@@ -300,7 +300,7 @@ this clock has been closed 3
 | 命令                                                                                                      | 作用                                                                                                                                                                           | 退出码                                                     |
 | :-------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
 | `python3 z80/doctor.py`                                                                                   | 报告本机、各芯片和语料库                                                                                                                                                       | 0 所有检查通过，1 有检查未通过                             |
-| `python3 -m conformance.fetch [directory] [--latest]`                                                     | 将语料库按其固定的提交克隆到 `directory`，使用 `--latest` 时按上游最新提交克隆，默认目录为 `~/.cache/conformance-suites`                                                       | 0 已获取，1 上游不可达或某个 git 步骤失败                  |
+| `python3 -m conformance.fetch [directory] [--latest]`                                                     | 将语料库按其固定的提交克隆到 `directory`，使用 `--latest` 时按上游最新提交克隆，默认目录为 `external/conformance-suites`                                                       | 0 已获取，1 上游不可达或某个 git 步骤失败                  |
 | `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]`                         | 在每个用例之后比对寄存器和内存                                                                                                                                                 | 0 无失败，1 有失败或未找到用例，2 参数错误                 |
 | `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 比对每个 T 状态的地址、数据和引脚。形态默认为 `recording`                                                                                                                      | 0 无失败，1 有失败或未找到用例，2 参数错误                 |
 | `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]`                             | 用生成该语料库的生成器重建它。需要 `node`                                                                                                                                      | 0 已写入，生成器失败时为生成器自身的退出码，1 参数错误     |
@@ -487,9 +487,9 @@ True
 每条指令都会对照 SingleStepTests 语料库运行。该语料库给出了每个寄存器和每个内存字节在执行前后的状态：**1,604,000 个用例，0 个失败**。第二个运行器逐个 T 状态比对芯片放到总线上的内容，包括地址、数据和引脚：**22,005,372 个 T 状态，0 个失败**。
 
 ```bash
-python3 -m conformance.fetch ~/.cache/conformance-suites
-python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
-python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.fetch external/conformance-suites
+python3 -m conformance.singlestep external/conformance-suites/z80/v1
+python3 -m conformance.cycles external/conformance-suites/z80/v1
 ```
 
 ```

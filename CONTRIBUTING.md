@@ -21,9 +21,9 @@ for f in $(find z80 conformance -name '*.test.py' | sort); do
   "${cov[@]}" run -a "$f" || echo "FAILED $f"
 done
 "${cov[@]}" report
-python3 -m conformance.fetch ~/.cache/conformance-suites
-python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
-python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.fetch external/conformance-suites
+python3 -m conformance.singlestep external/conformance-suites/z80/v1
+python3 -m conformance.cycles external/conformance-suites/z80/v1
 ```
 
 Coverage is a hard gate at 100% statement and branch. A branch with no test

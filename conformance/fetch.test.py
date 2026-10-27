@@ -38,6 +38,22 @@ class DefinitionTest(unittest.TestCase):
             self.assertTrue(suite["sparse"])
             self.assertTrue(suite["path"])
 
+    def test_the_manifest_pins_each_suite_at_the_commit_the_definition_names(self) -> None:
+        # Arrange
+        manifest = json.loads((ROOT / "artifacts.manifest.json").read_text())["external"]
+
+        # Act
+        pinned = {
+            one["repository"]: one["commit"]
+            for one in manifest.values()
+            if one.get("kind") == "checkout"
+        }
+
+        # Assert
+        self.assertEqual(
+            pinned, {suite["repository"]: suite["commit"] for suite in fetch.definitions()}
+        )
+
     def test_a_definition_file_is_read_from_where_it_is_asked_for(self) -> None:
         with tempfile.TemporaryDirectory() as where:
             path = Path(where) / "suites.json"
@@ -251,7 +267,8 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("cannot reach", output)
 
-    def test_no_directory_falls_back_to_a_cache_below_the_home_directory(self) -> None:
+    def test_no_directory_falls_back_to_the_external_folder_of_this_repository(self) -> None:
+        # Arrange
         chosen: dict[str, object] = {}
         original = fetch.fetch
         fetch.fetch = lambda suite, directory, commit=None, quiet=True: (  # type: ignore[attr-defined]
@@ -259,10 +276,14 @@ class MainTest(unittest.TestCase):
         )
         self.addCleanup(setattr, fetch, "fetch", original)
 
+        # Act
         code, _ = self.run_main([])
 
+        # Assert
         self.assertEqual(code, 0)
-        self.assertIn(".cache", str(chosen["directory"]))
+        self.assertEqual(
+            Path(str(chosen["directory"])).parent, ROOT / "external" / "conformance-suites"
+        )
 
 
 if __name__ == "__main__":

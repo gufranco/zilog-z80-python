@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,572** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
+**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,624** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
 
 ```python
 from z80 import Cpu, Memory
@@ -300,7 +300,7 @@ this clock has been closed 3
 | 命令                                                                                                      | 作用                                                                                                                                                                             | 結束碼                                                     |
 | :-------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
 | `python3 z80/doctor.py`                                                                                   | 報告本機、各晶片及語料庫                                                                                                                                                         | 0 所有檢查通過，1 有檢查未通過                             |
-| `python3 -m conformance.fetch [directory] [--latest]`                                                     | 將語料庫按固定的提交，或以 `--latest` 按上游的最新提交，複製到 `directory`，預設為 `~/.cache/conformance-suites`                                                                 | 0 已取得，1 無法連接上游或某個 git 步驟失敗                |
+| `python3 -m conformance.fetch [directory] [--latest]`                                                     | 將語料庫按固定的提交，或以 `--latest` 按上游的最新提交，複製到 `directory`，預設為 `external/conformance-suites`                                                                 | 0 已取得，1 無法連接上游或某個 git 步驟失敗                |
 | `python3 -m conformance.singlestep <suite-directory> [--limit N] [--opcode NAME]`                         | 在每個案例之後比對暫存器和記憶體                                                                                                                                                 | 0 沒有失敗，1 有失敗或找不到案例，2 參數錯誤               |
 | `python3 -m conformance.cycles <suite-directory> [--limit N] [--opcode NAME] [--shape manual\|recording]` | 比對每個 T 狀態的地址、數據和引腳。形態預設為 `recording`                                                                                                                        | 0 沒有失敗，1 有失敗或找不到案例，2 參數錯誤               |
 | `python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]`                             | 以產生語料庫的產生器重建語料庫。需要 `node`                                                                                                                                      | 0 已寫入，失敗時為產生器自身的結束碼，1 參數錯誤           |
@@ -487,9 +487,9 @@ True
 每條指令都以 SingleStepTests 語料庫執行，該語料庫列明每個暫存器和每個記憶體位元組在執行前後的值：**1,604,000 個案例，0 個失敗**。第二個執行器逐個 T 狀態比對晶片放到匯流排上的地址、數據和引腳：**22,005,372 個 T 狀態，0 個失敗**。
 
 ```bash
-python3 -m conformance.fetch ~/.cache/conformance-suites
-python3 -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
-python3 -m conformance.cycles ~/.cache/conformance-suites/z80/v1
+python3 -m conformance.fetch external/conformance-suites
+python3 -m conformance.singlestep external/conformance-suites/z80/v1
+python3 -m conformance.cycles external/conformance-suites/z80/v1
 ```
 
 ```

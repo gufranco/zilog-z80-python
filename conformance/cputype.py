@@ -89,7 +89,7 @@ def answers(image: bytes, routine: int) -> dict[str, int]:
     return {model: answer(image, routine, model) for model in sorted(MODELS)}
 
 
-def main(argv: Sequence[str], where: Path | str | None = None) -> int:
+def main(argv: Sequence[str], where: Path | str | None = None, kept: Path = exercisers.KEPT) -> int:
     parsed = exercisers.options(argv)
     if parsed is None:
         print(USAGE)
@@ -97,7 +97,9 @@ def main(argv: Sequence[str], where: Path | str | None = None) -> int:
     _jobs, write, given = parsed
     held = exercisers.record(where)
     wanted = [one for one in held["cartridges"] if "routine" in one]
-    found = exercisers.images(exercisers.places_from(given), {one["sha256"] for one in wanted})
+    found = exercisers.images(
+        exercisers.places_from(given, kept), {one["sha256"] for one in wanted}
+    )
     if not found:
         print(f"SKIPPED none of the {len(wanted)} pinned images is on this machine")
         return NOTHING_TO_RUN

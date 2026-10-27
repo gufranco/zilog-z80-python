@@ -1,0 +1,204 @@
+{
+  "externalNote": "Every file this repository reads and may not ship, or fetches rather than carries. Each lives under external/, which git and Dropbox both ignore. python3 -m conformance.external reports which are here, which are missing and which are not the file named; SHA-256 alone decides a file, and HEAD decides a checkout.",
+  "external": {
+    "master-everdrive-5-tools-service-test-carts-zip": {
+      "required": false,
+      "purpose": "The Master EverDrive pack's test cartridges, among them both ZEXALL builds and the SMS Test Suite this member runs.",
+      "usedBy": ["conformance/exercisers.py", "conformance/cputype.py"],
+      "canonical_form": {
+        "container": "zip",
+        "header": "as shipped",
+        "notes": "The archive itself, because the runners read it as it is; conformance/testroms.json names each cartridge inside by its own SHA-256."
+      },
+      "accepted": [
+        {
+          "label": "5 Tools & Service Test Carts",
+          "path": "Master EverDrive/5 Tools & Service Test Carts.zip",
+          "common_filename": "5 Tools & Service Test Carts.zip",
+          "size": 728881,
+          "crc32": "c66239ea",
+          "md5": "c80752ade89465115a30d7985e231b7b",
+          "sha1": "c7149c886b031366b4f0e63c8e3f716adc1a8a69",
+          "sha256": "092af445a48421fb31fa53ebc3dc3d89318359ea8563f50f36bd9d28b21693f6",
+          "preferred": true,
+          "provenance": {
+            "db": "Master EverDrive pack",
+            "dat_version": "2022-05-04"
+          }
+        }
+      ]
+    },
+    "z80test-z80ccf-tap": {
+      "required": false,
+      "purpose": "One tape of Patrik Rak's z80test 1.2a, whose expected CRCs were recorded on a real Zilog Z80.",
+      "usedBy": ["conformance/z80test.py"],
+      "canonical_form": {
+        "container": "raw",
+        "header": "as released",
+        "notes": "The tape extracted byte for byte from z80test-1.2a.zip, whose SHA-256 conformance/z80test.json pins as releaseSha256."
+      },
+      "accepted": [
+        {
+          "label": "z80ccf",
+          "path": "z80test/z80ccf.tap",
+          "common_filename": "z80ccf.tap",
+          "size": 14875,
+          "crc32": "9c83619c",
+          "md5": "308e8db397b6ac3ace822a899af2ebca",
+          "sha1": "c622d228018cf9b54b93e9f9f487330cf4bf5b3d",
+          "sha256": "a35b3b269b58371015cf033f28a08ad1ac92cce6dd27b428caf67b7f9ce8f5b7",
+          "preferred": true,
+          "provenance": {
+            "db": "z80test release v1.2a",
+            "dat_version": "extracted 2026-10-27"
+          }
+        }
+      ]
+    },
+    "z80test-z80doc-tap": {
+      "required": false,
+      "purpose": "One tape of Patrik Rak's z80test 1.2a, whose expected CRCs were recorded on a real Zilog Z80.",
+      "usedBy": ["conformance/z80test.py"],
+      "canonical_form": {
+        "container": "raw",
+        "header": "as released",
+        "notes": "The tape extracted byte for byte from z80test-1.2a.zip, whose SHA-256 conformance/z80test.json pins as releaseSha256."
+      },
+      "accepted": [
+        {
+          "label": "z80doc",
+          "path": "z80test/z80doc.tap",
+          "common_filename": "z80doc.tap",
+          "size": 14390,
+          "crc32": "25bca1f4",
+          "md5": "a2197210f13dd828470121f389afa552",
+          "sha1": "d8f2b2c8cb999546fdf2cf4be5f6a30580402362",
+          "sha256": "4b06ce9fd517fd5f5a86d4ff2ef05a3f0ab7ed20eb075b87b0623d42fbd3e4bd",
+          "preferred": true,
+          "provenance": {
+            "db": "z80test release v1.2a",
+            "dat_version": "extracted 2026-10-27"
+          }
+        }
+      ]
+    },
+    "z80test-z80docflags-tap": {
+      "required": false,
+      "purpose": "One tape of Patrik Rak's z80test 1.2a, whose expected CRCs were recorded on a real Zilog Z80.",
+      "usedBy": ["conformance/z80test.py"],
+      "canonical_form": {
+        "container": "raw",
+        "header": "as released",
+        "notes": "The tape extracted byte for byte from z80test-1.2a.zip, whose SHA-256 conformance/z80test.json pins as releaseSha256."
+      },
+      "accepted": [
+        {
+          "label": "z80docflags",
+          "path": "z80test/z80docflags.tap",
+          "common_filename": "z80docflags.tap",
+          "size": 14390,
+          "crc32": "6f7d7f6e",
+          "md5": "80bd8df81761fb24133fdc7279e49b7f",
+          "sha1": "8736cccff6e9c50f27737383755a08828834c7d1",
+          "sha256": "cf64a8d66f248bc054c5255f3a51ba50a511b166b29054b7192ca91e306a528d",
+          "preferred": true,
+          "provenance": {
+            "db": "z80test release v1.2a",
+            "dat_version": "extracted 2026-10-27"
+          }
+        }
+      ]
+    },
+    "z80test-z80flags-tap": {
+      "required": false,
+      "purpose": "One tape of Patrik Rak's z80test 1.2a, whose expected CRCs were recorded on a real Zilog Z80.",
+      "usedBy": ["conformance/z80test.py"],
+      "canonical_form": {
+        "container": "raw",
+        "header": "as released",
+        "notes": "The tape extracted byte for byte from z80test-1.2a.zip, whose SHA-256 conformance/z80test.json pins as releaseSha256."
+      },
+      "accepted": [
+        {
+          "label": "z80flags",
+          "path": "z80test/z80flags.tap",
+          "common_filename": "z80flags.tap",
+          "size": 14390,
+          "crc32": "5b67e718",
+          "md5": "10dd506859e57e54567c3200fdedb732",
+          "sha1": "3ffd08a043e86c55b0e6815a4dc990ea3865bb24",
+          "sha256": "4dbe34a28ed564ac782b538736e1a1c57c562876165a3294bd93af25ea3df653",
+          "preferred": true,
+          "provenance": {
+            "db": "z80test release v1.2a",
+            "dat_version": "extracted 2026-10-27"
+          }
+        }
+      ]
+    },
+    "z80test-z80full-tap": {
+      "required": false,
+      "purpose": "One tape of Patrik Rak's z80test 1.2a, whose expected CRCs were recorded on a real Zilog Z80.",
+      "usedBy": ["conformance/z80test.py"],
+      "canonical_form": {
+        "container": "raw",
+        "header": "as released",
+        "notes": "The tape extracted byte for byte from z80test-1.2a.zip, whose SHA-256 conformance/z80test.json pins as releaseSha256."
+      },
+      "accepted": [
+        {
+          "label": "z80full",
+          "path": "z80test/z80full.tap",
+          "common_filename": "z80full.tap",
+          "size": 14390,
+          "crc32": "f1662897",
+          "md5": "5d6d7158c032101cb49b69b6d1748d1b",
+          "sha1": "bca749abc2972d443761e0bba735b11e9e97be6b",
+          "sha256": "cdfebeff306e5c0756ecb3295a1aebb8e71c336b2de35ecc3c0397146d73813c",
+          "preferred": true,
+          "provenance": {
+            "db": "z80test release v1.2a",
+            "dat_version": "extracted 2026-10-27"
+          }
+        }
+      ]
+    },
+    "z80test-z80memptr-tap": {
+      "required": false,
+      "purpose": "One tape of Patrik Rak's z80test 1.2a, whose expected CRCs were recorded on a real Zilog Z80.",
+      "usedBy": ["conformance/z80test.py"],
+      "canonical_form": {
+        "container": "raw",
+        "header": "as released",
+        "notes": "The tape extracted byte for byte from z80test-1.2a.zip, whose SHA-256 conformance/z80test.json pins as releaseSha256."
+      },
+      "accepted": [
+        {
+          "label": "z80memptr",
+          "path": "z80test/z80memptr.tap",
+          "common_filename": "z80memptr.tap",
+          "size": 14390,
+          "crc32": "0073d74d",
+          "md5": "94ac53ce5cc0c1058f978e4d406f603d",
+          "sha1": "29836aaba4b6b76655187b78c978d947b8838bb9",
+          "sha256": "444582ddfa4d05711b6235e743ddf68295231e97ba92cc838c5d09a106c9a10f",
+          "preferred": true,
+          "provenance": {
+            "db": "z80test release v1.2a",
+            "dat_version": "extracted 2026-10-27"
+          }
+        }
+      ]
+    },
+    "singlesteptests-z80": {
+      "kind": "checkout",
+      "required": false,
+      "purpose": "The SingleStepTests corpus for the Z80, 1,604 files of a thousand cases each, which the singlestep and cycles runners hold the model to.",
+      "usedBy": ["conformance/fetch.py", "conformance/singlestep.py", "conformance/cycles.py"],
+      "path": "conformance-suites/z80",
+      "repository": "https://github.com/SingleStepTests/z80.git",
+      "commit": "ebe1875d48f374bcfd4b505d8eb8ee751568b5f7",
+      "fetchedBy": "python3 -m conformance.fetch"
+    }
+  }
+}

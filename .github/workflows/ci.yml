@@ -211,12 +211,12 @@ jobs:
         id: cache
         uses: actions/cache@v6
         with:
-          path: ~/.cache/conformance-suites
+          path: external/conformance-suites
           key: suites-${{ steps.pin.outputs.commit }}
 
       - name: Fetch the suite
         if: steps.cache.outputs.cache-hit != 'true'
-        run: python -m conformance.fetch ~/.cache/conformance-suites
+        run: python -m conformance.fetch external/conformance-suites
 
       - name: Run the suite, a tenth of it on a pull request
         run: |
@@ -226,9 +226,9 @@ jobs:
             limit=0
           fi
           if [ "${limit}" = "0" ]; then
-            python -m conformance.singlestep ~/.cache/conformance-suites/z80/v1
+            python -m conformance.singlestep external/conformance-suites/z80/v1
           else
-            python -m conformance.singlestep ~/.cache/conformance-suites/z80/v1 --limit "${limit}"
+            python -m conformance.singlestep external/conformance-suites/z80/v1 --limit "${limit}"
           fi
         shell: bash
 
@@ -259,19 +259,19 @@ jobs:
         id: cache
         uses: actions/cache@v6
         with:
-          path: ~/.cache/conformance-suites
+          path: external/conformance-suites
           key: suites-${{ steps.pin.outputs.commit }}
 
       - name: Fetch the suite
         if: steps.cache.outputs.cache-hit != 'true'
-        run: python -m conformance.fetch ~/.cache/conformance-suites
+        run: python -m conformance.fetch external/conformance-suites
 
       - name: Compare every T state
         run: |
           if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-            python -m conformance.cycles ~/.cache/conformance-suites/z80/v1 --limit 100
+            python -m conformance.cycles external/conformance-suites/z80/v1 --limit 100
           else
-            python -m conformance.cycles ~/.cache/conformance-suites/z80/v1
+            python -m conformance.cycles external/conformance-suites/z80/v1
           fi
         shell: bash
 

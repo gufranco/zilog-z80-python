@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
+
+GENERATOR = ROOT.parent / "external" / "z80-test-generator"
 DEFINITION = ROOT / "suites.json"
 
 USAGE = "usage: python3 -m conformance.regenerate <output-directory> [--full] [--clone DIR]"
@@ -153,7 +155,7 @@ def options(argv: Sequence[str]) -> tuple[Path, bool, Path | None]:
 def main(argv: Sequence[str], held: Path | str | None = None) -> int:
     output, full, clone_into = options(argv)
     generator = definition(held)
-    source = clone(generator, clone_into or (Path.home() / ".cache" / "z80-test-generator"))
+    source = clone(generator, clone_into or GENERATOR)
     code = generate(generator, source, output, full)
     if code:
         print(f"the generator exited {code}")
