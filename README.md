@@ -4,9 +4,11 @@ The Zilog Z80, the NEC µPD780C and the Zilog Z84C00 in Python, driven one instr
 
 English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁體中文（香港）](README.zh-HK.md)
 
-[![CI](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python)](https://github.com/gufranco/zilog-z80-python/releases)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![ci](https://img.shields.io/github/actions/workflow/status/gufranco/zilog-z80-python/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/gufranco/zilog-z80-python?style=flat-square&label=release)](https://github.com/gufranco/zilog-z80-python/releases/latest)
+[![coverage](https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square)](https://github.com/gufranco/zilog-z80-python/actions/workflows/ci.yml)
+[![openssf scorecard](https://img.shields.io/ossf-scorecard/github.com/gufranco/zilog-z80-python?style=flat-square&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/gufranco/zilog-z80-python)
+[![license](https://img.shields.io/github/license/gufranco/zilog-z80-python?style=flat-square&label=license)](LICENSE)
 
 **3** parts, **1,604,000** conformance cases and **22,005,372** T states compared, **0** failures, **1,626** tests, **100%** statement and branch coverage, no dependencies
 
