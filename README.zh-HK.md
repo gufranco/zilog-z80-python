@@ -10,7 +10,7 @@
 [![openssf scorecard](https://img.shields.io/ossf-scorecard/github.com/gufranco/zilog-z80-python?style=flat-square&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/gufranco/zilog-z80-python)
 [![license](https://img.shields.io/github/license/gufranco/zilog-z80-python?style=flat-square&label=license)](LICENSE)
 
-**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,626** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
+**3** 款晶片，比對了 **1,604,000** 個一致性案例和 **22,005,372** 個 T 狀態，**0** 個失敗，**1,627** 個測試，**100%** 語句及分支覆蓋率，沒有任何依賴項
 
 ```python
 from z80 import Cpu, Memory

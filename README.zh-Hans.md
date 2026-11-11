@@ -10,7 +10,7 @@
 [![openssf scorecard](https://img.shields.io/ossf-scorecard/github.com/gufranco/zilog-z80-python?style=flat-square&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/gufranco/zilog-z80-python)
 [![license](https://img.shields.io/github/license/gufranco/zilog-z80-python?style=flat-square&label=license)](LICENSE)
 
-**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,626** 个测试，**100%** 语句和分支覆盖率，无依赖
+**3** 种芯片，比对了 **1,604,000** 个一致性用例和 **22,005,372** 个 T 状态，**0** 个失败，**1,627** 个测试，**100%** 语句和分支覆盖率，无依赖
 
 ```python
 from z80 import Cpu, Memory
